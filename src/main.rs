@@ -596,7 +596,7 @@ impl GameState {
         for (team_idx, team) in self.teams.iter_mut().enumerate() {
             for player in &team.players {
                 if player.lives <= 0 {
-                    self.winner = if team_idx == 0 { 1 } else { 2 };
+                    self.winner = if team_idx == 0 { 2 } else { 1 };
                     println!("Winner: Team {}", self.winner)
                 }
             }
@@ -829,6 +829,22 @@ impl GameState {
         let fps_y = MARGIN / 2.0; // slightly above other HUD elements
 
         game_canvas.draw(&fps_text, DrawParam::default().dest(Vec2::new(fps_x, fps_y).to_mint_point()));
+
+        if self.winner > 0 {
+            let winner_text = Text::new(TextFragment {
+                text: format!("TEAM {} WINS!", self.winner),
+                font: None,
+                scale: Some(PxScale::from(200.0)),
+                color: Some(if self.winner == 1 { TEAM_ONE_COLOR } else { TEAM_TWO_COLOR }),
+                ..Default::default()
+            });
+
+            let winner_dims = winner_text.dimensions(ctx).unwrap();
+            let winner_x = (VIRTUAL_WIDTH - winner_dims.w as f32) / 2.0;
+            let winner_y = (VIRTUAL_HEIGHT - winner_dims.h as f32) / 3.5;
+
+            game_canvas.draw(&winner_text, DrawParam::default().dest(Vec2::new(winner_x, winner_y).to_mint_point()));
+        }
 
         Ok(())
     }
