@@ -1,0 +1,11 @@
+[package]
+name = "platform"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bincode = "2.0.1"
+ggez = "0.9.3"
+glam = { version = "0.30.9", features = ["mint", "serde"] }
+mint = "0.5.9"
+serde = { version = "1.0.228", features = ["derive"] }
