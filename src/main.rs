@@ -57,7 +57,7 @@ impl IntoMint for Vec2 {
 
 const ENABLE_VSYNC: bool = true;
 
-const C_TEAM: usize = 1;
+const C_TEAM: usize = 0;
 const C_PLAYER: usize = 0;
 
 const VIRTUAL_WIDTH: f32 = 1980.0;
@@ -492,9 +492,14 @@ impl Team {
         others: &mut [Team],
         team_idx: usize,
         map: &Rect,
+        winner: &Option<usize>,
         active_attacks: &mut Vec<Attack>,
-        normal_dt: f32,
+        mut normal_dt: f32,
     ) {
+        if winner.is_some() {
+            normal_dt = normal_dt / 2.0;
+        }
+
         let slow_dt = normal_dt / 2.0;
 
         self.trail_squares.iter_mut().for_each(|s| s.update(normal_dt));
@@ -569,6 +574,7 @@ struct GameState {
     map: Map,
     active_attacks: Vec<Attack>,
     camera_pos: Vec2,
+    winner: Option<usize>,
 }
 
 impl GameState {
@@ -578,6 +584,22 @@ impl GameState {
             map: Map::new(),
             active_attacks: Vec::new(),
             camera_pos: Vec2::new(0.0, 0.0),
+            winner: None,
+        }
+    }
+
+    fn check_for_win(&mut self) {
+        if self.winner.is_some() {
+            return
+        }
+
+        for (team_idx, team) in self.teams.iter_mut().enumerate() {
+            for player in &team.players {
+                if player.lives <= 0 {
+                    self.winner = if team_idx == 0 { Some(1) } else { Some(0) };
+                    println!("Winner: Team {}", self.winner.unwrap() + 1)
+                }
+            }
         }
     }
 
@@ -690,6 +712,9 @@ impl GameState {
             .scale(Vec2::new(zoom, zoom).to_mint_vec());
         for team in &self.teams {
             for player in &team.players {
+                if player.lives <= 0 {
+                    continue;
+                }
                 let opacity = if player.invulnerable_timer > 0.0 {
                     0.5
                 } else {
@@ -820,6 +845,8 @@ impl EventHandler for GameState {
 
         self.handle_attack_collisions();
 
+        self.check_for_win();
+
         for team_idx in 0..self.teams.len() {
             let (left, right) = self.teams.split_at_mut(team_idx);
             let (team, others) = right.split_first_mut().unwrap();
@@ -829,6 +856,7 @@ impl EventHandler for GameState {
                 others,
                 team_idx,
                 &self.map.rect,
+                &self.winner,
                 &mut self.active_attacks,
                 dt,
             );
