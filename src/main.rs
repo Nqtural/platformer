@@ -492,11 +492,11 @@ impl Team {
         others: &mut [Team],
         team_idx: usize,
         map: &Rect,
-        winner: &Option<usize>,
+        winner: usize,
         active_attacks: &mut Vec<Attack>,
         mut normal_dt: f32,
     ) {
-        if winner.is_some() {
+        if winner > 0 {
             normal_dt = normal_dt / 2.0;
         }
 
@@ -574,7 +574,7 @@ struct GameState {
     map: Map,
     active_attacks: Vec<Attack>,
     camera_pos: Vec2,
-    winner: Option<usize>,
+    winner: usize,
 }
 
 impl GameState {
@@ -584,20 +584,20 @@ impl GameState {
             map: Map::new(),
             active_attacks: Vec::new(),
             camera_pos: Vec2::new(0.0, 0.0),
-            winner: None,
+            winner: 0,
         }
     }
 
     fn check_for_win(&mut self) {
-        if self.winner.is_some() {
-            return
+        if self.winner > 0 {
+            return;
         }
 
         for (team_idx, team) in self.teams.iter_mut().enumerate() {
             for player in &team.players {
                 if player.lives <= 0 {
-                    self.winner = if team_idx == 0 { Some(1) } else { Some(0) };
-                    println!("Winner: Team {}", self.winner.unwrap() + 1)
+                    self.winner = if team_idx == 0 { 1 } else { 2 };
+                    println!("Winner: Team {}", self.winner)
                 }
             }
         }
@@ -856,7 +856,7 @@ impl EventHandler for GameState {
                 others,
                 team_idx,
                 &self.map.rect,
-                &self.winner,
+                self.winner,
                 &mut self.active_attacks,
                 dt,
             );
