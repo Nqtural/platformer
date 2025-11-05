@@ -73,12 +73,14 @@ const TRAIL_OPACITY: f32 = 0.15;
 const TEAM_ONE_START_POS: [f32; 2] = [250.0, 300.0];
 const TEAM_TWO_START_POS: [f32; 2] = [550.0, 300.0];
 
-const MAX_SPEED: [f32; 2] = [300.0, 600.0];
-const WALL_SLIDE_SPEED: f32 = 0.0;
-const ACCELERATION: f32 = 5000.0;
-const RESISTANCE: f32 = 1800.0;
-const GRAVITY: f32 = 1200.0;
 const PLAYER_SIZE: f32 = 20.0;
+
+const MAX_SPEED: [f32; 2] = [300.0, 600.0];
+const ACCELERATION: f32 = 5000.0;
+const GRAVITY: f32 = 1200.0;
+const RESISTANCE: f32 = 1800.0;
+const WALL_SLIDE_SPEED: f32 = 0.0;
+
 const RESPAWN_TIME: f32 = 2.5;
 
 // }}}
@@ -170,6 +172,40 @@ struct Attack {
 }
 
 impl Attack {
+    fn light(player: &Player, owner_team: usize) -> Attack {
+        Attack {
+            x: player.pos[0] - 9.0,
+            y: player.pos[1] - 10.0,
+            w: 40.0,
+            h: 40.0,
+            power: 0.01,
+            stun: 0.2,
+            knockback: [
+                (player.vel[0] / 2.0) + (400.0 * player.facing),
+                -200.0
+            ],
+            slow: 0.5,
+            duration: 0.1,
+            timer: 0.0,
+            owner_team,
+        }
+    }
+    fn uppercut(player: &Player, owner_team: usize) -> Attack {
+        Attack {
+            x: player.pos[0] - 9.0,
+            y: player.pos[1] - 10.0,
+            w: 40.0,
+            h: 40.0,
+            power: 0.02,
+            stun: 0.4,
+            knockback: [0.0, -500.0],
+            slow: 0.5,
+            duration: 0.15,
+            timer: 0.0,
+            owner_team,
+        }
+    }
+
     fn get_rect(&self) -> Rect {
         Rect::new(self.x, self.y, self.w, self.h)
     }
@@ -327,74 +363,49 @@ impl Player {
 
     fn apply_input(&mut self, map: &Rect, team: usize, dt: f32) -> Vec<Attack> {
         let mut new_attacks = Vec::new();
-        if self.stunned == 0.0 {
-            if self.input.up {
-                if self.is_on_platform(map) {
-                    self.vel[1] = -500.0;
-                } 
-                else if self.double_jumps > 0 {
-                    self.vel[1] = -500.0;
-                    self.double_jumps -= 1;
-                }
-                self.input.up = false;
+        if self.stunned > 0.0 {
+            return new_attacks;
+        }
+
+        if self.input.up {
+            if self.is_on_platform(map) {
+                self.vel[1] = -500.0;
+            } 
+            else if self.double_jumps > 0 {
+                self.vel[1] = -500.0;
+                self.double_jumps -= 1;
             }
-            if self.input.left && self.vel[0] > -MAX_SPEED[0] {
-                self.facing = -1.0;
-                self.vel[0] -= ACCELERATION * dt;
+            self.input.up = false;
+        }
+        if self.input.left && self.vel[0] > -MAX_SPEED[0] {
+            self.facing = -1.0;
+            self.vel[0] -= ACCELERATION * dt;
+        }
+        if self.input.right && self.vel[0] < MAX_SPEED[0] {
+            self.facing = 1.0;
+            self.vel[0] += ACCELERATION * dt;
+        }
+        if self.attack_cooldown <= 0.0 {
+            if self.input.light {
+                new_attacks.push(Attack::light(&self, team));
+                self.slow = 0.5;
+                self.attack_cooldown = 0.3;
+                self.input.uppercut = true;
             }
-            if self.input.right && self.vel[0] < MAX_SPEED[0] {
-                self.facing = 1.0;
-                self.vel[0] += ACCELERATION * dt;
+            if self.input.uppercut {
+                new_attacks.push(Attack::uppercut(&self, C_TEAM));
+                self.slow = 0.5;
+                self.attack_cooldown = 0.3;
+                self.input.uppercut = false;
             }
-            if self.attack_cooldown <= 0.0 {
-                if self.input.light {
-                    new_attacks.push(Attack {
-                        x: self.pos[0] - 9.0,
-                        y: self.pos[1] - 10.0,
-                        w: 40.0,
-                        h: 40.0,
-                        power: 0.01,
-                        stun: 0.2,
-                        knockback: [
-                            (self.vel[0] / 2.0) + (400.0 * self.facing),
-                            -200.0
-                        ],
-                        slow: 0.5,
-                        duration: 0.1,
-                        timer: 0.0,
-                        owner_team: team,
-                    });
-                    self.slow = 0.5;
-                    self.attack_cooldown = 0.3;
-                    self.input.uppercut = true;
-                }
-                if self.input.uppercut {
-                    new_attacks.push(Attack {
-                        x: self.pos[0] - 9.0,
-                        y: self.pos[1] - 10.0,
-                        w: 40.0,
-                        h: 40.0,
-                        power: 0.02,
-                        stun: 0.4,
-                        knockback: [0.0, -500.0],
-                        slow: 0.5,
-                        duration: 0.15,
-                        timer: 0.0,
-                        owner_team: C_TEAM,
-                    });
-                    self.slow = 0.5;
-                    self.attack_cooldown = 0.3;
-                    self.input.uppercut = false;
-                }
-            }
-            if self.input.dash && self.dash_cooldown <= 0.0 {
-                self.vel[0] = self.facing * 1000.0;
-                self.dashing = 0.3;
-                self.dash_cooldown = 3.0;
-            }
-            if self.input.slam && self.vel[1] < MAX_SPEED[1] {
-                self.vel[1] += ACCELERATION * dt;
-            }
+        }
+        if self.input.dash && self.dash_cooldown <= 0.0 {
+            self.vel[0] = self.facing * 1000.0;
+            self.dashing = 0.3;
+            self.dash_cooldown = 3.0;
+        }
+        if self.input.slam && self.vel[1] < MAX_SPEED[1] {
+            self.vel[1] += ACCELERATION * dt;
         }
         new_attacks
     }
@@ -508,9 +519,7 @@ impl Team {
         for player in &mut self.players {
             player.update_cooldowns(normal_dt);
 
-            if player.respawn_timer > 0.0 {
-                continue;
-            }
+            if player.respawn_timer > 0.0 { continue; }
 
             let dt = if player.slow > normal_dt {
                 slow_dt
@@ -595,10 +604,9 @@ impl GameState {
 
         for (team_idx, team) in self.teams.iter_mut().enumerate() {
             for player in &team.players {
-                if player.lives <= 0 {
-                    self.winner = if team_idx == 0 { 2 } else { 1 };
-                    println!("Winner: Team {}", self.winner)
-                }
+                if player.lives > 0 { continue; }
+                self.winner = if team_idx == 0 { 2 } else { 1 };
+                println!("Winner: Team {}", self.winner)
             }
         }
     }
@@ -608,12 +616,11 @@ impl GameState {
             for (team_idx, team) in self.teams.iter_mut().enumerate() {
                 if team_idx == atk.owner_team { continue; }
                 for player in &mut team.players {
-                    if player.stunned == 0.0 {
-                        let player_rect = player.get_rect();
-                        if atk.get_rect().overlaps(&player_rect) && player.invulnerable_timer == 0.0 {
-                            player.attack(&atk);
-                        }
-                    }
+                    if player.stunned > 0.0
+                        || player.invulnerable_timer > 0.0
+                        || !atk.get_rect().overlaps(&player.get_rect())
+                    { continue; }
+                    player.attack(&atk);
                 }
             }
         }
@@ -649,23 +656,23 @@ impl GameState {
             }
         }
 
-        if count > 0 {
-            let player_center = sum / count as f32;
+        if count == 0 { return; }
 
-            let map_center = Vec2::new(
-                self.map.rect.x + self.map.rect.w / 2.0,
-                self.map.rect.y + self.map.rect.h / 2.0,
-            );
+        let player_center = sum / count as f32;
 
-            // future client side option together with colors,
-            // background color or image, controls, etc.
-            let bias_strength = 0.7;
+        let map_center = Vec2::new(
+            self.map.rect.x + self.map.rect.w / 2.0,
+            self.map.rect.y + self.map.rect.h / 2.0,
+        );
 
-            let biased_target = player_center.lerp(map_center, bias_strength);
+        // future client side option together with colors,
+        // background color or image, controls, etc.
+        let bias_strength = 0.7;
 
-            let lerp_factor = 0.1;
-            self.camera_pos = self.camera_pos.lerp(biased_target, lerp_factor);
-        }
+        let biased_target = player_center.lerp(map_center, bias_strength);
+
+        let lerp_factor = 0.1;
+        self.camera_pos = self.camera_pos.lerp(biased_target, lerp_factor);
     }
 
     fn draw_map(&self, game_canvas: &mut Canvas, gfx: &mut GraphicsContext, camera_transform: &DrawParam) -> GameResult {
@@ -712,9 +719,8 @@ impl GameState {
             .scale(Vec2::new(zoom, zoom).to_mint_vec());
         for team in &self.teams {
             for player in &team.players {
-                if player.lives <= 0 {
-                    continue;
-                }
+                if player.lives <= 0 { continue; }
+
                 let opacity = if player.invulnerable_timer > 0.0 {
                     0.5
                 } else {
@@ -736,9 +742,19 @@ impl GameState {
                     )
                 };
                 let rect = player.get_rect();
-                let mesh = Mesh::new_rectangle(&ctx.gfx, DrawMode::fill(), rect, color)?;
+                let mesh = Mesh::new_rectangle(
+                    &ctx.gfx,
+                    DrawMode::fill(),
+                    rect,
+                    color
+                )?;
                 game_canvas.draw(&mesh, camera_transform);
-                let outline = Mesh::new_rectangle(&ctx.gfx, DrawMode::stroke(2.0), rect, Color::new(0.0, 0.0, 0.0, 1.0))?;
+                let outline = Mesh::new_rectangle(
+                    &ctx.gfx,
+                    DrawMode::stroke(2.0),
+                    rect,
+                    Color::new(0.0, 0.0, 0.0, 1.0)
+                )?;
                 game_canvas.draw(&outline, camera_transform);
 
                 let text = Text::new(TextFragment {
@@ -763,25 +779,6 @@ impl GameState {
         Ok(())
     }
 
-    fn _draw_attacks(
-        &self,
-        game_canvas: &mut Canvas,
-        gfx: &mut GraphicsContext,
-        camera_transform: &DrawParam,
-    ) -> GameResult {
-        for atk in &self.active_attacks {
-            let mesh = Mesh::new_rectangle(
-                gfx,
-                DrawMode::stroke(1.0),
-                atk.get_rect(),
-                Color::new(1.0, 0.0, 0.0, 0.4),
-            )?;
-            game_canvas.draw(&mesh, *camera_transform);
-        }
-
-        Ok(())
-    }
-
     fn draw_hud(
         &self,
         game_canvas: &mut Canvas,
@@ -799,7 +796,11 @@ impl GameState {
             for (player_idx, player) in team.players.iter().enumerate() {
                 let y = START_Y + player_idx as f32 * LINE_HEIGHT;
                 let text = Text::new(TextFragment {
-                    text: format!("Player {} Lives: {}", player_idx + 1, player.lives),
+                    text: format!(
+                        "Player {} Lives: {}",
+                        player_idx + 1,
+                        player.lives
+                    ),
                     font: None,
                     scale: Some(PxScale::from(36.0)),
                     ..Default::default()
@@ -828,14 +829,25 @@ impl GameState {
         let fps_x = (VIRTUAL_WIDTH - fps_dims.w as f32) / 2.0;
         let fps_y = MARGIN / 2.0; // slightly above other HUD elements
 
-        game_canvas.draw(&fps_text, DrawParam::default().dest(Vec2::new(fps_x, fps_y).to_mint_point()));
+        game_canvas.draw(
+            &fps_text,
+            DrawParam::default().dest(
+                Vec2::new(fps_x, fps_y).to_mint_point()
+            )
+        );
 
         if self.winner > 0 {
             let winner_text = Text::new(TextFragment {
                 text: format!("TEAM {} WINS!", self.winner),
                 font: None,
                 scale: Some(PxScale::from(200.0)),
-                color: Some(if self.winner == 1 { TEAM_ONE_COLOR } else { TEAM_TWO_COLOR }),
+                color: Some(
+                    if self.winner == 1 {
+                        TEAM_ONE_COLOR
+                    } else {
+                        TEAM_TWO_COLOR
+                    }
+                ),
                 ..Default::default()
             });
 
@@ -843,7 +855,13 @@ impl GameState {
             let winner_x = (VIRTUAL_WIDTH - winner_dims.w as f32) / 2.0;
             let winner_y = (VIRTUAL_HEIGHT - winner_dims.h as f32) / 3.5;
 
-            game_canvas.draw(&winner_text, DrawParam::default().dest(Vec2::new(winner_x, winner_y).to_mint_point()));
+            game_canvas.draw(
+                &winner_text,
+                DrawParam::default().dest(Vec2::new(
+                    winner_x,
+                    winner_y
+                ).to_mint_point())
+            );
         }
 
         Ok(())
@@ -899,7 +917,14 @@ impl EventHandler for GameState {
             target_image.clone(),
             BACKGROUND,
         );
-        game_canvas.set_screen_coordinates(Rect::new(0.0, 0.0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT));
+        game_canvas.set_screen_coordinates(
+            Rect::new(
+                0.0,
+                0.0,
+                VIRTUAL_WIDTH,
+                VIRTUAL_HEIGHT
+            )
+        );
 
         let (win_w, win_h) = ctx.gfx.drawable_size();
         let virtual_aspect = VIRTUAL_WIDTH / VIRTUAL_HEIGHT;
@@ -907,7 +932,10 @@ impl EventHandler for GameState {
 
         let zoom = 1.1;
 
-        let screen_center = Vec2::new(VIRTUAL_WIDTH / 2.0, VIRTUAL_HEIGHT / 2.0);
+        let screen_center = Vec2::new(
+            VIRTUAL_WIDTH / 2.0,
+            VIRTUAL_HEIGHT / 2.0
+        );
         let camera_translation = screen_center - self.camera_pos * zoom;
 
         let camera_transform = DrawParam::default()
@@ -915,14 +943,8 @@ impl EventHandler for GameState {
             .scale(Vec2::new(zoom, zoom).to_mint_vec());
 
         self.draw_map(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
-
         self.draw_trails(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
-
         self.draw_players(&mut game_canvas, ctx, camera_translation, zoom)?;
-
-        // DEBUG
-        //self.draw_attacks(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
-
         self.draw_hud(&mut game_canvas, &ctx)?;
 
         game_canvas.finish(&mut ctx.gfx)?;
@@ -950,44 +972,21 @@ impl EventHandler for GameState {
     fn key_down_event(
         &mut self,
         ctx: &mut Context,
-        input: KeyInput,
+        key: KeyInput,
         _repeated: bool,
     ) -> GameResult {
-        if let Some(keycode) = input.keycode {
-            let player = &mut self.teams[C_TEAM].players[C_PLAYER];
+        if let Some(keycode) = key.keycode {
+            let input = &mut self.teams[C_TEAM].players[C_PLAYER].input;
             match keycode {
                 KeyCode::Escape => ctx.request_quit(),
-
-                KeyCode::W => {
-                    player.input.up = true;
-                }
-
-                KeyCode::A => {
-                    player.input.left = true;
-                }
-
-                KeyCode::D => {
-                    player.input.right = true;
-                }
-
-                KeyCode::S => {
-                    player.input.slam = true;
-                }
-
-                KeyCode::J => {
-                    player.input.light = true;
-                }
-
-                KeyCode::K => {
-                    player.input.uppercut = true;
-                }
-
-                KeyCode::H => {
-                    player.input.dash = true;
-                }
-
+                KeyCode::W => input.up = true,
+                KeyCode::A => input.left = true,
+                KeyCode::D => input.right = true,
+                KeyCode::S => input.slam = true,
+                KeyCode::J => input.light = true,
+                KeyCode::K => input.uppercut = true,
+                KeyCode::H => input.dash = true,
                 _ => {}
-
             }
         }
 
@@ -997,39 +996,18 @@ impl EventHandler for GameState {
     fn key_up_event(
         &mut self,
         _ctx: &mut Context,
-        input: KeyInput,
+        key: KeyInput,
     ) -> GameResult {
-        let player = &mut self.teams[C_TEAM].players[C_PLAYER];
-        if let Some(keycode) = input.keycode {
+        if let Some(keycode) = key.keycode {
+            let input = &mut self.teams[C_TEAM].players[C_PLAYER].input;
             match keycode {
-                KeyCode::W => {
-                    player.input.up = false;
-                }
-
-                KeyCode::A => {
-                    player.input.left = false;
-                }
-
-                KeyCode::D => {
-                    player.input.right = false;
-                }
-
-                KeyCode::S => {
-                    player.input.slam = false;
-                }
-
-                KeyCode::J => {
-                    player.input.light = false;
-                }
-
-                KeyCode::K => {
-                    player.input.uppercut = false;
-                }
-
-                KeyCode::H => {
-                    player.input.dash = false;
-                }
-
+                KeyCode::W => input.up = false,
+                KeyCode::A => input.left = false,
+                KeyCode::D => input.right = false,
+                KeyCode::S => input.slam = false,
+                KeyCode::J => input.light = false,
+                KeyCode::K => input.uppercut = false,
+                KeyCode::H => input.dash = false,
                 _ => {}
             }
         }
