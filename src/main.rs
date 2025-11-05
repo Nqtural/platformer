@@ -651,6 +651,7 @@ impl GameState {
 
         for team in &self.teams {
             for player in &team.players {
+                if player.lives == 0 { continue; }
                 sum += Vec2::new(player.pos[0] + PLAYER_SIZE / 2.0, player.pos[1] + PLAYER_SIZE / 2.0);
                 count += 1;
             }
