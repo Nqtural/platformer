@@ -43,9 +43,9 @@ pub struct Attack {
     w: f32,
     h: f32,
     kind: AttackKind,
-    pub duration: f32,
-    pub timer: f32,
-    pub owner_team: usize,
+    duration: f32,
+    timer: f32,
+    owner_team: usize,
     owner_vel: [f32; 2],
     owner_facing: f32,
 }
@@ -66,8 +66,20 @@ impl Attack {
         }
     }
 
+    pub fn owner_team(&self) -> usize {
+        self.owner_team
+    }
+
     pub fn attack(&self, player: &mut Player) {
         self.kind.attack(player, self.owner_vel, self.owner_facing);
+    }
+
+    pub fn update(&mut self, dt: f32) {
+        self.timer += dt;
+    }
+
+    pub fn is_expired(&self) -> bool {
+        self.timer >= self.duration
     }
 
     pub fn get_rect(&self) -> Rect {

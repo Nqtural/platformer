@@ -70,7 +70,7 @@ impl GameState {
     fn handle_attack_collisions(&mut self) {
         for atk in &self.active_attacks {
             for (team_idx, team) in self.teams.iter_mut().enumerate() {
-                if team_idx == atk.owner_team { continue; }
+                if team_idx == atk.owner_team() { continue; }
                 for player in &mut team.players {
                     if player.stunned > 0.0
                         || player.invulnerable_timer > 0.0
@@ -331,9 +331,9 @@ impl EventHandler for GameState {
         let dt = ctx.time.delta().as_secs_f32();
 
         for attack in &mut self.active_attacks {
-            attack.timer += dt;
+            attack.update(dt);
         }
-        self.active_attacks.retain(|atk| atk.timer < atk.duration);
+        self.active_attacks.retain(|atk| !atk.is_expired());
 
         self.handle_attack_collisions();
 
