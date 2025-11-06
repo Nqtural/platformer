@@ -4,10 +4,12 @@ use serde::{
     Serialize,
 };
 use crate::{
-    attack::Attack,
+    attack::{
+        Attack,
+        AttackKind,
+    },
     constants::{
         ACCELERATION,
-        C_TEAM,
         GRAVITY,
         MAX_SPEED,
         PLAYER_SIZE,
@@ -64,16 +66,6 @@ impl Player {
 
     pub fn get_rect(&self) -> Rect {
         Rect::new(self.pos[0], self.pos[1], PLAYER_SIZE, PLAYER_SIZE)
-    }
-
-    pub fn attack(&mut self, attack: &Attack) {
-        self.stunned = attack.stun;
-        self.invulnerable_timer = 0.1;
-        self.slow = attack.slow;
-        self.vel[0] = attack.knockback[0] * self.knockback_multiplier;
-        self.vel[1] = attack.knockback[1];
-        self.knockback_multiplier += attack.power;
-        self.dashing = 0.0;
     }
 
     pub fn update_cooldowns(&mut self, dt: f32) {
@@ -190,13 +182,13 @@ impl Player {
         }
         if self.attack_cooldown <= 0.0 {
             if self.input.light {
-                new_attacks.push(Attack::light(&self, team));
+                new_attacks.push(Attack::new(&self, AttackKind::Light, team));
                 self.slow = 0.5;
                 self.attack_cooldown = 0.3;
                 self.input.uppercut = true;
             }
             if self.input.uppercut {
-                new_attacks.push(Attack::uppercut(&self, C_TEAM));
+                new_attacks.push(Attack::new(&self, AttackKind::Uppercut, team));
                 self.slow = 0.5;
                 self.attack_cooldown = 0.3;
                 self.input.uppercut = false;

@@ -76,7 +76,7 @@ impl GameState {
                         || player.invulnerable_timer > 0.0
                         || !atk.get_rect().overlaps(&player.get_rect())
                     { continue; }
-                    player.attack(&atk);
+                    atk.attack(player);
                 }
             }
         }
