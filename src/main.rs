@@ -99,13 +99,14 @@ fn approach_zero(value: f32, step: f32) -> f32 {
 
 fn handle_dash_collision(player: &mut Player, enemy: &mut Player) {
     if enemy.dashing > 0.0 {
-        enemy.vel[0] = player.vel[0].signum() * 100.0;
+        enemy.vel[0] = player.vel[0].signum() * 100.0 * enemy.knockback_multiplier;
         enemy.dashing = 0.0;
         enemy.stunned = 0.5;
+        enemy.knockback_multiplier += 0.01;
 
         player.stunned = 0.5;
     } else {
-        enemy.vel[0] = player.vel[0];
+        enemy.vel[0] = player.vel[0] * enemy.knockback_multiplier;
         enemy.stunned = 0.1;
     }
 
@@ -123,9 +124,10 @@ fn handle_slam_collision(player: &mut Player, enemy: &mut Player) {
     let enemy_top = enemy.pos[1];
 
     if player_bottom <= enemy_top + 5.0 && player.vel[1] > 0.0 {
-        enemy.vel[1] = player.vel[1] * 1.5;
+        enemy.vel[1] = player.vel[1] * 1.5 * enemy.knockback_multiplier;
         enemy.stunned = 0.1;
         enemy.slow = 0.5;
+        enemy.knockback_multiplier += 0.03;
 
         player.vel[1] = -100.0;
         player.slow = 0.5;
