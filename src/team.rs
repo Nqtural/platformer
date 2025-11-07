@@ -74,8 +74,7 @@ impl Team {
                     player.trail_timer -= self.trail_interval;
                     self.trail_squares.push(
                         TrailSquare::new(
-                            player.pos[0],
-                            player.pos[1],
+                            player.pos,
                             self.color_default
                         )
                     )

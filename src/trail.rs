@@ -19,9 +19,9 @@ pub struct TrailSquare {
 }
 
 impl TrailSquare {
-    pub fn new(x: f32, y: f32, color: Color) -> TrailSquare {
+    pub fn new(pos: [f32; 2], color: Color) -> TrailSquare {
         TrailSquare {
-            rect: Rect::new(x, y, PLAYER_SIZE, PLAYER_SIZE),
+            rect: Rect::new(pos[0], pos[1], PLAYER_SIZE, PLAYER_SIZE),
             color: Color::new(color.r, color.g, color.b, TRAIL_OPACITY),
             lifetime: 0.15,
         }
