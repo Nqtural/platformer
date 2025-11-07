@@ -24,7 +24,7 @@ pub fn handle_collisions<'a>(
         if player_rect.overlaps(&enemy.get_rect()) && enemy.invulnerable_timer == 0.0 {
             if player.dashing > 0.0 {
                 AttackKind::Dash.attack(enemy, player);
-            } else if player.input.slam {
+            } else if player.input.slam() {
                 AttackKind::Slam.attack(enemy, player);
             }
         }

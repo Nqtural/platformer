@@ -67,7 +67,7 @@ impl Team {
 
                 active_attacks.extend(player.apply_input(map, team_idx, player_idx, dt));
 
-            if player.dashing > 0.0 || player.input.slam {
+            if player.dashing > 0.0 || player.input.slam() {
                 handle_collisions(player, left.iter_mut().chain(others.iter_mut()));
                 player.trail_timer += dt;
                 while player.trail_timer >= self.trail_interval {

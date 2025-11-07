@@ -6,13 +6,13 @@ use serde::{
 
 #[derive(Serialize, Deserialize, Clone, Default)]
 pub struct PlayerInput {
-    pub left: bool,
-    pub right: bool,
-    pub up: bool,
-    pub slam: bool,
-    pub light: bool,
-    pub uppercut: bool,
-    pub dash: bool,
+    left: bool,
+    right: bool,
+    up: bool,
+    slam: bool,
+    light: bool,
+    uppercut: bool,
+    dash: bool,
 }
 
 impl PlayerInput {
@@ -40,4 +40,16 @@ impl PlayerInput {
             _ => {}
         }
     }
+
+    pub fn left(&self) -> bool { self.left }
+    pub fn right(&self) -> bool { self.right }
+    pub fn up(&self) -> bool { self.up }
+    pub fn slam(&self) -> bool { self.slam }
+    pub fn light(&self) -> bool { self.light }
+    pub fn uppercut(&self) -> bool { self.uppercut }
+    pub fn dash(&self) -> bool { self.dash }
+    pub fn set_up(&mut self, value: bool) { self.up = value }
+    pub fn set_slam(&mut self, value: bool) { self.slam = value }
+    pub fn set_light(&mut self, value: bool) { self.light = value }
+    pub fn set_uppercut(&mut self, value: bool) { self.uppercut = value }
 }

@@ -141,8 +141,8 @@ impl Player {
             }
         }
 
-        let holding_toward_wall_right = on_wall_right && self.input.right;
-        let holding_toward_wall_left = on_wall_left && self.input.left;
+        let holding_toward_wall_right = on_wall_right && self.input.right();
+        let holding_toward_wall_left = on_wall_left && self.input.left();
         let holding_wall = holding_toward_wall_right || holding_toward_wall_left;
         let on_platform = self.is_on_platform(&map);
 
@@ -162,7 +162,7 @@ impl Player {
             return new_attacks;
         }
 
-        if self.input.up {
+        if self.input.up() {
             if self.is_on_platform(map) {
                 self.vel[1] = -500.0;
             } 
@@ -170,18 +170,18 @@ impl Player {
                 self.vel[1] = -500.0;
                 self.double_jumps -= 1;
             }
-            self.input.up = false;
+            self.input.set_up(false);
         }
-        if self.input.left && self.vel[0] > -MAX_SPEED[0] {
+        if self.input.left() && self.vel[0] > -MAX_SPEED[0] {
             self.facing = -1.0;
             self.vel[0] -= ACCELERATION * dt;
         }
-        if self.input.right && self.vel[0] < MAX_SPEED[0] {
+        if self.input.right() && self.vel[0] < MAX_SPEED[0] {
             self.facing = 1.0;
             self.vel[0] += ACCELERATION * dt;
         }
         if self.attack_cooldown <= 0.0 {
-            if self.input.light {
+            if self.input.light() {
                 new_attacks.push(
                     Attack::new(
                         &self,
@@ -192,9 +192,9 @@ impl Player {
                 );
                 self.slow = 0.5;
                 self.attack_cooldown = 0.3;
-                self.input.uppercut = true;
+                self.input.set_light(false);
             }
-            if self.input.uppercut {
+            if self.input.uppercut() {
                 new_attacks.push(
                     Attack::new(
                         &self,
@@ -205,15 +205,15 @@ impl Player {
                 );
                 self.slow = 0.5;
                 self.attack_cooldown = 0.3;
-                self.input.uppercut = false;
+                self.input.set_uppercut(false);
             }
         }
-        if self.input.dash && self.dash_cooldown <= 0.0 {
+        if self.input.dash() && self.dash_cooldown <= 0.0 {
             self.vel[0] = self.facing * 1000.0;
             self.dashing = 0.3;
             self.dash_cooldown = 3.0;
         }
-        if self.input.slam && self.vel[1] < MAX_SPEED[1] {
+        if self.input.slam() && self.vel[1] < MAX_SPEED[1] {
             self.vel[1] += ACCELERATION * dt;
         }
         new_attacks

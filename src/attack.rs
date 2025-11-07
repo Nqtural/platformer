@@ -61,7 +61,7 @@ impl AttackKind {
 
                     player.vel[1] = -100.0;
                     player.slow = 0.5;
-                    player.input.slam = false;
+                    player.input.set_slam(false);
                 }
             }
             AttackKind::Uppercut => {
