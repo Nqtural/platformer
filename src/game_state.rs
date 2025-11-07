@@ -89,25 +89,6 @@ impl GameState {
         }
     }
 
-    fn check_for_death(&mut self) {
-        let death_y = VIRTUAL_HEIGHT;
-        for team in &mut self.teams {
-            for player in &mut team.players {
-                if player.pos[1] > death_y {
-                    player.lives -= 1;
-                    player.double_jumps = 2;
-                    player.knockback_multiplier = 1.0;
-                    player.respawn_timer = RESPAWN_TIME;
-                    player.stunned = RESPAWN_TIME;
-                    player.invulnerable_timer = RESPAWN_TIME + 0.5;
-                    player.facing = 0.0;
-                    player.vel = [0.0, 0.0];
-                    player.pos = team.start_pos;
-                }
-            }
-        }
-    }
-
     fn update_camera(&mut self) {
         let mut sum = Vec2::ZERO;
         let mut count: usize = 0;
@@ -361,8 +342,6 @@ impl EventHandler for GameState {
                 dt,
             );
         }
-
-        self.check_for_death();
 
         self.update_camera();
 

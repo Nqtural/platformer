@@ -14,6 +14,8 @@ use crate::{
         MAX_SPEED,
         PLAYER_SIZE,
         RESISTANCE,
+        RESPAWN_TIME,
+        VIRTUAL_HEIGHT,
         WALL_SLIDE_SPEED,
     },
     input::PlayerInput,
@@ -152,6 +154,20 @@ impl Player {
 
         self.pos[0] = rect.x;
         self.pos[1] = rect.y;
+    }
+
+    pub fn check_for_death(&mut self, start_pos: [f32; 2]) {
+        if self.pos[1] > VIRTUAL_HEIGHT {
+            self.lives -= 1;
+            self.double_jumps = 2;
+            self.knockback_multiplier = 1.0;
+            self.respawn_timer = RESPAWN_TIME;
+            self.stunned = RESPAWN_TIME;
+            self.invulnerable_timer = RESPAWN_TIME + 0.5;
+            self.facing = 0.0;
+            self.vel = [0.0, 0.0];
+            self.pos = start_pos;
+        }
     }
 
     pub fn apply_input(&mut self, map: &Rect, team_idx: usize, player_idx: usize, dt: f32) -> Vec<Attack> {
