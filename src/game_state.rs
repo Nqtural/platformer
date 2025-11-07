@@ -22,10 +22,7 @@ use ggez::{
         Text,
         TextFragment,
     },
-    input::keyboard::{
-    KeyCode,
-    KeyInput,
-    },
+    input::keyboard::KeyInput,
 };
 use glam::Vec2;
 use serde::{
@@ -439,23 +436,13 @@ impl EventHandler for GameState {
 
     fn key_down_event(
         &mut self,
-        ctx: &mut Context,
+        _ctx: &mut Context,
         key: KeyInput,
         _repeated: bool,
     ) -> GameResult {
         if let Some(keycode) = key.keycode {
             let input = &mut self.teams[C_TEAM].players[C_PLAYER].input;
-            match keycode {
-                KeyCode::Escape => ctx.request_quit(),
-                KeyCode::W => input.up = true,
-                KeyCode::A => input.left = true,
-                KeyCode::D => input.right = true,
-                KeyCode::S => input.slam = true,
-                KeyCode::J => input.light = true,
-                KeyCode::K => input.uppercut = true,
-                KeyCode::H => input.dash = true,
-                _ => {}
-            }
+            input.update(keycode, true)
         }
 
         Ok(())
@@ -468,16 +455,7 @@ impl EventHandler for GameState {
     ) -> GameResult {
         if let Some(keycode) = key.keycode {
             let input = &mut self.teams[C_TEAM].players[C_PLAYER].input;
-            match keycode {
-                KeyCode::W => input.up = false,
-                KeyCode::A => input.left = false,
-                KeyCode::D => input.right = false,
-                KeyCode::S => input.slam = false,
-                KeyCode::J => input.light = false,
-                KeyCode::K => input.uppercut = false,
-                KeyCode::H => input.dash = false,
-                _ => {}
-            }
+            input.update(keycode, false)
         }
 
         Ok(())

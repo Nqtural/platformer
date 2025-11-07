@@ -1,3 +1,4 @@
+use ggez::input::keyboard::KeyCode;
 use serde::{
     Deserialize,
     Serialize,
@@ -24,6 +25,19 @@ impl PlayerInput {
             light: false,
             uppercut: false,
             dash: false,
+        }
+    }
+
+    pub fn update(&mut self, keycode: KeyCode, value: bool) {
+        match keycode {
+            KeyCode::W => self.up = value,
+            KeyCode::A => self.left = value,
+            KeyCode::D => self.right = value,
+            KeyCode::S => self.slam = value,
+            KeyCode::J => self.light = value,
+            KeyCode::K => self.uppercut = value,
+            KeyCode::H => self.dash = value,
+            _ => {}
         }
     }
 }
