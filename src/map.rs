@@ -10,8 +10,8 @@ use crate::constants::MAP_COLOR;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Map {
-    pub rect: Rect,
-    pub color: Color,
+    rect: Rect,
+    color: Color,
 }
 
 impl Map {
@@ -21,4 +21,7 @@ impl Map {
             color: MAP_COLOR,
         }
     }
+
+    pub fn get_rect(&self) -> Rect { self.rect }
+    pub fn get_color(&self) -> Color { self.color }
 }

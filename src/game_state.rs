@@ -124,9 +124,10 @@ impl GameState {
 
         let player_center = sum / count as f32;
 
+        let map_rect = self.map.get_rect();
         let map_center = Vec2::new(
-            self.map.rect.x + self.map.rect.w / 2.0,
-            self.map.rect.y + self.map.rect.h / 2.0,
+            map_rect.x + map_rect.w / 2.0,
+            map_rect.y + map_rect.h / 2.0,
         );
 
         // future client side option together with colors,
@@ -143,8 +144,8 @@ impl GameState {
         let map_mesh = Mesh::new_rectangle(
             gfx,
             DrawMode::fill(),
-            self.map.rect,
-            self.map.color,
+            self.map.get_rect(),
+            self.map.get_color(),
         )?;
         game_canvas.draw(&map_mesh, *camera_transform);
         Ok(())
@@ -354,7 +355,7 @@ impl EventHandler for GameState {
                 left,
                 others,
                 team_idx,
-                &self.map.rect,
+                &self.map.get_rect(),
                 self.winner,
                 &mut self.active_attacks,
                 dt,
