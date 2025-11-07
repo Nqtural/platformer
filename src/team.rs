@@ -36,36 +36,36 @@ impl Team {
     }
 
     pub fn update_players(
-        &mut self,
-        left: &mut [Team],
-        others: &mut [Team],
-        team_idx: usize,
-        map: &Rect,
-        winner: usize,
-        active_attacks: &mut Vec<Attack>,
-        mut normal_dt: f32,
-    ) {
-        if winner > 0 {
-            normal_dt = normal_dt / 2.0;
-        }
+            &mut self,
+            left: &mut [Team],
+            others: &mut [Team],
+            team_idx: usize,
+            map: &Rect,
+            winner: usize,
+            active_attacks: &mut Vec<Attack>,
+            mut normal_dt: f32,
+        ) {
+            if winner > 0 {
+                normal_dt = normal_dt / 2.0;
+            }
 
-        let slow_dt = normal_dt / 2.0;
+            let slow_dt = normal_dt / 2.0;
 
-        self.trail_squares.iter_mut().for_each(|s| s.update(normal_dt));
-        self.trail_squares.retain(|s| s.lifetime > 0.0);
+            self.trail_squares.iter_mut().for_each(|s| s.update(normal_dt));
+            self.trail_squares.retain(|s| s.lifetime > 0.0);
 
-        for player in &mut self.players {
-            player.update_cooldowns(normal_dt);
+            for (player_idx, player) in self.players.iter_mut().enumerate() {
+                player.update_cooldowns(normal_dt);
 
-            if player.respawn_timer > 0.0 { continue; }
+                if player.respawn_timer > 0.0 { continue; }
 
-            let dt = if player.slow > normal_dt {
-                slow_dt
-            } else {
-                normal_dt
-            };
+                let dt = if player.slow > normal_dt {
+                    slow_dt
+                } else {
+                    normal_dt
+                };
 
-            active_attacks.extend(player.apply_input(map, team_idx, dt));
+                active_attacks.extend(player.apply_input(map, team_idx, player_idx, dt));
 
             if player.dashing > 0.0 || player.input.slam {
                 handle_collisions(player, left.iter_mut().chain(others.iter_mut()));

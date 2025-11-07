@@ -69,14 +69,24 @@ impl GameState {
 
     fn handle_attack_collisions(&mut self) {
         for atk in &self.active_attacks {
-            for (team_idx, team) in self.teams.iter_mut().enumerate() {
-                if team_idx == atk.owner_team() { continue; }
+            let owner_team_idx = atk.owner_team();
+            let owner_player_idx = atk.owner_player();
+
+            let (left, right) = self.teams.split_at_mut(owner_team_idx);
+            let (owner_team, other_teams) = right.split_first_mut().unwrap();
+
+            let owner_player = &mut owner_team.players[owner_player_idx];
+
+            for team in left.iter_mut().chain(other_teams.iter_mut()) {
                 for player in &mut team.players {
                     if player.stunned > 0.0
-                        || player.invulnerable_timer > 0.0
-                        || !atk.get_rect().overlaps(&player.get_rect())
-                    { continue; }
-                    atk.attack(player);
+                    || player.invulnerable_timer > 0.0
+                    || !atk.get_rect().overlaps(&player.get_rect())
+                    {
+                        continue;
+                    }
+
+                    atk.attack(owner_player, player);
                 }
             }
         }

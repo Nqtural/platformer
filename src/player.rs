@@ -156,7 +156,7 @@ impl Player {
         self.pos[1] = rect.y;
     }
 
-    pub fn apply_input(&mut self, map: &Rect, team: usize, dt: f32) -> Vec<Attack> {
+    pub fn apply_input(&mut self, map: &Rect, team_idx: usize, player_idx: usize, dt: f32) -> Vec<Attack> {
         let mut new_attacks = Vec::new();
         if self.stunned > 0.0 {
             return new_attacks;
@@ -182,13 +182,27 @@ impl Player {
         }
         if self.attack_cooldown <= 0.0 {
             if self.input.light {
-                new_attacks.push(Attack::new(&self, AttackKind::Light, team));
+                new_attacks.push(
+                    Attack::new(
+                        &self,
+                        AttackKind::Light,
+                        team_idx,
+                        player_idx,
+                    )
+                );
                 self.slow = 0.5;
                 self.attack_cooldown = 0.3;
                 self.input.uppercut = true;
             }
             if self.input.uppercut {
-                new_attacks.push(Attack::new(&self, AttackKind::Uppercut, team));
+                new_attacks.push(
+                    Attack::new(
+                        &self,
+                        AttackKind::Uppercut,
+                        team_idx,
+                        player_idx,
+                    )
+                );
                 self.slow = 0.5;
                 self.attack_cooldown = 0.3;
                 self.input.uppercut = false;

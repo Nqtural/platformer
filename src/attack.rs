@@ -3,25 +3,66 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use crate::player::Player;
+use crate::{
+    constants::PLAYER_SIZE,
+    player::Player,
+};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub enum AttackKind {
+    Dash,
     Light,
+    Slam,
     Uppercut,
 }
 
 impl AttackKind {
-    fn attack(&self, player: &mut Player, owner_vel: [f32; 2], owner_facing: f32) {
+    pub fn attack(&self, enemy: &mut Player, player: &mut Player) {
         match self {
+            AttackKind::Dash => {
+                if enemy.dashing > 0.0 {
+                    enemy.vel[0] = player.vel[0].signum() * 100.0 * enemy.knockback_multiplier;
+                    enemy.dashing = 0.0;
+                    enemy.stunned = 0.5;
+                    enemy.knockback_multiplier += 0.01;
+
+                    player.stunned = 0.5;
+                } else {
+                    enemy.vel[0] = player.vel[0] * enemy.knockback_multiplier;
+                    enemy.stunned = 0.1;
+                }
+
+                enemy.vel[1] -= 200.0;
+                enemy.slow = 0.5;
+
+                player.vel[1] -= 200.0;
+                player.vel[0] = player.vel[0] * -0.5;
+                player.dashing = 0.0;
+                player.slow = 0.5;
+            }
             AttackKind::Light => {
                 player.stunned = 0.2;
                 player.invulnerable_timer = 0.1;
                 player.slow = 0.5;
-                player.vel[0] = (owner_vel[0] / 2.0 + 400.0 * owner_facing) * player.knockback_multiplier;
+                player.vel[0] = (enemy.vel[0] / 2.0 + 400.0 * enemy.facing) * player.knockback_multiplier;
                 player.vel[1] = -200.0;
                 player.knockback_multiplier += 0.01;
                 player.dashing = 0.0;
+            }
+            AttackKind::Slam => {
+                let player_bottom = player.pos[1] + PLAYER_SIZE;
+                let enemy_top = enemy.pos[1];
+
+                if player_bottom <= enemy_top + 5.0 && player.vel[1] > 0.0 {
+                    enemy.vel[1] = player.vel[1] * 1.5 * enemy.knockback_multiplier;
+                    enemy.stunned = 0.1;
+                    enemy.slow = 0.5;
+                    enemy.knockback_multiplier += 0.03;
+
+                    player.vel[1] = -100.0;
+                    player.slow = 0.5;
+                    player.input.slam = false;
+                }
             }
             AttackKind::Uppercut => {
                 player.stunned = 0.4;
@@ -46,12 +87,16 @@ pub struct Attack {
     duration: f32,
     timer: f32,
     owner_team: usize,
-    owner_vel: [f32; 2],
-    owner_facing: f32,
+    owner_player: usize,
 }
 
 impl Attack {
-    pub fn new(player: &Player, kind: AttackKind, owner_team: usize) -> Attack {
+    pub fn new(
+        player: &Player,
+        kind: AttackKind,
+        owner_team: usize,
+        owner_player: usize,
+    ) -> Attack {
         Attack {
             x: player.pos[0] - 9.0,
             y: player.pos[1] - 10.0,
@@ -61,8 +106,7 @@ impl Attack {
             duration: 0.1,
             timer: 0.0,
             owner_team,
-            owner_vel: player.vel,
-            owner_facing: player.facing,
+            owner_player,
         }
     }
 
@@ -70,8 +114,12 @@ impl Attack {
         self.owner_team
     }
 
-    pub fn attack(&self, player: &mut Player) {
-        self.kind.attack(player, self.owner_vel, self.owner_facing);
+    pub fn owner_player(&self) -> usize {
+        self.owner_player
+    }
+
+    pub fn attack(&self, enemy: &mut Player, player: &mut Player) {
+        self.kind.attack(enemy, player);
     }
 
     pub fn update(&mut self, dt: f32) {
