@@ -16,8 +16,8 @@ use crate::{
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Team {
     pub players: Vec<Player>,
-    pub color_default: Color,
-    pub color_stunned: Color,
+    color_default: Color,
+    color_stunned: Color,
     trail_interval: f32,
     pub trail_squares: Vec<TrailSquare>,
     pub start_pos: [f32; 2],
@@ -28,7 +28,12 @@ impl Team {
         Team {
             players,
             color_default: color,
-            color_stunned: Color::new(color.r * 2.0, color.g * 2.0, color.b * 2.0, 1.0),
+            color_stunned: Color::new(
+                (color.r + 0.4).min(1.0),
+                (color.g + 0.4).min(1.0),
+                (color.b + 0.4).min(1.0),
+                1.0,
+            ),
             trail_interval: 0.01,
             trail_squares: Vec::new(),
             start_pos
@@ -85,5 +90,20 @@ impl Team {
             player.check_platform_collision(&map, dt);
             player.check_for_death(self.start_pos);
         }
+    }
+
+    pub fn get_color(&self, invulnerable: bool, stunned: bool) -> Color {
+        let color = if stunned {
+            self.color_stunned
+        } else {
+            self.color_default
+        };
+
+        Color::new(
+            color.r,
+            color.g,
+            color.b,
+            if invulnerable { 0.5 } else { 1.0 }
+        )
     }
 }

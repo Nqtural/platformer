@@ -168,32 +168,15 @@ impl GameState {
             for player in &team.players {
                 if player.lives <= 0 { continue; }
 
-                let opacity = if player.invulnerable_timer > 0.0 {
-                    0.5
-                } else {
-                    1.0
-                };
-                let color = if player.stunned > 0.0 {
-                    Color::new(
-                        team.color_stunned.r,
-                        team.color_stunned.g,
-                        team.color_stunned.b,
-                        opacity
-                    )
-                } else {
-                    Color::new(
-                        team.color_default.r,
-                        team.color_default.g,
-                        team.color_default.b,
-                        opacity
-                    )
-                };
                 let rect = player.get_rect();
                 let mesh = Mesh::new_rectangle(
                     &ctx.gfx,
                     DrawMode::fill(),
                     rect,
-                    color
+                    team.get_color(
+                        player.invulnerable_timer > 0.0,
+                        player.stunned > 0.0,
+                    )
                 )?;
                 game_canvas.draw(&mesh, camera_transform);
                 let outline = Mesh::new_rectangle(
