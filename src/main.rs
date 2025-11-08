@@ -3,6 +3,7 @@ mod constants;
 mod game_state;
 mod input;
 mod map;
+mod network;
 mod player;
 mod team;
 mod trail;
