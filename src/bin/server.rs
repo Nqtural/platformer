@@ -6,6 +6,8 @@ use std::collections::HashSet;
 use platform::{
     constants::{
         ENABLE_VSYNC,
+        SERVER_IP,
+        SERVER_PORT,
         TEAM_ONE_COLOR,
         TEAM_ONE_START_POS,
         TEAM_TWO_COLOR,
@@ -54,7 +56,7 @@ async fn main() -> GameResult {
     let clients_send = Arc::clone(&clients);
 
     // Bind UDP socket to listen on server port
-    let socket = Arc::new(UdpSocket::bind("127.0.0.1:4000").await.unwrap());
+    let socket = Arc::new(UdpSocket::bind(format!("{}:{}", SERVER_IP, SERVER_PORT)).await.unwrap());
     println!("Server listening on 127.0.0.1:4000");
 
     // Task to receive client messages, update GameState, and track clients

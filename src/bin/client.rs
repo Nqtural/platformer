@@ -8,7 +8,11 @@ use std::sync::Arc;
 use std::net::SocketAddr;
 use platform::{
     constants::{
+        C_TEAM,
+        C_PLAYER,
         ENABLE_VSYNC,
+        SERVER_IP,
+        SERVER_PORT,
         TEAM_ONE_COLOR,
         TEAM_ONE_START_POS,
         TEAM_TWO_COLOR,
@@ -46,8 +50,8 @@ async fn main() -> GameResult {
     let gs_clone_send = Arc::clone(&game_state);
     let gs_clone_recv = Arc::clone(&game_state);
 
-    let server_addr: SocketAddr = "127.0.0.1:4000".parse().unwrap();
-    let socket = Arc::new(UdpSocket::bind("127.0.0.1:0").await.unwrap());
+    let server_addr: SocketAddr = format!("{}:{}", SERVER_IP, SERVER_PORT).parse().unwrap();
+    let socket = Arc::new(UdpSocket::bind("0.0.0.0:0").await.unwrap());
 
     // Spawn receive task
     let socket_recv = Arc::clone(&socket);
@@ -105,13 +109,13 @@ async fn main() -> GameResult {
         loop {
             let input = {
                 let gs = gs_clone_send.lock().await;
-                gs.teams[0].players[0].input.clone()
+                gs.teams[C_TEAM].players[C_PLAYER].input.clone()
             };
 
             //if input != last_input {
                 let msg = ClientMessage::Input {
-                    team_id: 0,
-                    player_id: 0,
+                    team_id: C_TEAM,
+                    player_id: C_PLAYER,
                     input: input.clone(),
                 };
                 match encode_to_vec(&msg, config) {
