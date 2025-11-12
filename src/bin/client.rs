@@ -21,7 +21,6 @@ use platform::{
         VIRTUAL_WIDTH,
     },
     game_state::GameState,
-    input::PlayerInput,
     network::{
         ClientMessage,
         ServerMessage,
