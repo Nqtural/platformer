@@ -32,11 +32,11 @@ use serde::{
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct GameState {
-    teams: [Team; 2],
-    map: Map,
-    active_attacks: Vec<Attack>,
-    camera_pos: Vec2,
-    winner: usize,
+    pub teams: [Team; 2],
+    pub map: Map,
+    pub active_attacks: Vec<Attack>,
+    pub camera_pos: Vec2,
+    pub winner: usize,
 }
 
 impl GameState {

@@ -34,12 +34,13 @@ pub struct Player {
     pub double_jumps: u8,
     pub knockback_multiplier: f32,
     pub dashing: f32,
-    dash_cooldown: f32,
-    attack_cooldown: f32,
+    pub dash_cooldown: f32,
+    pub attack_cooldown: f32,
     pub respawn_timer: f32,
     pub trail_timer: f32,
     pub facing: f32,
     pub input: PlayerInput,
+    pub has_jumped: bool,
 }
 
 impl Player {
@@ -61,6 +62,7 @@ impl Player {
             trail_timer: 0.0,
             facing: 0.0,
             input: PlayerInput::new(),
+            has_jumped: false,
         }
     }
 
@@ -177,14 +179,18 @@ impl Player {
         }
 
         if self.input.up() {
-            if self.is_on_platform(map) {
-                self.vel[1] = -500.0;
-            } 
-            else if self.double_jumps > 0 {
-                self.vel[1] = -500.0;
-                self.double_jumps -= 1;
+            if !self.has_jumped {
+                if self.is_on_platform(map) {
+                    self.vel[1] = -500.0;
+                } 
+                else if self.double_jumps > 0 {
+                    self.vel[1] = -500.0;
+                    self.double_jumps -= 1;
+                }
+                self.has_jumped = true;
             }
-            self.input.set_up(false);
+        } else if self.has_jumped {
+            self.has_jumped = false;
         }
         if self.input.left() && self.vel[0] > -MAX_SPEED[0] {
             self.facing = -1.0;
@@ -206,7 +212,6 @@ impl Player {
                 );
                 self.slow = 0.5;
                 self.attack_cooldown = 0.3;
-                self.input.set_light(false);
             }
             if self.input.uppercut() {
                 new_attacks.push(
@@ -219,7 +224,6 @@ impl Player {
                 );
                 self.slow = 0.5;
                 self.attack_cooldown = 0.3;
-                self.input.set_uppercut(false);
             }
         }
         if self.input.dash() && self.dash_cooldown <= 0.0 {

@@ -4,7 +4,7 @@ use serde::{
     Serialize,
 };
 
-#[derive(Serialize, Deserialize, Clone, Default)]
+#[derive(Serialize, Deserialize, Clone, Default, PartialEq, Debug)]
 pub struct PlayerInput {
     left: bool,
     right: bool,

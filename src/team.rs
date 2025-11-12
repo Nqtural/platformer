@@ -16,9 +16,9 @@ use crate::{
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Team {
     pub players: Vec<Player>,
-    color_default: Color,
-    color_stunned: Color,
-    trail_interval: f32,
+    pub color_default: Color,
+    pub color_stunned: Color,
+    pub trail_interval: f32,
     pub trail_squares: Vec<TrailSquare>,
     pub start_pos: [f32; 2],
 }
@@ -36,7 +36,7 @@ impl Team {
             ),
             trail_interval: 0.01,
             trail_squares: Vec::new(),
-            start_pos
+            start_pos,
         }
     }
 
