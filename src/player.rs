@@ -33,12 +33,13 @@ pub struct Player {
     pub slow: f32,
     pub double_jumps: u8,
     pub knockback_multiplier: f32,
+    pub slamming: bool,
     pub dashing: f32,
     pub dash_cooldown: f32,
     pub attack_cooldown: f32,
     pub respawn_timer: f32,
     pub trail_timer: f32,
-    pub facing: f32,
+    pub facing: [f32; 2],
     pub input: PlayerInput,
     pub has_jumped: bool,
 }
@@ -55,12 +56,13 @@ impl Player {
             slow: 0.0,
             double_jumps: 2,
             knockback_multiplier: 1.0,
+            slamming: false,
             dashing: 0.0,
             dash_cooldown: 0.0,
             attack_cooldown: 0.0,
             respawn_timer: 0.0,
             trail_timer: 0.0,
-            facing: 0.0,
+            facing: [0.0, 0.0],
             input: PlayerInput::new(),
             has_jumped: false,
         }
@@ -166,7 +168,7 @@ impl Player {
             self.respawn_timer = RESPAWN_TIME;
             self.stunned = RESPAWN_TIME;
             self.invulnerable_timer = RESPAWN_TIME + 0.5;
-            self.facing = 0.0;
+            self.facing = [0.0, 0.0];
             self.vel = [0.0, 0.0];
             self.pos = start_pos;
         }
@@ -174,11 +176,15 @@ impl Player {
 
     pub fn apply_input(&mut self, map: &Rect, team_idx: usize, player_idx: usize, dt: f32) -> Vec<Attack> {
         let mut new_attacks = Vec::new();
+        self.facing = [0.0, 0.0];
         if self.stunned > 0.0 {
             return new_attacks;
         }
 
         if self.input.up() {
+            self.facing[1] -= 1.0;
+        }
+        if self.input.jump() {
             if !self.has_jumped {
                 if self.is_on_platform(map) {
                     self.vel[1] = -500.0;
@@ -192,13 +198,27 @@ impl Player {
         } else if self.has_jumped {
             self.has_jumped = false;
         }
-        if self.input.left() && self.vel[0] > -MAX_SPEED[0] {
-            self.facing = -1.0;
-            self.vel[0] -= ACCELERATION * dt;
+        self.slamming = false;
+        if self.input.slam() {
+            self.facing[1] += 1.0;
+            if !self.is_on_platform(&map) {
+                self.slamming = true;
+                if self.vel[1] < MAX_SPEED[1] {
+                    self.vel[1] += ACCELERATION * dt;
+                }
+            }
         }
-        if self.input.right() && self.vel[0] < MAX_SPEED[0] {
-            self.facing = 1.0;
-            self.vel[0] += ACCELERATION * dt;
+        if self.input.left() {
+            self.facing[0] -= 1.0;
+            if self.vel[0] > -MAX_SPEED[0] {
+                self.vel[0] -= ACCELERATION * dt;
+            }
+        }
+        if self.input.right() {
+            self.facing[0] += 1.0;
+            if self.vel[0] < MAX_SPEED[0] {
+                self.vel[0] += ACCELERATION * dt;
+            }
         }
         if self.attack_cooldown <= 0.0 {
             if self.input.light() {
@@ -210,7 +230,6 @@ impl Player {
                         player_idx,
                     )
                 );
-                self.slow = 0.5;
                 self.attack_cooldown = 0.3;
             }
             if self.input.normal() {
@@ -222,17 +241,27 @@ impl Player {
                         player_idx,
                     )
                 );
-                self.slow = 0.5;
                 self.attack_cooldown = 0.3;
             }
         }
         if self.input.dash() && self.dash_cooldown <= 0.0 {
-            self.vel[0] = self.facing * 1000.0;
+            let x = self.facing[0];
+            let y = self.facing[1];
+            let mag = (x * x + y * y).sqrt();
+
+            let (nx, ny) = if mag > 0.0 {
+                (x / mag, y / mag)
+            } else {
+                (0.0, 0.0)
+            };
+
+            let dash_speed = 1000.0;
+
+            self.vel[0] = nx * dash_speed;
+            self.vel[1] = ny * dash_speed;
+
             self.dashing = 0.3;
             self.dash_cooldown = 3.0;
-        }
-        if self.input.slam() && self.vel[1] < MAX_SPEED[1] {
-            self.vel[1] += ACCELERATION * dt;
         }
         new_attacks
     }

@@ -22,30 +22,24 @@ impl AttackKind {
             AttackKind::Dash => {
                 if enemy.dashing > 0.0 {
                     enemy.vel[0] = player.vel[0].signum() * 100.0 * enemy.knockback_multiplier;
+                    enemy.vel[1] = player.vel[1].signum() * 100.0 * enemy.knockback_multiplier;
                     enemy.dashing = 0.0;
-                    enemy.stunned = 0.5;
+                    enemy.stunned = 1.0;
                     enemy.knockback_multiplier += 0.01;
 
-                    player.stunned = 0.5;
+                    player.stunned = 1.0;
                 } else {
                     enemy.vel[0] = player.vel[0] * enemy.knockback_multiplier;
-                    enemy.stunned = 0.1;
+                    enemy.vel[1] = player.vel[1] * enemy.knockback_multiplier;
+                    enemy.stunned = 0.5;
                 }
-
-                enemy.vel[1] -= 200.0;
-                enemy.slow = 0.5;
-
-                player.vel[1] -= 200.0;
                 player.vel[0] = player.vel[0] * -0.5;
+                player.vel[0] = player.vel[1] * -0.5;
                 player.dashing = 0.0;
-                player.slow = 0.5;
             }
             AttackKind::Light => {
-                player.stunned = 0.2;
+                player.stunned = 0.5;
                 player.invulnerable_timer = 0.1;
-                player.slow = 0.5;
-                player.vel[0] = (enemy.vel[0] / 2.0 + 400.0 * enemy.facing) * player.knockback_multiplier;
-                player.vel[1] = -200.0;
                 player.knockback_multiplier += 0.01;
                 player.dashing = 0.0;
             }
@@ -56,20 +50,17 @@ impl AttackKind {
                 if player_bottom <= enemy_top + 5.0 && player.vel[1] > 0.0 {
                     enemy.vel[1] = player.vel[1] * 1.5 * enemy.knockback_multiplier;
                     enemy.stunned = 0.1;
-                    enemy.slow = 0.5;
                     enemy.knockback_multiplier += 0.03;
 
-                    player.vel[1] = -100.0;
-                    player.slow = 0.5;
-                    player.input.set_slam(false);
+                    player.vel[1] = -50.0;
+                    player.slamming = false;
                 }
             }
             AttackKind::Normal => {
                 player.stunned = 0.4;
                 player.invulnerable_timer = 0.1;
-                player.slow = 0.5;
-                player.vel[0] = 0.0;
-                player.vel[1] = -500.0;
+                player.vel[0] = enemy.facing[0] * 400.0 * player.knockback_multiplier;
+                player.vel[1] = enemy.facing[1] * 400.0 * player.knockback_multiplier;
                 player.knockback_multiplier += 0.02;
                 player.dashing = 0.0;
             }
@@ -98,10 +89,10 @@ impl Attack {
         owner_player: usize,
     ) -> Attack {
         Attack {
-            x: player.pos[0] - 9.0,
-            y: player.pos[1] - 10.0,
-            w: 40.0,
-            h: 40.0,
+            x: player.pos[0] - 5.0 + (5.0 * player.facing[0]),
+            y: player.pos[1] - 5.0 + (5.0 * player.facing[1]),
+            w: PLAYER_SIZE + 10.0,
+            h: PLAYER_SIZE + 10.0,
             kind,
             duration: 0.1,
             timer: 0.0,

@@ -131,6 +131,25 @@ impl GameState {
         game_canvas.draw(&map_mesh, *camera_transform);
         Ok(())
     }
+    
+    fn draw_attacks(
+        &self,
+        game_canvas: &mut Canvas,
+        gfx: &mut GraphicsContext,
+        camera_transform: &DrawParam,
+    ) -> GameResult {
+        for atk in &self.active_attacks {
+            let mesh = Mesh::new_rectangle(
+                gfx,
+                DrawMode::stroke(1.0),
+                atk.get_rect(),
+                Color::new(1.0, 0.0, 0.0, 0.4),
+            )?;
+            game_canvas.draw(&mesh, *camera_transform);
+        }
+
+        Ok(())
+    }
 
     fn draw_trails(
         &self,
@@ -186,6 +205,20 @@ impl GameState {
                     Color::new(0.0, 0.0, 0.0, 1.0)
                 )?;
                 game_canvas.draw(&outline, camera_transform);
+
+                //Attackbox
+                let mesh = Mesh::new_rectangle(
+                    &ctx.gfx,
+                    DrawMode::stroke(1.0),
+                    Rect::new(
+                        player.pos[0] - 5.0,
+                        player.pos[1] - 5.0,
+                        PLAYER_SIZE + 10.0,
+                        PLAYER_SIZE + 10.0,
+                    ),
+                    Color::new(1.0, 1.0, 1.0, 0.4),
+                )?;
+                game_canvas.draw(&mesh, camera_transform);
 
                 let text = Text::new(TextFragment {
                     text: format!("{}", player.name),
@@ -372,6 +405,7 @@ impl EventHandler for GameState {
 
         self.draw_map(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
         self.draw_trails(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
+        self.draw_attacks(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
         self.draw_players(&mut game_canvas, ctx, camera_translation, zoom)?;
         self.draw_hud(&mut game_canvas, &ctx)?;
 

@@ -25,8 +25,8 @@ pub const PLAYER_SIZE: f32 = 20.0;
 
 pub const MAX_SPEED: [f32; 2] = [300.0, 600.0];
 pub const ACCELERATION: f32 = 5000.0;
-pub const GRAVITY: f32 = 1200.0;
-pub const RESISTANCE: f32 = 1800.0;
+pub const GRAVITY: f32 = 1400.0;
+pub const RESISTANCE: f32 = 1400.0;
 pub const WALL_SLIDE_SPEED: f32 = 0.0;
 
 pub const RESPAWN_TIME: f32 = 2.5;

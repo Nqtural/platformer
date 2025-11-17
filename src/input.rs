@@ -6,6 +6,7 @@ use serde::{
 
 #[derive(Serialize, Deserialize, Clone, Default, PartialEq, Debug)]
 pub struct PlayerInput {
+    jump: bool,
     left: bool,
     right: bool,
     up: bool,
@@ -18,6 +19,7 @@ pub struct PlayerInput {
 impl PlayerInput {
     pub fn new() -> PlayerInput {
         PlayerInput {
+            jump: false,
             left: false,
             right: false,
             up: false,
@@ -30,6 +32,7 @@ impl PlayerInput {
 
     pub fn update(&mut self, keycode: KeyCode, value: bool) {
         match keycode {
+            KeyCode::Space => self.jump = value,
             KeyCode::W => self.up = value,
             KeyCode::A => self.left = value,
             KeyCode::D => self.right = value,
@@ -41,6 +44,7 @@ impl PlayerInput {
         }
     }
 
+    pub fn jump(&self) -> bool { self.jump }
     pub fn left(&self) -> bool { self.left }
     pub fn right(&self) -> bool { self.right }
     pub fn up(&self) -> bool { self.up }
@@ -48,7 +52,7 @@ impl PlayerInput {
     pub fn light(&self) -> bool { self.light }
     pub fn normal(&self) -> bool { self.normal }
     pub fn dash(&self) -> bool { self.dash }
-    pub fn set_up(&mut self, value: bool) { self.up = value }
+    pub fn set_jump(&mut self, value: bool) { self.up = value }
     pub fn set_slam(&mut self, value: bool) { self.slam = value }
     pub fn set_light(&mut self, value: bool) { self.light = value }
     pub fn set_normal(&mut self, value: bool) { self.normal = value }
