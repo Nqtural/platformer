@@ -59,7 +59,6 @@ impl GameState {
             for player in &team.players {
                 if player.lives > 0 { continue; }
                 self.winner = if team_idx == 0 { 2 } else { 1 };
-                println!("Winner: Team {}", self.winner)
             }
         }
     }
