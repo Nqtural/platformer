@@ -11,7 +11,7 @@ pub struct PlayerInput {
     up: bool,
     slam: bool,
     light: bool,
-    uppercut: bool,
+    normal: bool,
     dash: bool,
 }
 
@@ -23,7 +23,7 @@ impl PlayerInput {
             up: false,
             slam: false,
             light: false,
-            uppercut: false,
+            normal: false,
             dash: false,
         }
     }
@@ -35,7 +35,7 @@ impl PlayerInput {
             KeyCode::D => self.right = value,
             KeyCode::S => self.slam = value,
             KeyCode::J => self.light = value,
-            KeyCode::K => self.uppercut = value,
+            KeyCode::K => self.normal = value,
             KeyCode::H => self.dash = value,
             _ => {}
         }
@@ -46,10 +46,10 @@ impl PlayerInput {
     pub fn up(&self) -> bool { self.up }
     pub fn slam(&self) -> bool { self.slam }
     pub fn light(&self) -> bool { self.light }
-    pub fn uppercut(&self) -> bool { self.uppercut }
+    pub fn normal(&self) -> bool { self.normal }
     pub fn dash(&self) -> bool { self.dash }
     pub fn set_up(&mut self, value: bool) { self.up = value }
     pub fn set_slam(&mut self, value: bool) { self.slam = value }
     pub fn set_light(&mut self, value: bool) { self.light = value }
-    pub fn set_uppercut(&mut self, value: bool) { self.uppercut = value }
+    pub fn set_normal(&mut self, value: bool) { self.normal = value }
 }

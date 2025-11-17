@@ -213,11 +213,11 @@ impl Player {
                 self.slow = 0.5;
                 self.attack_cooldown = 0.3;
             }
-            if self.input.uppercut() {
+            if self.input.normal() {
                 new_attacks.push(
                     Attack::new(
                         &self,
-                        AttackKind::Uppercut,
+                        AttackKind::Normal,
                         team_idx,
                         player_idx,
                     )

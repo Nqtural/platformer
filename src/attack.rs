@@ -13,7 +13,7 @@ pub enum AttackKind {
     Dash,
     Light,
     Slam,
-    Uppercut,
+    Normal,
 }
 
 impl AttackKind {
@@ -64,7 +64,7 @@ impl AttackKind {
                     player.input.set_slam(false);
                 }
             }
-            AttackKind::Uppercut => {
+            AttackKind::Normal => {
                 player.stunned = 0.4;
                 player.invulnerable_timer = 0.1;
                 player.slow = 0.5;
