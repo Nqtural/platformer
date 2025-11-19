@@ -1,8 +1,21 @@
-use crate::attack::Attack;
-use crate::constants::*;
-use crate::map::Map;
-use crate::team::Team;
-use crate::traits::IntoMint;
+use crate::{
+    attack::Attack,
+    constants::{
+        BACKGROUND,
+        C_PLAYER,
+        C_TEAM,
+        NAME_COLOR,
+        PLAYER_SIZE,
+        TEAM_ONE_COLOR,
+        TEAM_TWO_COLOR,
+        VIRTUAL_HEIGHT,
+        VIRTUAL_WIDTH,
+    },
+    map::Map,
+    team::Team,
+    traits::IntoMint,
+    utils::current_and_enemy,
+};
 use ggez::{
     Context,
     event::EventHandler,
@@ -110,8 +123,6 @@ impl GameState {
             map_rect.y + map_rect.h / 2.0,
         );
 
-        // future client side option together with colors,
-        // background color or image, controls, etc.
         let bias_strength = 0.7;
 
         let biased_target = player_center.lerp(map_center, bias_strength);
@@ -328,14 +339,11 @@ impl EventHandler for GameState {
 
         self.check_for_win();
 
-        for team_idx in 0..self.teams.len() {
-            let (left, right) = self.teams.split_at_mut(team_idx);
-            let (team, others) = right.split_first_mut().unwrap();
-
-            team.update_players(
-                left,
-                others,
-                team_idx,
+        for i in 0..2 {
+            let (current, enemy) = current_and_enemy(&mut self.teams, i);
+            current.update_players(
+                enemy, // &mut Team
+                i,
                 &self.map.get_rect(),
                 self.winner,
                 &mut self.active_attacks,

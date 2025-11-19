@@ -1,7 +1,7 @@
 use crate::{
     attack::AttackKind,
-    player::Player,
     team::Team,
+    player::Player,
 };
 
 pub fn approach_zero(value: f32, step: f32) -> f32 {
@@ -16,17 +16,25 @@ pub fn approach_zero(value: f32, step: f32) -> f32 {
 
 pub fn handle_collisions<'a>(
     player: &mut Player,
-    teams: impl Iterator<Item = &'a mut Team>,
+    others: impl Iterator<Item = &'a mut Player>,
 ) {
-    let player_rect = player.get_rect();
-
-    for enemy in teams.flat_map(|team| team.players.iter_mut()) {
-        if player_rect.overlaps(&enemy.get_rect()) && enemy.invulnerable_timer == 0.0 {
+    for other in others {
+        if player.get_rect().overlaps(&other.get_rect()) {
             if player.dashing > 0.0 {
-                AttackKind::Dash.attack(enemy, player);
+                AttackKind::Dash.attack(other, player);
             } else if player.input.slam() {
-                AttackKind::Slam.attack(enemy, player);
+                AttackKind::Slam.attack(other, player);
             }
         }
+    }
+}
+
+pub fn current_and_enemy<const N: usize>(teams: &mut [Team; N], i: usize) -> (&mut Team, &mut Team) {
+    assert!(N == 2 && (i == 0 || i == 1));
+    let (left, right) = teams.split_at_mut(1);
+    if i == 0 {
+        (&mut left[0], &mut right[0])
+    } else {
+        (&mut right[0], &mut left[0])
     }
 }

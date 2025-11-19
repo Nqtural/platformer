@@ -22,7 +22,7 @@ use crate::{
     utils::approach_zero,
 };
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct Player {
     pub pos: [f32; 2],
     pub vel: [f32; 2],
@@ -174,7 +174,13 @@ impl Player {
         }
     }
 
-    pub fn apply_input(&mut self, map: &Rect, team_idx: usize, player_idx: usize, dt: f32) -> Vec<Attack> {
+    pub fn apply_input(
+        &mut self,
+        map: &Rect,
+        team_idx: usize,
+        player_idx: usize,
+        dt: f32,
+    ) -> Vec<Attack> {
         let mut new_attacks = Vec::new();
         self.facing = [0.0, 0.0];
         if self.stunned > 0.0 {

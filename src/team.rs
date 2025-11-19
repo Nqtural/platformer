@@ -42,8 +42,7 @@ impl Team {
 
     pub fn update_players(
             &mut self,
-            left: &mut [Team],
-            others: &mut [Team],
+            enemy_team: &mut Team,
             team_idx: usize,
             map: &Rect,
             winner: usize,
@@ -59,7 +58,11 @@ impl Team {
             self.trail_squares.iter_mut().for_each(|s| s.update(normal_dt));
             self.trail_squares.retain(|s| s.lifetime > 0.0);
 
-            for (player_idx, player) in self.players.iter_mut().enumerate() {
+            for player_idx in 0..self.players.len() {
+                // Split self.players into [head | current | rest]
+                let (head, right) = self.players.split_at_mut(player_idx);
+                let (player, rest) = right.split_first_mut().unwrap();
+
                 player.update_cooldowns(normal_dt);
 
                 if player.respawn_timer > 0.0 { continue; }
@@ -70,10 +73,22 @@ impl Team {
                     normal_dt
                 };
 
-                active_attacks.extend(player.apply_input(map, team_idx, player_idx, dt));
+                active_attacks.extend(
+                    player.apply_input(
+                        map,
+                        team_idx,
+                        player_idx,
+                        dt
+                    )
+                );
 
             if player.dashing > 0.0 || player.input.slam() {
-                handle_collisions(player, left.iter_mut().chain(others.iter_mut()));
+                let others = head.iter_mut()
+                    .chain(rest.iter_mut())
+                    .chain(enemy_team.players.iter_mut());
+
+                handle_collisions(player, others);
+
                 player.trail_timer += dt;
                 while player.trail_timer >= self.trail_interval {
                     player.trail_timer -= self.trail_interval;
