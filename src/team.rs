@@ -101,7 +101,7 @@ impl Team {
                 }
             }
 
-            player.update_position(dt);
+            player.update_position(&map, enemy_team, dt);
             player.check_platform_collision(&map, dt);
             player.check_for_death(self.start_pos);
         }

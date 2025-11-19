@@ -19,6 +19,7 @@ use crate::{
         WALL_SLIDE_SPEED,
     },
     input::PlayerInput,
+    team::Team,
     utils::approach_zero,
 };
 
@@ -90,10 +91,56 @@ impl Player {
         }
     }
 
-    pub fn update_position(&mut self, dt: f32) {
+    pub fn update_position(&mut self, map: &Rect, enemy_team: &Team, dt: f32) {
+        let old_pos = self.pos;
+
         self.pos[0] += self.vel[0] * dt;
         self.pos[1] += self.vel[1] * dt;
+
+        // Sweep test to prevent downward tunneling through platform
+        if let Some(corrected_y) = self.sweep_down(old_pos[1], self.pos[1], map)
+        {
+            // Snap onto platform
+            self.pos[1] = corrected_y;
+            self.vel[1] = 0.0;
+        }
+
+        // Sweep test to prevent downward tunneling through an opponent
+        if self.slamming {
+            for opponent in enemy_team.players.iter() {
+                if let Some(corrected_y) = self.sweep_down(old_pos[1], self.pos[1], &opponent.get_rect())
+                {
+                    // Snap onto opponent
+                    self.pos[1] = corrected_y;
+                    self.vel[1] = 0.0;
+                }
+            }
+        }
+
+        // Apply friction
         self.vel[0] = approach_zero(self.vel[0], RESISTANCE * dt);
+    }
+
+    fn sweep_down(
+        &self,
+        old_y: f32,
+        new_y: f32,
+        object: &Rect,
+    ) -> Option<f32> {
+        if self.get_rect().x + PLAYER_SIZE > object.x && self.get_rect().x < object.x + object.w {
+            // Only downward motion matters for slam
+            if new_y > old_y {
+                let old_bottom = old_y + PLAYER_SIZE;
+                let new_bottom = new_y + PLAYER_SIZE;
+
+                // If player bottom crossed the object's top between frames:
+                if old_bottom <= object.y && new_bottom >= object.y {
+                    return Some(object.y - PLAYER_SIZE);
+                }
+            }
+        }
+
+        None
     }
 
     fn is_on_platform(&self, map: &Rect) -> bool {
@@ -269,6 +316,7 @@ impl Player {
             self.dashing = 0.3;
             self.dash_cooldown = 3.0;
         }
+
         new_attacks
     }
 }
