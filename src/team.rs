@@ -47,49 +47,38 @@ impl Team {
             map: &Rect,
             winner: usize,
             active_attacks: &mut Vec<Attack>,
-            mut normal_dt: f32,
+            mut dt: f32,
         ) {
             if winner > 0 {
-                normal_dt = normal_dt / 2.0;
+                dt = dt / 2.0;
             }
 
-            let slow_dt = normal_dt / 2.0;
-
-            self.trail_squares.iter_mut().for_each(|s| s.update(normal_dt));
+            self.trail_squares.iter_mut().for_each(|s| s.update(dt));
             self.trail_squares.retain(|s| s.lifetime > 0.0);
 
-            for player_idx in 0..self.players.len() {
-                // Split self.players into [head | current | rest]
-                let (head, right) = self.players.split_at_mut(player_idx);
-                let (player, rest) = right.split_first_mut().unwrap();
+        for player_idx in 0..self.players.len() {
+            // Split self.players into [head | current | rest]
+            let (head, right) = self.players.split_at_mut(player_idx);
+            let (player, rest) = right.split_first_mut().unwrap();
 
-                player.update_cooldowns(normal_dt);
+            player.update(&map, enemy_team, self.start_pos, dt);
 
-                if player.respawn_timer > 0.0 { continue; }
+            active_attacks.extend(
+                player.apply_input(
+                    map,
+                    team_idx,
+                    player_idx,
+                    dt
+                )
+            );
 
-                let dt = if player.slow > normal_dt {
-                    slow_dt
-                } else {
-                    normal_dt
-                };
-
-                active_attacks.extend(
-                    player.apply_input(
-                        map,
-                        team_idx,
-                        player_idx,
-                        dt
-                    )
-                );
-
-            if player.dashing > 0.0 || player.input.slam() {
+            if player.dashing > 0.0 || player.slamming {
                 let others = head.iter_mut()
                     .chain(rest.iter_mut())
                     .chain(enemy_team.players.iter_mut());
 
                 handle_collisions(player, others);
 
-                player.trail_timer += dt;
                 while player.trail_timer >= self.trail_interval {
                     player.trail_timer -= self.trail_interval;
                     self.trail_squares.push(
@@ -100,10 +89,6 @@ impl Team {
                     )
                 }
             }
-
-            player.update_position(&map, enemy_team, dt);
-            player.check_platform_collision(&map, dt);
-            player.check_for_death(self.start_pos);
         }
     }
 

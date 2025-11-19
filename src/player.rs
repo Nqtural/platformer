@@ -35,6 +35,7 @@ pub struct Player {
     pub double_jumps: u8,
     pub knockback_multiplier: f32,
     pub slamming: bool,
+    pub can_slam: bool,
     pub dashing: f32,
     pub dash_cooldown: f32,
     pub attack_cooldown: f32,
@@ -58,6 +59,7 @@ impl Player {
             double_jumps: 2,
             knockback_multiplier: 1.0,
             slamming: false,
+            can_slam: true,
             dashing: 0.0,
             dash_cooldown: 0.0,
             attack_cooldown: 0.0,
@@ -73,7 +75,33 @@ impl Player {
         Rect::new(self.pos[0], self.pos[1], PLAYER_SIZE, PLAYER_SIZE)
     }
 
-    pub fn update_cooldowns(&mut self, dt: f32) {
+    pub fn update(&mut self, map: &Rect, enemy_team: &Team, start_pos: [f32; 2], normal_dt: f32) {
+        self.update_cooldowns(normal_dt);
+        if self.respawn_timer > 0.0 {
+            return
+        }
+
+        let dt = if self.slow > normal_dt {
+            normal_dt / 2.0
+        } else {
+            normal_dt
+        };
+
+        if self.dashing > 0.0 || self.slamming {
+            self.trail_timer += dt;
+        }
+
+        self.update_position(map, enemy_team, dt);
+        self.check_platform_collision(map, dt);
+        self.check_for_death(start_pos);
+
+        if self.is_on_platform(map) {
+            self.can_slam = false;
+            self.slamming = false;
+        }
+    }
+
+    fn update_cooldowns(&mut self, dt: f32) {
         let mut cooldowns = [
             &mut self.attack_cooldown,
             &mut self.stunned,
@@ -91,7 +119,7 @@ impl Player {
         }
     }
 
-    pub fn update_position(&mut self, map: &Rect, enemy_team: &Team, dt: f32) {
+    fn update_position(&mut self, map: &Rect, enemy_team: &Team, dt: f32) {
         let old_pos = self.pos;
 
         self.pos[0] += self.vel[0] * dt;
@@ -151,7 +179,7 @@ impl Player {
         (player_bottom - platform_top).abs() < 5.0 && rect.overlaps(&map)
     }
 
-    pub fn check_platform_collision(
+    fn check_platform_collision(
         &mut self,
         map: &Rect,
         dt: f32,
@@ -248,18 +276,20 @@ impl Player {
                 }
                 self.has_jumped = true;
             }
-        } else if self.has_jumped {
+        } else {
             self.has_jumped = false;
         }
         self.slamming = false;
         if self.input.slam() {
             self.facing[1] += 1.0;
-            if !self.is_on_platform(&map) {
+            if self.can_slam {
                 self.slamming = true;
                 if self.vel[1] < MAX_SPEED[1] {
                     self.vel[1] += ACCELERATION * dt;
                 }
             }
+        } else {
+            self.can_slam = true;
         }
         if self.input.left() {
             self.facing[0] -= 1.0;

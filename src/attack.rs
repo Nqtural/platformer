@@ -53,7 +53,7 @@ impl AttackKind {
                     enemy.knockback_multiplier += 0.03;
 
                     player.vel[1] = -50.0;
-                    player.slamming = false;
+                    player.can_slam = false;
                 }
             }
             AttackKind::Normal => {

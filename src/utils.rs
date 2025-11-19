@@ -22,7 +22,7 @@ pub fn handle_collisions<'a>(
         if player.get_rect().overlaps(&other.get_rect()) {
             if player.dashing > 0.0 {
                 AttackKind::Dash.attack(other, player);
-            } else if player.input.slam() {
+            } else if player.slamming {
                 AttackKind::Slam.attack(other, player);
             }
         }
