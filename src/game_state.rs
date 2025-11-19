@@ -131,7 +131,7 @@ impl GameState {
         Ok(())
     }
     
-    fn draw_attacks(
+    fn _draw_attacks(
         &self,
         game_canvas: &mut Canvas,
         gfx: &mut GraphicsContext,
@@ -205,26 +205,11 @@ impl GameState {
                 )?;
                 game_canvas.draw(&outline, camera_transform);
 
-                //Attackbox
-                let mesh = Mesh::new_rectangle(
-                    &ctx.gfx,
-                    DrawMode::stroke(1.0),
-                    Rect::new(
-                        player.pos[0] - 5.0,
-                        player.pos[1] - 5.0,
-                        PLAYER_SIZE + 10.0,
-                        PLAYER_SIZE + 10.0,
-                    ),
-                    Color::new(1.0, 1.0, 1.0, 0.4),
-                )?;
-                game_canvas.draw(&mesh, camera_transform);
-
                 let text = Text::new(TextFragment {
                     text: format!("{}", player.name),
                     font: None,
                     scale: Some(PxScale::from(14.0 * zoom)),
                     color: Some(NAME_COLOR),
-                    //color: Some(team.color_default),
                     ..Default::default()
                 });
 
@@ -289,7 +274,7 @@ impl GameState {
 
         let fps_dims = fps_text.dimensions(ctx).unwrap();
         let fps_x = (VIRTUAL_WIDTH - fps_dims.w as f32) / 2.0;
-        let fps_y = MARGIN / 2.0; // slightly above other HUD elements
+        let fps_y = MARGIN / 2.0;
 
         game_canvas.draw(
             &fps_text,
@@ -404,7 +389,7 @@ impl EventHandler for GameState {
 
         self.draw_map(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
         self.draw_trails(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
-        self.draw_attacks(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
+        //self.draw_attacks(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
         self.draw_players(&mut game_canvas, ctx, camera_translation, zoom)?;
         self.draw_hud(&mut game_canvas, &ctx)?;
 
