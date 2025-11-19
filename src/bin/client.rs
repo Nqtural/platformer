@@ -32,18 +32,35 @@ use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
 
 #[tokio::main]
 async fn main() -> GameResult {
-    let game_state = Arc::new(Mutex::new(GameState::new([
-        Team::new(
-            vec![Player::new(TEAM_ONE_START_POS, "Player1".into())],
-            TEAM_ONE_COLOR,
-            TEAM_ONE_START_POS,
-        ),
-        Team::new(
-            vec![Player::new(TEAM_TWO_START_POS, "Player2".into())],
-            TEAM_TWO_COLOR,
-            TEAM_TWO_START_POS,
-        ),
-    ])));
+    // Setup game window and run event loop as usual
+    let (mut ctx, event_loop) = ContextBuilder::new("client", "platform")
+        .window_setup(
+            ggez::conf::WindowSetup::default()
+                .vsync(ENABLE_VSYNC)
+                .title("Game")
+        )
+        .window_mode(
+            ggez::conf::WindowMode::default()
+                .dimensions(VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
+                .resizable(true)
+        )
+        .build()?;
+
+    let game_state = Arc::new(Mutex::new(GameState::new(
+        [
+            Team::new(
+                vec![Player::new(TEAM_ONE_START_POS, "Player1".into())],
+                TEAM_ONE_COLOR,
+                TEAM_ONE_START_POS,
+            ),
+            Team::new(
+                vec![Player::new(TEAM_TWO_START_POS, "Player2".into())],
+                TEAM_TWO_COLOR,
+                TEAM_TWO_START_POS,
+            ),
+        ],
+        &mut ctx
+    )?));
 
     let config = config::standard();
     let gs_clone_send = Arc::clone(&game_state);
@@ -129,20 +146,6 @@ async fn main() -> GameResult {
             tokio::time::sleep(std::time::Duration::from_millis(16)).await;
         }
     });
-
-    // Setup game window and run event loop as usual
-    let (ctx, event_loop) = ContextBuilder::new("client", "platform")
-        .window_setup(
-            ggez::conf::WindowSetup::default()
-                .vsync(ENABLE_VSYNC)
-                .title("Game")
-        )
-        .window_mode(
-            ggez::conf::WindowMode::default()
-                .dimensions(VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
-                .resizable(true)
-        )
-        .build()?;
 
     ggez::event::run(ctx, event_loop, SharedGameState(game_state))
 }

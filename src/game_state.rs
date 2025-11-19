@@ -1,7 +1,7 @@
 use crate::{
     attack::Attack,
     constants::{
-        BACKGROUND,
+        BACKGROUND_IMAGE,
         C_PLAYER,
         C_TEAM,
         NAME_COLOR,
@@ -50,17 +50,23 @@ pub struct GameState {
     pub active_attacks: Vec<Attack>,
     pub camera_pos: Vec2,
     pub winner: usize,
+    #[serde(skip)]
+    #[serde(default)]
+    background_image: Option<Image>,
 }
 
 impl GameState {
-    pub fn new(teams: [Team; 2]) -> GameState {
-        GameState {
+    pub fn new(teams: [Team; 2], ctx: &mut Context) -> GameResult<Self> {
+        let img = Image::from_path(&ctx.gfx, BACKGROUND_IMAGE)?;
+
+        Ok(Self {
             teams,
             map: Map::new(),
             active_attacks: Vec::new(),
             camera_pos: Vec2::new(0.0, 0.0),
             winner: 0,
-        }
+            background_image: Some(img),
+        })
     }
 
     fn check_for_win(&mut self) {
@@ -139,6 +145,7 @@ impl GameState {
             self.map.get_color(),
         )?;
         game_canvas.draw(&map_mesh, *camera_transform);
+
         Ok(())
     }
     
@@ -212,7 +219,7 @@ impl GameState {
                     &ctx.gfx,
                     DrawMode::stroke(2.0),
                     rect,
-                    Color::new(0.0, 0.0, 0.0, 1.0)
+                    Color::new(0.0, 0.0, 0.0, 1.0),
                 )?;
                 game_canvas.draw(&outline, camera_transform);
 
@@ -227,7 +234,7 @@ impl GameState {
                 let text_dims = text.dimensions(ctx).unwrap();
                 let text_pos = Vec2::new(
                     player.pos[0] + (PLAYER_SIZE / 2.0) - (text_dims.w as f32 / 2.0),
-                    player.pos[1] + 25.0
+                    player.pos[1] + 25.0,
                 ) * zoom + camera_translation;
 
                 game_canvas.draw(&text, DrawParam::default().dest(text_pos));
@@ -257,7 +264,7 @@ impl GameState {
                     text: format!(
                         "Player {} Lives: {}",
                         player_idx + 1,
-                        player.lives
+                        player.lives,
                     ),
                     font: None,
                     scale: Some(PxScale::from(36.0)),
@@ -317,7 +324,7 @@ impl GameState {
                 &winner_text,
                 DrawParam::default().dest(Vec2::new(
                     winner_x,
-                    winner_y
+                    winner_y,
                 ).to_mint_point())
             );
         }
@@ -368,7 +375,7 @@ impl EventHandler for GameState {
         let mut game_canvas = Canvas::from_image(
             &mut ctx.gfx,
             target_image.clone(),
-            BACKGROUND,
+            Color::new(0.0, 0.0, 0.0, 0.0),
         );
         game_canvas.set_screen_coordinates(
             Rect::new(
@@ -378,6 +385,19 @@ impl EventHandler for GameState {
                 VIRTUAL_HEIGHT
             )
         );
+
+        // Draw background
+        if let Some(img) = self.background_image.as_ref() {
+            game_canvas.draw(
+                img,
+                DrawParam::default()
+                    .dest([0.0, 0.0])
+                    .scale([
+                        VIRTUAL_WIDTH  / img.width()  as f32,
+                        VIRTUAL_HEIGHT / img.height() as f32,
+                    ]),
+            );
+        }
 
         let (win_w, win_h) = ctx.gfx.drawable_size();
         let virtual_aspect = VIRTUAL_WIDTH / VIRTUAL_HEIGHT;
