@@ -136,11 +136,12 @@ impl Player {
         // Sweep test to prevent downward tunneling through an opponent
         if self.slamming {
             for opponent in enemy_team.players.iter() {
-                if let Some(corrected_y) = self.sweep_down(old_pos[1], self.pos[1], &opponent.get_rect())
-                {
-                    // Snap onto opponent
-                    self.pos[1] = corrected_y;
-                    self.vel[1] = 0.0;
+                if opponent.invulnerable_timer == 0.0 {
+                    if let Some(corrected_y) = self.sweep_down(old_pos[1], self.pos[1], &opponent.get_rect()) {
+                        // Snap onto opponent
+                        self.pos[1] = corrected_y;
+                        self.vel[1] = 0.0;
+                    }
                 }
             }
         }
