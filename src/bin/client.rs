@@ -32,6 +32,7 @@ use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
 
 #[tokio::main]
 async fn main() -> GameResult {
+    let config = Config::get()?;
     // Setup game window and run event loop as usual
     let (mut ctx, event_loop) = ContextBuilder::new("client", "platform")
         .window_setup(
@@ -62,11 +63,13 @@ async fn main() -> GameResult {
         &mut ctx
     )?));
 
-    let config = config::standard();
+    let bincode_config = config::standard();
     let gs_clone_send = Arc::clone(&game_state);
     let gs_clone_recv = Arc::clone(&game_state);
 
-    let server_addr: SocketAddr = format!("{}:{}", SERVER_IP, SERVER_PORT).parse().unwrap();
+    let ip = config.serverip();
+    let port = config.serverport();
+    let server_addr: SocketAddr = format!("{}:{}", ip, port).parse().unwrap();
     let socket = Arc::new(UdpSocket::bind("0.0.0.0:0").await.unwrap());
 
     // Spawn receive task
