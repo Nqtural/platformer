@@ -5,6 +5,7 @@ pub mod input;
 pub mod map;
 pub mod network;
 pub mod player;
+pub mod read_config;
 pub mod team;
 pub mod trail;
 pub mod traits;

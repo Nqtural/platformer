@@ -6,8 +6,6 @@ use std::collections::HashSet;
 use platform::{
     constants::{
         ENABLE_VSYNC,
-        SERVER_IP,
-        SERVER_PORT,
         TEAM_ONE_COLOR,
         TEAM_ONE_START_POS,
         TEAM_TWO_COLOR,
@@ -21,6 +19,7 @@ use platform::{
         ServerMessage,
     },
     player::Player,
+    read_config::Config,
     team::Team,
 };
 use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
@@ -31,6 +30,7 @@ use ggez::{
 
 #[tokio::main]
 async fn main() -> GameResult {
+    let config = Config::get()?;
     // Setup the ggez window and run event loop (optional server GUI or visualizer)
     let (mut ctx, event_loop) = ContextBuilder::new("server", "platform")
         .window_setup(
@@ -62,7 +62,7 @@ async fn main() -> GameResult {
         &mut ctx
     )?));
 
-    let config = config::standard();
+    let bincode_config = config::standard();
     let game_state_recv = Arc::clone(&game_state);
     let game_state_send = Arc::clone(&game_state);
 
@@ -72,12 +72,14 @@ async fn main() -> GameResult {
     let clients_send = Arc::clone(&clients);
 
     // Bind UDP socket to listen on server port
-    let socket = Arc::new(UdpSocket::bind(format!("{}:{}", SERVER_IP, SERVER_PORT)).await.unwrap());
-    println!("Server listening on 127.0.0.1:4000");
+    let ip = config.serverip();
+    let port = config.serverport();
+    let socket = Arc::new(UdpSocket::bind(format!("{}:{}", ip, port)).await.unwrap());
+    println!("Server listening on {}:{}", ip, port);
 
     // Task to receive client messages, update GameState, and track clients
     let socket_recv = Arc::clone(&socket);
-    let config_recv = config.clone();
+    let config_recv = bincode_config.clone();
     tokio::spawn(async move {
         let mut buf = [0u8; 2048];
         loop {
@@ -120,7 +122,7 @@ async fn main() -> GameResult {
             let snapshot_msg = ServerMessage::Snapshot(gs.clone());
             drop(gs);
 
-            let data = match encode_to_vec(&snapshot_msg, config) {
+            let data = match encode_to_vec(&snapshot_msg, bincode_config) {
                 Ok(d) => d,
                 Err(e) => {
                     eprintln!("Encoding error: {}", e);
