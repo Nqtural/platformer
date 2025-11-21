@@ -11,8 +11,6 @@ use platform::{
         C_TEAM,
         C_PLAYER,
         ENABLE_VSYNC,
-        SERVER_IP,
-        SERVER_PORT,
         TEAM_ONE_COLOR,
         TEAM_ONE_START_POS,
         TEAM_TWO_COLOR,
@@ -25,6 +23,7 @@ use platform::{
         ClientMessage,
         ServerMessage,
     },
+    read_config::Config,
     player::Player,
     team::Team,
 };
@@ -74,7 +73,7 @@ async fn main() -> GameResult {
 
     // Spawn receive task
     let socket_recv = Arc::clone(&socket);
-    let config_recv = config.clone();
+    let config_recv = bincode_config.clone();
     tokio::spawn(async move {
         let mut buf = [0u8; 2048];
         loop {
@@ -137,7 +136,7 @@ async fn main() -> GameResult {
                     player_id: C_PLAYER,
                     input: input.clone(),
                 };
-                match encode_to_vec(&msg, config) {
+                match encode_to_vec(&msg, bincode_config) {
                     Ok(data) => {
                         let _ = socket_send.send_to(&data, server_addr).await;
                     }
