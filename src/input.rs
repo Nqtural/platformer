@@ -40,8 +40,8 @@ impl PlayerInput {
             KeyCode::D => self.right = value,
             KeyCode::S => self.slam = value,
             KeyCode::H => self.dash = value,
-            KeyCode::J => self.light = value,
-            KeyCode::K => self.normal = value,
+            KeyCode::J => self.normal = value,
+            KeyCode::K => self.light = value,
             KeyCode::L => self.lunge = value,
             _ => {}
         }
