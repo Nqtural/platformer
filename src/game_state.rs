@@ -375,7 +375,7 @@ impl EventHandler for GameState {
         let mut game_canvas = Canvas::from_image(
             &mut ctx.gfx,
             target_image.clone(),
-            Color::new(0.0, 0.0, 0.0, 0.0),
+            Color::new(0.1, 0.1, 0.15, 1.0),
         );
         game_canvas.set_screen_coordinates(
             Rect::new(
