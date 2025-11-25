@@ -86,7 +86,7 @@ impl GameState {
         }
     }
 
-    pub fn apply_snapshot(&mut self, snapshot: NetSnapshot) {
+    pub fn apply_interpolated_snapshot(&mut self, snapshot: NetSnapshot) {
         self.winner = snapshot.winner;
 
         for net_player in snapshot.players {

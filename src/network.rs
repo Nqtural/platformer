@@ -71,5 +71,8 @@ pub enum ServerMessage {
     StartGame {
         teams: Vec<InitTeamData>,
     },
-    Snapshot(NetSnapshot),
+    Snapshot {
+        tick: u64,
+        state: NetSnapshot,
+    },
 }

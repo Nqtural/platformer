@@ -130,6 +130,10 @@ async fn main() -> GameResult {
     // Task to receive client messages, update GameState, and track clients
     let socket_recv = Arc::clone(&socket);
     let config_recv = bincode_config;
+
+    let tick = Arc::new(Mutex::new(0u64));
+    let tick_recv = Arc::clone(&tick);
+    let tick_send = Arc::clone(&tick);
     tokio::spawn(async move {
         let mut buf = [0u8; 2048];
         loop {
@@ -165,10 +169,18 @@ async fn main() -> GameResult {
     let socket_send = Arc::clone(&socket);
     tokio::spawn(async move {
         loop {
-            tokio::time::sleep(std::time::Duration::from_millis(8)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(16)).await;
+
+            {
+                let mut t = tick_send.lock().await;
+                *t += 1;
+            }
 
             let gs = game_state_send.lock().await;
-            let snapshot_msg = ServerMessage::Snapshot(gs.to_net());
+            let snapshot_msg = ServerMessage::Snapshot{
+                tick: *tick_send.lock().await,
+                state: gs.to_net(),
+            };
             drop(gs);
 
             let data = match encode_to_vec(&snapshot_msg, bincode_config) {
