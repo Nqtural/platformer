@@ -137,19 +137,22 @@ async fn main() -> GameResult {
     // Spawn receive task
     let socket_recv = Arc::clone(&socket);
     let config_recv = bincode_config.clone();
+
     tokio::spawn(async move {
         let mut buf = [0u8; 2048];
+
         loop {
             match socket_recv.recv_from(&mut buf).await {
                 Ok((len, _)) => {
+                    // Decode snapshot from server
                     if let Ok((ServerMessage::Snapshot(server_state), _)) =
-    decode_from_slice::<ServerMessage, _>(&buf[..len], config_recv)
+                    decode_from_slice::<ServerMessage, _>(&buf[..len], config_recv)
                     {
+                        // Lock game state
                         let mut gs = gs_clone_recv.lock().await;
-                        gs.apply_snapshot(server_state);
 
-                        // Preserve local input(s)
-                        let local_inputs: Vec<_> = gs
+                        // Preserve local inputs
+                        let local_inputs: Vec<Vec<_>> = gs
                             .teams
                             .iter()
                             .map(|team| {
@@ -160,10 +163,10 @@ async fn main() -> GameResult {
                             })
                             .collect();
 
-                        // Merge server state
-//                        client.game_state.as_mut().unwrap().apply_snapshot(server_state);
+                        // Apply server snapshot
+                        gs.apply_snapshot(server_state);
 
-                        // Restore player inputs
+                        // Restore local inputs to prevent input lag
                         for (team_idx, team) in gs.teams.iter_mut().enumerate() {
                             for (player_idx, player) in team.players.iter_mut().enumerate() {
                                 if let Some(input) = local_inputs
