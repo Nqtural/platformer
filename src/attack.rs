@@ -5,6 +5,7 @@ use serde::{
 };
 use crate::{
     constants::PLAYER_SIZE,
+    network::NetAttack,
     player::Player,
 };
 
@@ -98,6 +99,35 @@ impl Attack {
             timer: 0.0,
             owner_team,
             owner_player,
+        }
+    }
+
+    pub fn from_net(net: NetAttack) -> Self {
+        let duration = net.time_left.max(0.0);
+        let timer = 0.0;
+
+        let rect: Rect = net.rect;
+
+        Attack {
+            x: rect.x,
+            y: rect.y,
+            w: rect.w,
+            h: rect.h,
+            kind: net.kind,
+            duration,
+            timer,
+            owner_team: net.owner_team,
+            owner_player: net.owner_player,
+        }
+    }
+
+    pub fn to_net(&self) -> NetAttack {
+        NetAttack {
+            owner_team: self.owner_team,
+            owner_player: self.owner_player,
+            rect: self.get_rect(),
+            time_left: (self.duration - self.timer).max(0.0),
+            kind: self.kind.clone(),
         }
     }
 

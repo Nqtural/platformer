@@ -11,7 +11,7 @@ use crate::constants::{
     TRAIL_OPACITY,
 };
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TrailSquare {
     pub rect: Rect,
     pub color: Color,

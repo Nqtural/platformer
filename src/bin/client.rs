@@ -1,6 +1,8 @@
 use ggez::{
+    Context,
     ContextBuilder,
     GameResult,
+    graphics::Rect,
 };
 use tokio::net::UdpSocket;
 use tokio::sync::Mutex;
@@ -22,6 +24,7 @@ use platform::{
     network::{
         ClientMessage,
         ServerMessage,
+        InitTeamData,
     },
     read_config::Config,
     player::Player,
@@ -29,8 +32,42 @@ use platform::{
 };
 use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
 
+pub struct ClientState {
+    pub team_id: usize,
+    pub player_id: usize,
+    pub ready: bool,
+    pub game_state: Option<GameState>,
+}
+
+impl ClientState {
+    pub fn apply_initial_data(
+        &mut self,
+        teams: Vec<InitTeamData>,
+        ctx: &mut Context,
+    ) -> GameResult<()> {
+        let team_list: Vec<Team> = teams
+            .into_iter()
+            .map(|t| Team::from_init(t))
+            .collect();
+
+        let teams_array: [Team; 2] = team_list.try_into()
+            .expect("exactly 2 teams required");
+
+        let gs = GameState::new(teams_array, ctx)?;
+        self.game_state = Some(gs);
+        Ok(())
+    }
+}
+
 #[tokio::main]
 async fn main() -> GameResult {
+    let mut client = ClientState {
+        team_id: 0,
+        player_id: 0,
+        ready: false,
+        game_state: None,
+    };
+
     let config = Config::get()?;
     // Setup game window and run event loop as usual
     let (mut ctx, event_loop) = ContextBuilder::new("client", "platform")
@@ -51,12 +88,10 @@ async fn main() -> GameResult {
             Team::new(
                 vec![Player::new(TEAM_ONE_START_POS, "Player1".into())],
                 TEAM_ONE_COLOR,
-                TEAM_ONE_START_POS,
             ),
             Team::new(
                 vec![Player::new(TEAM_TWO_START_POS, "Player2".into())],
                 TEAM_TWO_COLOR,
-                TEAM_TWO_START_POS,
             ),
         ],
         &mut ctx
@@ -70,6 +105,34 @@ async fn main() -> GameResult {
     let port = config.serverport();
     let server_addr: SocketAddr = format!("{}:{}", ip, port).parse().unwrap();
     let socket = Arc::new(UdpSocket::bind("0.0.0.0:0").await.unwrap());
+    socket.connect(server_addr).await.unwrap();
+
+
+    // Handshake with server
+    let packet = encode_to_vec(
+        ClientMessage::Hello {
+            name: config.playername().to_string(),
+        },
+        bincode_config,
+    ).map_err(|e| ggez::GameError::CustomError(e.to_string()))?;
+    socket.send(&packet).await?;
+
+    let mut buf = [0u8; 1500];
+    let (len, _addr) = socket.recv_from(&mut buf).await?;
+
+    let (msg, _): (ServerMessage, usize) = decode_from_slice(
+        &buf[..len],
+        bincode_config,
+    ).map_err(|e| ggez::GameError::CustomError(e.to_string()))?;
+    if let ServerMessage::Welcome { team_id, player_id, ref name } = msg {
+        client.team_id = team_id;
+        client.player_id = player_id;
+    }
+
+    if let ServerMessage::StartGame { teams } = msg {
+        client.apply_initial_data(teams, &mut ctx)?;
+        client.ready = true;
+    }
 
     // Spawn receive task
     let socket_recv = Arc::clone(&socket);
@@ -83,6 +146,7 @@ async fn main() -> GameResult {
     decode_from_slice::<ServerMessage, _>(&buf[..len], config_recv)
                     {
                         let mut gs = gs_clone_recv.lock().await;
+                        gs.apply_snapshot(server_state);
 
                         // Preserve local input(s)
                         let local_inputs: Vec<_> = gs
@@ -97,7 +161,7 @@ async fn main() -> GameResult {
                             .collect();
 
                         // Merge server state
-                        *gs = server_state;
+//                        client.game_state.as_mut().unwrap().apply_snapshot(server_state);
 
                         // Restore player inputs
                         for (team_idx, team) in gs.teams.iter_mut().enumerate() {
@@ -114,7 +178,6 @@ async fn main() -> GameResult {
                 }
                 Err(e) => {
                     eprintln!("Receive error: {}", e);
-                    // You may want to consider a delay or termination condition here
                 }
             }
         }

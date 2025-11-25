@@ -1,11 +1,13 @@
-use tokio::net::UdpSocket;
-use tokio::sync::{Mutex, RwLock};
+use rand;
 use std::sync::Arc;
 use std::net::SocketAddr;
 use std::collections::HashSet;
+use tokio::net::UdpSocket;
+use tokio::sync::{Mutex, RwLock};
 use platform::{
     constants::{
         ENABLE_VSYNC,
+        REQUIRED_PLAYERS,
         TEAM_ONE_COLOR,
         TEAM_ONE_START_POS,
         TEAM_TWO_COLOR,
@@ -14,6 +16,7 @@ use platform::{
         VIRTUAL_WIDTH,
     },
     game_state::GameState,
+    lobby::Lobby,
     network::{
         ClientMessage,
         ServerMessage,
@@ -21,6 +24,10 @@ use platform::{
     player::Player,
     read_config::Config,
     team::Team,
+    utils::{
+        broadcast,
+        send_to,
+    },
 };
 use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
 use ggez::{
@@ -51,16 +58,20 @@ async fn main() -> GameResult {
             Team::new(
                 vec![Player::new(TEAM_ONE_START_POS, "Player1".into())],
                 TEAM_ONE_COLOR,
-                TEAM_ONE_START_POS,
             ),
             Team::new(
                 vec![Player::new(TEAM_TWO_START_POS, "Player2".into())],
                 TEAM_TWO_COLOR,
-                TEAM_TWO_START_POS,
             ),
         ],
         &mut ctx
     )?));
+
+    // Initialize lobby state
+    let lobby_state = Arc::new(RwLock::new(Lobby::new()));
+
+    let lobby_state_recv = Arc::clone(&lobby_state);
+    let lobby_state_send = Arc::clone(&lobby_state);
 
     let bincode_config = config::standard();
     let game_state_recv = Arc::clone(&game_state);
@@ -76,6 +87,49 @@ async fn main() -> GameResult {
     let port = config.serverport();
     let socket = Arc::new(UdpSocket::bind(format!("{}:{}", ip, port)).await.unwrap());
     println!("Server listening on {}:{}", ip, port);
+
+    // Handshake with clients
+    let mut buf = [0u8; 1500];
+    let (len, addr) = socket.recv_from(&mut buf).await?;
+
+    let (msg, _): (ClientMessage, usize) = decode_from_slice(
+        &buf[..len],
+        bincode_config,
+    ).map_err(|e| ggez::GameError::CustomError(e.to_string()))?;
+
+    if let ClientMessage::Hello { name } = msg {
+        let mut lobby = lobby_state.write().await;
+
+        // Prevent duplicate connections
+        //if lobby.is_name_taken(&name) {
+        //    // Modify name or reject
+        //    name = format!("{}{}", name, rand::random::<u16>());
+        //}
+
+        let (team_id, player_id) = lobby.assign_slot(addr, name.clone());
+
+        // Send welcome to this client
+        let welcome = ServerMessage::Welcome {
+            team_id,
+            player_id,
+            name: name.clone(),
+        };
+        send_to(addr, welcome, &socket, &bincode_config).await;
+
+        // Send lobby status to everyone
+        let status = ServerMessage::LobbyStatus {
+            players: lobby.players.clone(),
+            required: REQUIRED_PLAYERS,
+        };
+        broadcast(status.clone(), &clients, &socket, &bincode_config).await;
+
+        if lobby.connected_count() == REQUIRED_PLAYERS {
+            let start_msg = ServerMessage::StartGame {
+                teams: lobby.initial_teams(),
+            };
+            broadcast(status, &clients, &socket, &bincode_config).await;
+        }
+    }
 
     // Task to receive client messages, update GameState, and track clients
     let socket_recv = Arc::clone(&socket);
@@ -102,8 +156,8 @@ async fn main() -> GameResult {
                                         player.input = input;
                                     }
                                 }
-                            }
-                            // Handle other client messages if any
+                            },
+                            ClientMessage::Hello { .. } => {}
                         }
                     }
                 }
@@ -119,7 +173,7 @@ async fn main() -> GameResult {
             tokio::time::sleep(std::time::Duration::from_millis(16)).await;
 
             let gs = game_state_send.lock().await;
-            let snapshot_msg = ServerMessage::Snapshot(gs.clone());
+            let snapshot_msg = ServerMessage::Snapshot(gs.to_net());
             drop(gs);
 
             let data = match encode_to_vec(&snapshot_msg, bincode_config) {

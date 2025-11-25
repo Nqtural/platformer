@@ -19,11 +19,12 @@ use crate::{
         WALL_SLIDE_SPEED,
     },
     input::PlayerInput,
+    network::NetPlayer,
     team::Team,
     utils::approach_zero,
 };
 
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct Player {
     pub pos: [f32; 2],
     pub vel: [f32; 2],
@@ -44,12 +45,13 @@ pub struct Player {
     pub facing: [f32; 2],
     pub input: PlayerInput,
     pub has_jumped: bool,
+    pub start_pos: [f32; 2],
 }
 
 impl Player {
-    pub fn new(pos: [f32; 2], name: String) -> Player {
+    pub fn new(start_pos: [f32; 2], name: String) -> Player {
         Player {
-            pos,
+            pos: start_pos,
             vel: [0.0, 0.0],
             lives: 3,
             name,
@@ -68,6 +70,19 @@ impl Player {
             facing: [0.0, 0.0],
             input: PlayerInput::new(),
             has_jumped: false,
+            start_pos,
+        }
+    }
+
+    pub fn to_net(&self, team_id: usize, player_id: usize) -> NetPlayer {
+        NetPlayer {
+            team_id,
+            player_id,
+            pos: self.pos,
+            vel: self.vel,
+            stunned: self.stunned,
+            invulnerable: self.invulnerable_timer,
+            lives: self.lives.max(0) as u8, // clamp negative lives just in case
         }
     }
 
@@ -75,7 +90,7 @@ impl Player {
         Rect::new(self.pos[0], self.pos[1], PLAYER_SIZE, PLAYER_SIZE)
     }
 
-    pub fn update(&mut self, map: &Rect, enemy_team: &Team, start_pos: [f32; 2], normal_dt: f32) {
+    pub fn update(&mut self, map: &Rect, enemy_team: &Team, normal_dt: f32) {
         self.update_cooldowns(normal_dt);
         if self.respawn_timer > 0.0 {
             return
@@ -93,7 +108,7 @@ impl Player {
 
         self.update_position(map, enemy_team, dt);
         self.check_platform_collision(map, dt);
-        self.check_for_death(start_pos);
+        self.check_for_death();
 
         if self.is_on_platform(map) {
             self.can_slam = false;
@@ -236,7 +251,7 @@ impl Player {
         self.pos[1] = rect.y;
     }
 
-    pub fn check_for_death(&mut self, start_pos: [f32; 2]) {
+    pub fn check_for_death(&mut self) {
         if self.pos[1] > VIRTUAL_HEIGHT {
             self.lives -= 1;
             self.double_jumps = 2;
@@ -246,7 +261,7 @@ impl Player {
             self.invulnerable_timer = RESPAWN_TIME + 0.5;
             self.facing = [0.0, 0.0];
             self.vel = [0.0, 0.0];
-            self.pos = start_pos;
+            self.pos = self.start_pos;
         }
     }
 

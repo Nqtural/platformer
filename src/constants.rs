@@ -5,6 +5,8 @@ pub const ENABLE_VSYNC: bool = true;
 pub const C_TEAM: usize = 0;
 pub const C_PLAYER: usize = 0;
 
+pub const REQUIRED_PLAYERS: usize = 2;
+
 pub const SERVER_IP: &str = "0.0.0.0";
 pub const SERVER_PORT: &str = "4000";
 

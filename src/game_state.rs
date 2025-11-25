@@ -12,6 +12,7 @@ use crate::{
         VIRTUAL_WIDTH,
     },
     map::Map,
+    network::NetSnapshot,
     team::Team,
     traits::IntoMint,
     utils::current_and_enemy,
@@ -67,6 +68,62 @@ impl GameState {
             winner: 0,
             background_image: Some(img),
         })
+    }
+
+    pub fn to_net(&self) -> NetSnapshot {
+        NetSnapshot {
+            winner: self.winner,
+            players: self.teams.iter().enumerate().flat_map(|(team_id, team)| {
+                team.players.iter().enumerate().map(move |(player_id, p)| {
+                    p.to_net(team_id, player_id)
+                })
+            }).collect(),
+
+            attacks: self.active_attacks
+                .iter()
+                .map(|a| a.to_net())
+                .collect(),
+        }
+    }
+
+    pub fn apply_snapshot(&mut self, snapshot: NetSnapshot) {
+        self.winner = snapshot.winner;
+
+        for net_player in snapshot.players {
+            if let Some(team) = self.teams.get_mut(net_player.team_id) {
+                if let Some(player) = team.players.get_mut(net_player.player_id) {
+                    player.pos = net_player.pos;
+                    player.vel = net_player.vel;
+                    player.lives = net_player.lives as i32;
+                    player.stunned = net_player.stunned;
+                    player.invulnerable_timer = net_player.invulnerable;
+                }
+            }
+        }
+
+        self.active_attacks.clear();
+        for net_attack in snapshot.attacks {
+            self.active_attacks.push(Attack::from_net(net_attack));
+        }
+    }
+
+    pub fn to_snapshot(&self) -> NetSnapshot {
+        let mut net_players = Vec::new();
+
+        for (team_id, team) in self.teams.iter().enumerate() {
+            for (player_id, p) in team.players.iter().enumerate() {
+                net_players.push(p.to_net(team_id, player_id));
+            }
+        }
+
+        NetSnapshot {
+            winner: self.winner,
+            players: net_players,
+            attacks: self.active_attacks
+                .iter()
+                .map(|a| a.to_net())
+                .collect(),
+        }
     }
 
     fn check_for_win(&mut self) {
@@ -423,7 +480,7 @@ impl EventHandler for GameState {
 
         game_canvas.finish(&mut ctx.gfx)?;
 
-        let mut final_canvas = Canvas::from_frame(&mut ctx.gfx, Color::BLACK);
+        let mut final_canvas = Canvas::from_frame(&ctx.gfx, Color::BLACK);
 
         let scale = if window_aspect > virtual_aspect {
             let scale = win_h / VIRTUAL_HEIGHT;

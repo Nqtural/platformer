@@ -8,23 +8,23 @@ use serde::{
 };
 use crate::{
     attack::Attack,
+    network::InitTeamData,
     player::Player,
     trail::TrailSquare,
     utils::handle_collisions,
 };
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Team {
     pub players: Vec<Player>,
     pub color_default: Color,
     pub color_stunned: Color,
     pub trail_interval: f32,
     pub trail_squares: Vec<TrailSquare>,
-    pub start_pos: [f32; 2],
 }
 
 impl Team {
-    pub fn new(players: Vec<Player>, color: Color, start_pos: [f32; 2]) -> Team {
+    pub fn new(players: Vec<Player>, color: Color) -> Team {
         Team {
             players,
             color_default: color,
@@ -36,8 +36,25 @@ impl Team {
             ),
             trail_interval: 0.01,
             trail_squares: Vec::new(),
-            start_pos,
         }
+    }
+
+    pub fn from_init(init: InitTeamData) -> Team {
+        // Build players: if server provided start_positions per player use that,
+        // otherwise fall back to team start pos (first) or zeros.
+        let mut players = Vec::new();
+        let names = init.player_names;
+        let positions = init.start_positions;
+
+        for i in 0..names.len() {
+            let pos = positions
+                .get(i)
+                .cloned()
+                .unwrap_or_else(|| positions.get(0).cloned().unwrap_or([0.0, 0.0]));
+            players.push(Player::new(pos, names[i].clone()));
+        }
+
+        Team::new(players, init.color)
     }
 
     pub fn update_players(
@@ -61,7 +78,7 @@ impl Team {
             let (head, right) = self.players.split_at_mut(player_idx);
             let (player, rest) = right.split_first_mut().unwrap();
 
-            player.update(&map, enemy_team, self.start_pos, dt);
+            player.update(&map, enemy_team, dt);
 
             active_attacks.extend(
                 player.apply_input(
