@@ -170,7 +170,7 @@ async fn main() -> GameResult {
     let socket_send = Arc::clone(&socket);
     tokio::spawn(async move {
         loop {
-            tokio::time::sleep(std::time::Duration::from_millis(16)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(8)).await;
 
             let gs = game_state_send.lock().await;
             let snapshot_msg = ServerMessage::Snapshot(gs.to_net());
