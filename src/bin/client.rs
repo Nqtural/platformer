@@ -250,7 +250,7 @@ async fn main() -> GameResult {
             match socket_recv.recv_from(&mut buf).await {
                 Ok((len, _)) => {
                     // decode snapshot from server
-                    if let Ok((ServerMessage::Snapshot{ tick, ref state }, _)) =
+                    if let Ok((ServerMessage::Snapshot{ tick, state }, _)) =
                     decode_from_slice::<ServerMessage, _>(&buf[..len], config_recv)
                     {
                         // timestamp using the shared Instant
@@ -258,7 +258,7 @@ async fn main() -> GameResult {
 
                         // push into shared buffer
                         let mut buffer = buffer_clone_for_task.lock().await;
-                        buffer.push_snapshot(tick, state.clone(), now);
+                        buffer.push_snapshot(tick, state, now);
 
                         // lock game state
                         let mut gs = gs_clone_recv.lock().await;
