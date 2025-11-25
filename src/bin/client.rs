@@ -242,15 +242,20 @@ async fn main() -> GameResult {
 
         loop {
             match socket_recv.recv_from(&mut buf).await {
-                Ok(_) => {
-                    // decode entire message
-                    if let ServerMessage::Snapshot { tick, ref state } = msg {
-                        // timestamp using the shared Instant
-                        let now = start_clone_for_task.elapsed().as_secs_f64();
+                Ok((len, _addr)) => {
+                    // decode each packet
+                    match decode_from_slice::<ServerMessage, _>(&buf[..len], bincode_config) {
+                        Ok((msg, _)) => {
+                            if let ServerMessage::Snapshot { tick, state } = msg {
+                                let now = start_clone_for_task.elapsed().as_secs_f64();
 
-                        // push into shared buffer
-                        let mut buffer = buffer_clone_for_task.lock().await;
-                        buffer.push_snapshot(tick, state.clone(), now);
+                                let mut buffer = buffer_clone_for_task.lock().await;
+                                buffer.push_snapshot(tick, state, now);
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to decode server message: {}", e);
+                        }
                     }
                 }
                 Err(e) => {
