@@ -34,7 +34,7 @@ impl AttackKind {
                     enemy.vel[1] = player.vel[1] * enemy.knockback_multiplier;
                     enemy.stunned = 0.5;
                 }
-                player.vel[0] = player.vel[0] * -0.5;
+                player.vel[0] *= -0.5;
                 player.vel[0] = player.vel[1] * -0.5;
                 player.dashing = 0.0;
             }

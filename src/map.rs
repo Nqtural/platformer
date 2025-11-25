@@ -14,6 +14,12 @@ pub struct Map {
     color: Color,
 }
 
+impl Default for Map {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Map {
     pub fn new() -> Map {
         Map {

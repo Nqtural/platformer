@@ -151,13 +151,12 @@ impl Player {
         // Sweep test to prevent downward tunneling through an opponent
         if self.slamming {
             for opponent in enemy_team.players.iter() {
-                if opponent.invulnerable_timer == 0.0 {
-                    if let Some(corrected_y) = self.sweep_down(old_pos[1], self.pos[1], &opponent.get_rect()) {
+                if opponent.invulnerable_timer == 0.0
+                    && let Some(corrected_y) = self.sweep_down(old_pos[1], self.pos[1], &opponent.get_rect()) {
                         // Snap onto opponent
                         self.pos[1] = corrected_y;
                         self.vel[1] = 0.0;
                     }
-                }
             }
         }
 
@@ -192,7 +191,7 @@ impl Player {
         let player_bottom = rect.y + rect.h;
         let platform_top = map.y;
 
-        (player_bottom - platform_top).abs() < 5.0 && rect.overlaps(&map)
+        (player_bottom - platform_top).abs() < 5.0 && rect.overlaps(map)
     }
 
     fn check_platform_collision(
@@ -204,7 +203,7 @@ impl Player {
         let mut on_wall_right = false;
         let mut on_wall_left = false;
 
-        if rect.overlaps(&map) {
+        if rect.overlaps(map) {
             let overlap_x1 = map.x + map.w - rect.x;
             let overlap_x2 = rect.x + rect.w - map.x;
             let overlap_y1 = map.y + map.h - rect.y;
@@ -222,16 +221,14 @@ impl Player {
                     on_wall_left = true;
                 }
                 self.double_jumps = 2;
+            } else if rect.y < map.y {
+                rect.y = map.y - rect.h;
+                self.vel[1] = 0.0;
+                self.double_jumps = 2;
             } else {
-                if rect.y < map.y {
-                    rect.y = map.y - rect.h;
+                rect.y = map.y + map.h;
+                if self.vel[1] < 0.0 {
                     self.vel[1] = 0.0;
-                    self.double_jumps = 2;
-                } else {
-                    rect.y = map.y + map.h;
-                    if self.vel[1] < 0.0 {
-                        self.vel[1] = 0.0;
-                    }
                 }
             }
         }
@@ -239,7 +236,7 @@ impl Player {
         let holding_toward_wall_right = on_wall_right && self.input.right();
         let holding_toward_wall_left = on_wall_left && self.input.left();
         let holding_wall = holding_toward_wall_right || holding_toward_wall_left;
-        let on_platform = self.is_on_platform(&map);
+        let on_platform = self.is_on_platform(map);
 
         if holding_wall && !on_platform && self.stunned == 0.0 {
             self.vel[1] = WALL_SLIDE_SPEED;
@@ -323,7 +320,7 @@ impl Player {
             if self.input.light() {
                 new_attacks.push(
                     Attack::new(
-                        &self,
+                        self,
                         AttackKind::Light,
                         team_idx,
                         player_idx,
@@ -334,7 +331,7 @@ impl Player {
             if self.input.normal() {
                 new_attacks.push(
                     Attack::new(
-                        &self,
+                        self,
                         AttackKind::Normal,
                         team_idx,
                         player_idx,

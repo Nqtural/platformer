@@ -46,12 +46,12 @@ impl Team {
         let names = init.player_names;
         let positions = init.start_positions;
 
-        for i in 0..names.len() {
+        for (i, name) in names.iter().enumerate() {
             let pos = positions
                 .get(i)
                 .cloned()
-                .unwrap_or_else(|| positions.get(0).cloned().unwrap_or([0.0, 0.0]));
-            players.push(Player::new(pos, names[i].clone()));
+                .unwrap_or_else(|| positions.first().cloned().unwrap_or([0.0, 0.0]));
+            players.push(Player::new(pos, name.clone()));
         }
 
         Team::new(players, init.color)
@@ -67,7 +67,7 @@ impl Team {
             mut dt: f32,
         ) {
             if winner > 0 {
-                dt = dt / 2.0;
+                dt /= 2.0;
             }
 
             self.trail_squares.iter_mut().for_each(|s| s.update(dt));
@@ -78,7 +78,7 @@ impl Team {
             let (head, right) = self.players.split_at_mut(player_idx);
             let (player, rest) = right.split_first_mut().unwrap();
 
-            player.update(&map, enemy_team, dt);
+            player.update(map, enemy_team, dt);
 
             active_attacks.extend(
                 player.apply_input(

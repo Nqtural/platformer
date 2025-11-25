@@ -90,15 +90,14 @@ impl GameState {
         self.winner = snapshot.winner;
 
         for net_player in snapshot.players {
-            if let Some(team) = self.teams.get_mut(net_player.team_id) {
-                if let Some(player) = team.players.get_mut(net_player.player_id) {
+            if let Some(team) = self.teams.get_mut(net_player.team_id)
+                && let Some(player) = team.players.get_mut(net_player.player_id) {
                     player.pos = net_player.pos;
                     player.vel = net_player.vel;
                     player.lives = net_player.lives as i32;
                     player.stunned = net_player.stunned;
                     player.invulnerable_timer = net_player.invulnerable;
                 }
-            }
         }
 
         self.active_attacks.clear();
@@ -281,16 +280,15 @@ impl GameState {
                 game_canvas.draw(&outline, camera_transform);
 
                 let text = Text::new(TextFragment {
-                    text: format!("{}", player.name),
+                    text: player.name.to_string(),
                     font: None,
                     scale: Some(PxScale::from(14.0 * zoom)),
                     color: Some(NAME_COLOR),
-                    ..Default::default()
                 });
 
                 let text_dims = text.dimensions(ctx).unwrap();
                 let text_pos = Vec2::new(
-                    player.pos[0] + (PLAYER_SIZE / 2.0) - (text_dims.w as f32 / 2.0),
+                    player.pos[0] + (PLAYER_SIZE / 2.0) - (text_dims.w / 2.0),
                     player.pos[1] + 25.0,
                 ) * zoom + camera_translation;
 
@@ -370,7 +368,6 @@ impl GameState {
                         TEAM_TWO_COLOR
                     }
                 ),
-                ..Default::default()
             });
 
             let winner_dims = winner_text.dimensions(ctx).unwrap();
@@ -422,7 +419,7 @@ impl EventHandler for GameState {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         let target_image = Image::new_canvas_image(
-            &mut ctx.gfx,
+            &ctx.gfx,
             ImageFormat::Rgba8UnormSrgb,
             VIRTUAL_WIDTH as u32,
             VIRTUAL_HEIGHT as u32,
@@ -430,7 +427,7 @@ impl EventHandler for GameState {
         );
 
         let mut game_canvas = Canvas::from_image(
-            &mut ctx.gfx,
+            &ctx.gfx,
             target_image.clone(),
             Color::new(0.1, 0.1, 0.15, 1.0),
         );
@@ -476,7 +473,7 @@ impl EventHandler for GameState {
         self.draw_trails(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
         //self.draw_attacks(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
         self.draw_players(&mut game_canvas, ctx, camera_translation, zoom)?;
-        self.draw_hud(&mut game_canvas, &ctx)?;
+        self.draw_hud(&mut game_canvas, ctx)?;
 
         game_canvas.finish(&mut ctx.gfx)?;
 

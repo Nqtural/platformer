@@ -1,9 +1,4 @@
-use ggez::graphics::{
-    Color,
-    Rect,
-};
-use tokio::sync::RwLock;
-use rand::Rng;
+use ggez::graphics::Color;
 use serde::{
     Serialize,
     Deserialize,
@@ -28,6 +23,12 @@ pub struct Lobby {
 
     next_team: usize,
     next_player: usize,
+}
+
+impl Default for Lobby {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Lobby {

@@ -7,10 +7,7 @@ use serde::{
     Deserialize,
 };
 use crate::{
-    attack::{
-        Attack,
-        AttackKind,
-    },
+    attack::AttackKind,
     input::PlayerInput,
     lobby::LobbyPlayer,
 };

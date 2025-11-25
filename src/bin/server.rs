@@ -1,4 +1,3 @@
-use rand;
 use std::sync::Arc;
 use std::net::SocketAddr;
 use std::collections::HashSet;
@@ -70,9 +69,6 @@ async fn main() -> GameResult {
     // Initialize lobby state
     let lobby_state = Arc::new(RwLock::new(Lobby::new()));
 
-    let lobby_state_recv = Arc::clone(&lobby_state);
-    let lobby_state_send = Arc::clone(&lobby_state);
-
     let bincode_config = config::standard();
     let game_state_recv = Arc::clone(&game_state);
     let game_state_send = Arc::clone(&game_state);
@@ -121,19 +117,19 @@ async fn main() -> GameResult {
             players: lobby.players.clone(),
             required: REQUIRED_PLAYERS,
         };
-        broadcast(status.clone(), &clients, &socket, &bincode_config).await;
+        broadcast(status, &clients, &socket, &bincode_config).await;
 
         if lobby.connected_count() == REQUIRED_PLAYERS {
             let start_msg = ServerMessage::StartGame {
                 teams: lobby.initial_teams(),
             };
-            broadcast(status, &clients, &socket, &bincode_config).await;
+            broadcast(start_msg, &clients, &socket, &bincode_config).await;
         }
     }
 
     // Task to receive client messages, update GameState, and track clients
     let socket_recv = Arc::clone(&socket);
-    let config_recv = bincode_config.clone();
+    let config_recv = bincode_config;
     tokio::spawn(async move {
         let mut buf = [0u8; 2048];
         loop {
@@ -151,11 +147,10 @@ async fn main() -> GameResult {
                             ClientMessage::Input { team_id, player_id, input } => {
                                 let mut gs = game_state_recv.lock().await;
                                 // Update player input in game state (assuming valid indexing)
-                                if let Some(team) = gs.teams.get_mut(team_id) {
-                                    if let Some(player) = team.players.get_mut(player_id) {
+                                if let Some(team) = gs.teams.get_mut(team_id)
+                                    && let Some(player) = team.players.get_mut(player_id) {
                                         player.input = input;
                                     }
-                                }
                             },
                             ClientMessage::Hello { .. } => {}
                         }

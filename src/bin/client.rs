@@ -2,7 +2,6 @@ use ggez::{
     Context,
     ContextBuilder,
     GameResult,
-    graphics::Rect,
 };
 use tokio::net::UdpSocket;
 use tokio::sync::Mutex;
@@ -47,7 +46,7 @@ impl ClientState {
     ) -> GameResult<()> {
         let team_list: Vec<Team> = teams
             .into_iter()
-            .map(|t| Team::from_init(t))
+            .map(Team::from_init)
             .collect();
 
         let teams_array: [Team; 2] = team_list.try_into()
@@ -136,7 +135,7 @@ async fn main() -> GameResult {
 
     // Spawn receive task
     let socket_recv = Arc::clone(&socket);
-    let config_recv = bincode_config.clone();
+    let config_recv = bincode_config;
 
     tokio::spawn(async move {
         let mut buf = [0u8; 2048];
