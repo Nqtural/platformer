@@ -5,9 +5,11 @@ use ggez::{
     GameResult,
 };
 use tokio::net::UdpSocket;
-use tokio::sync::Mutex;
+use tokio::sync::Mutex as TokioMutex;
+use std::collections::VecDeque;
 use std::sync::Arc;
 use std::net::SocketAddr;
+use std::time::Instant;
 use platform::{
     constants::{
         C_TEAM,
@@ -23,6 +25,8 @@ use platform::{
         ClientMessage,
         ServerMessage,
         InitTeamData,
+        NetPlayer,
+        NetSnapshot,
     },
     read_config::Config,
     player::Player,
@@ -35,6 +39,7 @@ pub struct ClientState {
     pub player_id: usize,
     pub ready: bool,
     pub game_state: Option<GameState>,
+    pub buffer: SnapshotBuffer,
 }
 
 impl ClientState {
@@ -57,13 +62,105 @@ impl ClientState {
     }
 }
 
+pub struct SnapshotEntry {
+    pub tick: u64,
+    pub timestamp: f64,
+    pub state: NetSnapshot,
+}
+
+pub struct SnapshotBuffer {
+    pub delay: f64,
+    pub snapshots: VecDeque<SnapshotEntry>,
+}
+
+impl SnapshotBuffer {
+    pub fn new(delay: f64) -> Self {
+        Self {
+            delay,
+            snapshots: VecDeque::with_capacity(256),
+        }
+    }
+
+    pub fn push_snapshot(&mut self, tick: u64, state: NetSnapshot, now: f64) {
+        self.snapshots.push_back(SnapshotEntry {
+            tick,
+            timestamp: now,
+            state,
+        });
+
+        while self.snapshots.len() > 256 {
+            self.snapshots.pop_front();
+        }
+    }
+
+    // finds the two snapshots around a target time
+    pub fn interpolate(&self, now: f64) -> Option<NetSnapshot> {
+        let target = now - self.delay;
+
+        // need at least 2 snapshots to interpolate
+        if self.snapshots.len() < 2 {
+            return None;
+        }
+
+        // find older/newer entries
+        let mut older = &self.snapshots[0];
+        let mut newer = &self.snapshots[1];
+
+        for i in 1..self.snapshots.len() {
+            if self.snapshots[i].timestamp >= target {
+                older = &self.snapshots[i - 1];
+                newer = &self.snapshots[i];
+                break;
+            }
+        }
+
+        let dt = newer.timestamp - older.timestamp;
+        if dt <= 0.0 {
+            return Some(older.state.clone());
+        }
+
+        let t = ((target - older.timestamp) / dt).clamp(0.0, 1.0) as f32;
+
+        Some(Self::lerp_snapshot(&older.state, &newer.state, t))
+    }
+
+    fn lerp_snapshot(a: &NetSnapshot, b: &NetSnapshot, t: f32) -> NetSnapshot {
+        NetSnapshot {
+            winner: b.winner,
+            players: a.players.iter().zip(&b.players).map(|(pa, pb)| {
+                NetPlayer {
+                    team_id: pa.team_id,
+                    player_id: pa.player_id,
+                    pos: [
+                        pa.pos[0] + (pb.pos[0] - pa.pos[0]) * t,
+                        pa.pos[1] + (pb.pos[1] - pa.pos[1]) * t,
+                    ],
+                    vel: [
+                        pa.vel[0] + (pb.vel[0] - pa.vel[0]) * t,
+                        pa.vel[1] + (pb.vel[1] - pa.vel[1]) * t,
+                    ],
+                    stunned: pb.stunned,
+                    invulnerable: pb.invulnerable,
+                    lives: pb.lives,
+                }
+            }).collect(),
+            attacks: b.attacks.clone(),
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> GameResult {
+    // start time shared between tasks and ggez loop
+    let start = Arc::new(Instant::now());
+
+    // ClientState is used only for handshake/initialization here
     let mut client = ClientState {
         team_id: 0,
         player_id: 0,
         ready: false,
         game_state: None,
+        buffer: SnapshotBuffer::new(0.1),
     };
 
     let config = Config::get()?;
@@ -82,7 +179,8 @@ async fn main() -> GameResult {
         )
         .build()?;
 
-    let game_state = Arc::new(Mutex::new(GameState::new(
+    // shared GameState (wrapped in a tokio Mutex so tasks can use .lock().await)
+    let game_state = Arc::new(TokioMutex::new(GameState::new(
         [
             Team::new(
                 vec![Player::new(TEAM_ONE_START_POS, "Player1".into())],
@@ -96,9 +194,13 @@ async fn main() -> GameResult {
         &mut ctx
     )?));
 
+    // shared SnapshotBuffer (tokio Mutex so receive task can push)
+    let shared_buffer = Arc::new(TokioMutex::new(SnapshotBuffer::new(0.1)));
+
     let bincode_config = config::standard();
     let gs_clone_send = Arc::clone(&game_state);
-    let gs_clone_recv = Arc::clone(&game_state);
+    let buffer_clone_for_task = Arc::clone(&shared_buffer);
+    let start_clone_for_task = Arc::clone(&start);
 
     let server_addr: SocketAddr = format!(
         "{}:{}",
@@ -134,15 +236,13 @@ async fn main() -> GameResult {
         client.player_id = player_id;
     }
 
-    if let ServerMessage::StartGame { teams } = msg {
-        client.apply_initial_data(teams, &mut ctx)?;
+    if let ServerMessage::StartGame { ref teams } = msg {
+        client.apply_initial_data(teams.to_vec(), &mut ctx)?;
         client.ready = true;
     }
 
     // spawn receive task
     let socket_recv = Arc::clone(&socket);
-    let config_recv = bincode_config;
-
     tokio::spawn(async move {
         let mut buf = [0u8; 2048];
 
@@ -150,9 +250,16 @@ async fn main() -> GameResult {
             match socket_recv.recv_from(&mut buf).await {
                 Ok((len, _)) => {
                     // decode snapshot from server
-                    if let Ok((ServerMessage::Snapshot(server_state), _)) =
+                    if let Ok((ServerMessage::Snapshot{ tick, ref state }, _)) =
                     decode_from_slice::<ServerMessage, _>(&buf[..len], config_recv)
                     {
+                        // timestamp using the shared Instant
+                        let now = start_clone_for_task.elapsed().as_secs_f64();
+
+                        // push into shared buffer
+                        let mut buffer = buffer_clone_for_task.lock().await;
+                        buffer.push_snapshot(tick, state.clone(), now);
+
                         // lock game state
                         let mut gs = gs_clone_recv.lock().await;
 
@@ -167,9 +274,6 @@ async fn main() -> GameResult {
                                     .collect::<Vec<_>>()
                             })
                             .collect();
-
-                        // apply server snapshot
-                        gs.apply_snapshot(server_state);
 
                         // restore local inputs to prevent input lag
                         for (team_idx, team) in gs.teams.iter_mut().enumerate() {
@@ -216,24 +320,44 @@ async fn main() -> GameResult {
         }
     });
 
-    ggez::event::run(ctx, event_loop, SharedGameState(game_state))
+    // Run ggez event loop with a handler that has access to the shared buffer and start Instant
+    ggez::event::run(ctx, event_loop, SharedGameState {
+        game_state,
+        buffer: shared_buffer,
+        start,
+    })
 }
 
-struct SharedGameState(Arc<Mutex<GameState>>);
+struct SharedGameState {
+    game_state: Arc<TokioMutex<GameState>>,
+    buffer: Arc<TokioMutex<SnapshotBuffer>>,
+    start: Arc<Instant>,
+}
 
 impl ggez::event::EventHandler for SharedGameState {
-    fn update(&mut self, ctx: &mut ggez::Context) -> GameResult {
-        let gs = self.0.try_lock();
-        if let Ok(mut gs) = gs {
-            gs.update(ctx)
-        } else {
-            Ok(())
+    fn update(&mut self, ctx: &mut Context) -> GameResult {
+        // compute shared time relative to start
+        let now = self.start.elapsed().as_secs_f64();
+
+        // try to get an interpolated snapshot (non-blocking)
+        if let Ok(buffer_guard) = self.buffer.try_lock()
+            && let Some(snapshot) = buffer_guard.interpolate(now) {
+            // apply interpolated snapshot to the game state (non-blocking)
+            if let Ok(mut gs) = self.game_state.try_lock() {
+                gs.apply_interpolated_snapshot(snapshot);
+            }
         }
+
+        // now run the usual update (non-blocking)
+        if let Ok(mut gs) = self.game_state.try_lock() {
+            gs.update(ctx)?;
+        }
+
+        Ok(())
     }
 
     fn draw(&mut self, ctx: &mut ggez::Context) -> GameResult {
-        let gs = self.0.try_lock();
-        if let Ok(mut gs) = gs {
+        if let Ok(mut gs) = self.game_state.try_lock() {
             gs.draw(ctx)
         } else {
             Ok(())
@@ -246,7 +370,7 @@ impl ggez::event::EventHandler for SharedGameState {
         input: ggez::input::keyboard::KeyInput,
         repeated: bool,
     ) -> GameResult {
-        if let Ok(mut gs) = self.0.try_lock() {
+        if let Ok(mut gs) = self.game_state.try_lock() {
             gs.key_down_event(ctx, input, repeated)
         } else {
             Ok(())
@@ -258,7 +382,7 @@ impl ggez::event::EventHandler for SharedGameState {
         ctx: &mut ggez::Context,
         input: ggez::input::keyboard::KeyInput,
     ) -> GameResult {
-        if let Ok(mut gs) = self.0.try_lock() {
+        if let Ok(mut gs) = self.game_state.try_lock() {
             gs.key_up_event(ctx, input)
         } else {
             Ok(())
