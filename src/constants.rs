@@ -13,6 +13,7 @@ pub const SERVER_PORT: &str = "4000";
 pub const VIRTUAL_WIDTH: f32 = 1980.0;
 pub const VIRTUAL_HEIGHT: f32 = 1080.0;
 
+pub const ATTACK_STRAIGHT_IMAGE: &str = "/normal_1.png";
 pub const BACKGROUND_IMAGE: &str = "/background.png";
 pub const MAP_COLOR: Color = Color::new(0.0, 0.0, 0.0, 1.0);
 pub const NAME_COLOR: Color = Color::new(0.6, 0.6, 0.6, 1.0);

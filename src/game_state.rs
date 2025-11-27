@@ -1,6 +1,7 @@
 use crate::{
     attack::Attack,
     constants::{
+        ATTACK_STRAIGHT_IMAGE,
         BACKGROUND_IMAGE,
         C_PLAYER,
         C_TEAM,
@@ -54,11 +55,15 @@ pub struct GameState {
     #[serde(skip)]
     #[serde(default)]
     background_image: Option<Image>,
+    #[serde(skip)]
+    #[serde(default)]
+    attack_straight_image: Option<Image>,
 }
 
 impl GameState {
     pub fn new(teams: [Team; 2], ctx: &mut Context) -> GameResult<Self> {
         let img = Image::from_path(&ctx.gfx, BACKGROUND_IMAGE)?;
+        let attack_straight = Image::from_path(&ctx.gfx, ATTACK_STRAIGHT_IMAGE)?;
 
         Ok(Self {
             teams,
@@ -67,6 +72,7 @@ impl GameState {
             camera_pos: Vec2::new(0.0, 0.0),
             winner: 0,
             background_image: Some(img),
+            attack_straight_image: Some(attack_straight),
         })
     }
 
@@ -163,6 +169,19 @@ impl GameState {
         }
     }
 
+    fn drawparam_constructor(&self, x: f32, y: f32) -> DrawParam {
+        let zoom = 1.1;
+        let screen_center = Vec2::new(VIRTUAL_WIDTH / 2.0, VIRTUAL_HEIGHT / 2.0);
+
+        DrawParam::default()
+            .dest(
+                screen_center 
+                + Vec2::new(x, y) * zoom 
+                - self.camera_pos * zoom
+            )
+            .scale(Vec2::new(zoom, zoom).to_mint_vec())
+    }
+
     fn update_camera(&mut self) {
         let mut sum = Vec2::ZERO;
         let mut count: usize = 0;
@@ -205,13 +224,20 @@ impl GameState {
         Ok(())
     }
     
-    fn _draw_attacks(
+    fn draw_attacks(
         &self,
         game_canvas: &mut Canvas,
         gfx: &mut GraphicsContext,
         camera_transform: &DrawParam,
     ) -> GameResult {
         for atk in &self.active_attacks {
+            let rect = atk.get_rect();
+
+            if let Some(img) = self.attack_straight_image.as_ref() {
+                let draw_param = self.drawparam_constructor(rect.x, rect.y);
+
+                game_canvas.draw(img, draw_param);
+            }
             let mesh = Mesh::new_rectangle(
                 gfx,
                 DrawMode::stroke(1.0),
@@ -471,7 +497,7 @@ impl EventHandler for GameState {
 
         self.draw_map(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
         self.draw_trails(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
-        //self.draw_attacks(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
+        self.draw_attacks(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
         self.draw_players(&mut game_canvas, ctx, camera_translation, zoom)?;
         self.draw_hud(&mut game_canvas, ctx)?;
 

@@ -90,10 +90,10 @@ impl Attack {
         owner_player: usize,
     ) -> Attack {
         Attack {
-            x: player.pos[0] - 20.0 + (10.0 * player.facing[0]),
-            y: player.pos[1] - 20.0 + (10.0 * player.facing[1]),
-            w: PLAYER_SIZE + 40.0,
-            h: PLAYER_SIZE + 40.0,
+            x: player.pos[0] - 15.0 + (15.0 * player.facing[0]),
+            y: player.pos[1] - 15.0 + (15.0 * player.facing[1]),
+            w: PLAYER_SIZE + 30.0,
+            h: PLAYER_SIZE + 30.0,
             kind,
             duration: 0.1,
             timer: 0.0,
