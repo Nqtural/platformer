@@ -1,7 +1,7 @@
 use crate::{
     attack::Attack,
     constants::{
-        ATTACK_STRAIGHT_IMAGE,
+        ATTACK_IMAGE,
         BACKGROUND_IMAGE,
         C_PLAYER,
         C_TEAM,
@@ -57,13 +57,13 @@ pub struct GameState {
     background_image: Option<Image>,
     #[serde(skip)]
     #[serde(default)]
-    attack_straight_image: Option<Image>,
+    attack_image: Option<Image>,
 }
 
 impl GameState {
     pub fn new(teams: [Team; 2], ctx: &mut Context) -> GameResult<Self> {
-        let img = Image::from_path(&ctx.gfx, BACKGROUND_IMAGE)?;
-        let attack_straight = Image::from_path(&ctx.gfx, ATTACK_STRAIGHT_IMAGE)?;
+        let bg_img = Image::from_path(&ctx.gfx, BACKGROUND_IMAGE)?;
+        let attack_img = Image::from_path(&ctx.gfx, ATTACK_IMAGE)?;
 
         Ok(Self {
             teams,
@@ -71,8 +71,8 @@ impl GameState {
             active_attacks: Vec::new(),
             camera_pos: Vec2::new(0.0, 0.0),
             winner: 0,
-            background_image: Some(img),
-            attack_straight_image: Some(attack_straight),
+            background_image: Some(bg_img),
+            attack_image: Some(attack_img),
         })
     }
 
@@ -227,24 +227,37 @@ impl GameState {
     fn draw_attacks(
         &self,
         game_canvas: &mut Canvas,
-        gfx: &mut GraphicsContext,
-        camera_transform: &DrawParam,
     ) -> GameResult {
         for atk in &self.active_attacks {
             let rect = atk.get_rect();
 
-            if let Some(img) = self.attack_straight_image.as_ref() {
-                let draw_param = self.drawparam_constructor(rect.x, rect.y);
+            // get attack image rotation
+            let rotation_degrees: f32 = match atk.facing() {
+                [0.0, 1.0] => 90.0,
+                [0.0, -1.0] => -90.0,
+                [1.0, 0.0] => 0.0,
+                [-1.0, 0.0] => 180.0,
+                [1.0, 1.0] => 45.0,
+                [1.0, -1.0] => -45.0,
+                [-1.0, 1.0] => 125.0,
+                [-1.0, -1.0] => -125.0,
+                _ => 0.0
+            };
+
+            // DrawParam.rotation needs radians
+            let rotation = rotation_degrees.to_radians();
+
+            if let Some(img) = self.attack_image.as_ref() {
+                let draw_param = self.drawparam_constructor(
+                    // add half the width for rotation around centre
+                    rect.x + rect.w * 0.5,
+                    rect.y + rect.h * 0.5,
+                )
+                    .offset([0.5, 0.5]) // rotate around centre
+                    .rotation(rotation);
 
                 game_canvas.draw(img, draw_param);
             }
-            let mesh = Mesh::new_rectangle(
-                gfx,
-                DrawMode::stroke(1.0),
-                atk.get_rect(),
-                Color::new(1.0, 0.0, 0.0, 0.4),
-            )?;
-            game_canvas.draw(&mesh, *camera_transform);
         }
 
         Ok(())
@@ -264,7 +277,8 @@ impl GameState {
                     square.rect,
                     square.color,
                 )?;
-                game_canvas.draw(&mesh, *camera_transform);
+                game_canvas.draw(&mesh,
+                    *camera_transform);
             }
         }
 
@@ -497,7 +511,7 @@ impl EventHandler for GameState {
 
         self.draw_map(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
         self.draw_trails(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
-        self.draw_attacks(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
+        self.draw_attacks(&mut game_canvas)?;
         self.draw_players(&mut game_canvas, ctx, camera_translation, zoom)?;
         self.draw_hud(&mut game_canvas, ctx)?;
 

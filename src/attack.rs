@@ -80,6 +80,7 @@ pub struct Attack {
     timer: f32,
     owner_team: usize,
     owner_player: usize,
+    facing: [f32; 2],
 }
 
 impl Attack {
@@ -99,6 +100,7 @@ impl Attack {
             timer: 0.0,
             owner_team,
             owner_player,
+            facing: player.facing,
         }
     }
 
@@ -118,6 +120,7 @@ impl Attack {
             timer,
             owner_team: net.owner_team,
             owner_player: net.owner_player,
+            facing: net.facing,
         }
     }
 
@@ -128,6 +131,7 @@ impl Attack {
             rect: self.get_rect(),
             time_left: (self.duration - self.timer).max(0.0),
             kind: self.kind.clone(),
+            facing: self.facing,
         }
     }
 
@@ -153,5 +157,9 @@ impl Attack {
 
     pub fn get_rect(&self) -> Rect {
         Rect::new(self.x, self.y, self.w, self.h)
+    }
+    
+    pub fn facing(&self) -> [f32; 2] {
+        self.facing
     }
 }

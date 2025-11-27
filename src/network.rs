@@ -45,6 +45,7 @@ pub struct NetAttack {
     pub rect: Rect,
     pub time_left: f32,
     pub kind: AttackKind,
+    pub facing: [f32; 2],
 }
 
 #[derive(Serialize, Deserialize)]
