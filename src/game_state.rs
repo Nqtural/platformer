@@ -194,7 +194,6 @@ impl GameState {
         &self,
         game_canvas: &mut Canvas,
         player_pos: [f32; 2],
-        player_facing: [f32; 2],
         attacks: &Vec<Attack>,
     ) -> GameResult {
         for atk in attacks {
@@ -203,10 +202,10 @@ impl GameState {
                 return Ok(());
             }
 
-            let rect = atk.get_rect(player_pos, player_facing);
+            let rect = atk.get_rect(player_pos);
 
             // get attack image rotation
-            let rotation_degrees: f32 = match player_facing {
+            let rotation_degrees: f32 = match atk.facing() {
                 [0.0, 1.0] => 90.0,
                 [0.0, -1.0] => -90.0,
                 [1.0, 0.0] => 0.0,
@@ -309,7 +308,7 @@ impl GameState {
 
                 game_canvas.draw(&text, DrawParam::default().dest(text_pos));
 
-                self.draw_attacks(game_canvas, player.pos, player.facing, &player.attacks)?;
+                self.draw_attacks(game_canvas, player.pos, &player.attacks)?;
             }
         }
 

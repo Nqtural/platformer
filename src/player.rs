@@ -309,6 +309,7 @@ impl Player {
                         AttackKind::Slam,
                         team_idx,
                         player_idx,
+                        self.facing,
                     )
                 );
                 if self.vel[1] < MAX_SPEED[1] {
@@ -338,6 +339,7 @@ impl Player {
                         AttackKind::Light,
                         team_idx,
                         player_idx,
+                        self.facing,
                     )
                 );
                 self.attack_cooldown = 0.3;
@@ -348,6 +350,7 @@ impl Player {
                         AttackKind::Normal,
                         team_idx,
                         player_idx,
+                        self.facing,
                     )
                 );
                 self.attack_cooldown = 0.3;
@@ -374,6 +377,7 @@ impl Player {
                     AttackKind::Dash,
                     team_idx,
                     player_idx,
+                    self.facing,
                 )
             );
 
@@ -399,7 +403,7 @@ impl Player {
 
     pub fn handle_attack_collisions(&mut self, atk: &Attack, attacker: &mut Player) {
         if self.invulnerable_timer > 0.0 // invulnerable
-        || !atk.get_rect(attacker.pos, attacker.facing).overlaps(&self.get_rect()) { // miss
+        || !atk.get_rect(attacker.pos).overlaps(&self.get_rect()) { // miss
             return;
         }
 
