@@ -94,6 +94,7 @@ async fn main() -> GameResult {
     ).map_err(|e| ggez::GameError::CustomError(e.to_string()))?;
 
     if let ClientMessage::Hello { name } = msg {
+        println!("{} connected as {}", addr, name);
         let mut lobby = lobby_state.write().await;
 
         // Prevent duplicate connections
