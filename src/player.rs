@@ -38,7 +38,8 @@ pub struct Player {
     pub attacks: Vec<Attack>,
     pub can_slam: bool,
     pub dash_cooldown: f32,
-    pub attack_cooldown: f32,
+    pub normal_cooldown: f32,
+    pub light_cooldown: f32,
     pub respawn_timer: f32,
     pub trail_timer: f32,
     pub facing: [f32; 2],
@@ -62,7 +63,8 @@ impl Player {
             attacks: Vec::new(),
             can_slam: true,
             dash_cooldown: 0.0,
-            attack_cooldown: 0.0,
+            normal_cooldown: 0.0,
+            light_cooldown: 0.0,
             respawn_timer: 0.0,
             trail_timer: 0.0,
             facing: [0.0, 0.0],
@@ -121,7 +123,8 @@ impl Player {
 
     fn update_cooldowns(&mut self, dt: f32) {
         let mut cooldowns = [
-            &mut self.attack_cooldown,
+            &mut self.normal_cooldown,
+            &mut self.light_cooldown,
             &mut self.stunned,
             &mut self.invulnerable_timer,
             &mut self.slow,
@@ -326,29 +329,27 @@ impl Player {
                 self.vel[0] += ACCELERATION * dt;
             }
         }
-        if self.attack_cooldown <= 0.0 {
-            if self.input.light() {
-                self.attacks.push(
-                    Attack::new(
-                        AttackKind::Light,
-                        team_idx,
-                        player_idx,
-                        self.facing,
-                    )
-                );
-                self.attack_cooldown = 0.6;
-            }
-            if self.input.normal() {
-                self.attacks.push(
-                    Attack::new(
-                        AttackKind::Normal,
-                        team_idx,
-                        player_idx,
-                        self.facing,
-                    )
-                );
-                self.attack_cooldown = 0.6;
-            }
+        if self.input.light() && self.light_cooldown <= 0.0 {
+            self.attacks.push(
+                Attack::new(
+                    AttackKind::Light,
+                    team_idx,
+                    player_idx,
+                    self.facing,
+                )
+            );
+            self.light_cooldown = 2.0;
+        }
+        if self.input.normal() && self.normal_cooldown <= 0.0 {
+            self.attacks.push(
+                Attack::new(
+                    AttackKind::Normal,
+                    team_idx,
+                    player_idx,
+                    self.facing,
+                )
+            );
+            self.normal_cooldown = 0.6;
         }
         if self.input.dash() && self.dash_cooldown <= 0.0 {
             let x = self.facing[0];
@@ -424,7 +425,7 @@ impl Player {
                 attacker.vel[1] *= -0.5;
             }
             AttackKind::Light => {
-                self.stunned = 0.5;
+                self.stunned = 1.0;
                 self.invulnerable_timer = 0.1;
                 self.knockback_multiplier += 0.01;
                 self.remove_dashes();
