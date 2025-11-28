@@ -336,7 +336,7 @@ impl Player {
                         self.facing,
                     )
                 );
-                self.attack_cooldown = 0.3;
+                self.attack_cooldown = 0.6;
             }
             if self.input.normal() {
                 self.attacks.push(
@@ -347,7 +347,7 @@ impl Player {
                         self.facing,
                     )
                 );
-                self.attack_cooldown = 0.3;
+                self.attack_cooldown = 0.6;
             }
         }
         if self.input.dash() && self.dash_cooldown <= 0.0 {
