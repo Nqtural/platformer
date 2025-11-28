@@ -1,5 +1,8 @@
 use crate::{
-    attack::Attack,
+    attack::{
+        Attack,
+        AttackKind,
+    },
     constants::{
         ATTACK_IMAGE,
         BACKGROUND_IMAGE,
@@ -195,6 +198,11 @@ impl GameState {
         attacks: &Vec<Attack>,
     ) -> GameResult {
         for atk in attacks {
+            if *atk.kind() == AttackKind::Dash
+            || *atk.kind() == AttackKind::Slam {
+                return Ok(());
+            }
+
             let rect = atk.get_rect(player_pos, player_facing);
 
             // get attack image rotation
