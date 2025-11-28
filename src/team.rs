@@ -7,6 +7,7 @@ use serde::{
     Serialize,
 };
 use crate::{
+    attack::AttackKind,
     network::InitTeamData,
     player::Player,
     trail::TrailSquare,
@@ -85,22 +86,19 @@ impl Team {
 
             player.apply_input(map, team_idx, player_idx, dt);
 
-            if player.dashing > 0.0 || player.slamming {
-                let others = head.iter_mut()
-                    .chain(rest.iter_mut())
-                    .chain(enemy_team.players.iter_mut());
-
-                //handle_collisions(player, others);
-
-                while player.trail_timer >= self.trail_interval {
-                    player.trail_timer -= self.trail_interval;
-                    self.trail_squares.push(
-                        TrailSquare::new(
-                            player.pos,
-                            self.color_default
-                        )
+            while player.trail_timer >= self.trail_interval
+            && (
+                player.is_doing_attack(&AttackKind::Slam)
+                || player.is_doing_attack(&AttackKind::Dash)
+                )
+            {
+                player.trail_timer -= self.trail_interval;
+                self.trail_squares.push(
+                    TrailSquare::new(
+                        player.pos,
+                        self.color_default
                     )
-                }
+                )
             }
         }
     }

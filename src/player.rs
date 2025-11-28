@@ -36,9 +36,7 @@ pub struct Player {
     pub double_jumps: u8,
     pub knockback_multiplier: f32,
     pub attacks: Vec<Attack>,
-    pub slamming: bool,
     pub can_slam: bool,
-    pub dashing: f32,
     pub dash_cooldown: f32,
     pub attack_cooldown: f32,
     pub respawn_timer: f32,
@@ -62,9 +60,7 @@ impl Player {
             double_jumps: 2,
             knockback_multiplier: 1.0,
             attacks: Vec::new(),
-            slamming: false,
             can_slam: true,
-            dashing: 0.0,
             dash_cooldown: 0.0,
             attack_cooldown: 0.0,
             respawn_timer: 0.0,
@@ -108,7 +104,8 @@ impl Player {
             normal_dt
         };
 
-        if self.dashing > 0.0 || self.slamming {
+        if self.is_doing_attack(&AttackKind::Slam)
+        || self.is_doing_attack(&AttackKind::Dash) {
             self.trail_timer += dt;
         }
 
@@ -117,8 +114,8 @@ impl Player {
         self.check_for_death();
 
         if self.is_on_platform(map) {
+            self.remove_slams();
             self.can_slam = false;
-            self.slamming = false;
         }
     }
 
@@ -128,7 +125,6 @@ impl Player {
             &mut self.stunned,
             &mut self.invulnerable_timer,
             &mut self.slow,
-            &mut self.dashing,
             &mut self.dash_cooldown,
             &mut self.respawn_timer,
         ];
@@ -157,7 +153,7 @@ impl Player {
         }
 
         // Sweep test to prevent downward tunneling through an opponent
-        if self.slamming {
+        if self.is_doing_attack(&AttackKind::Slam) {
             for opponent in enemy_team.players.iter() {
                 if opponent.invulnerable_timer == 0.0
                     && let Some(corrected_y) = self.sweep_down(old_pos[1], self.pos[1], &opponent.get_rect()) {
@@ -299,11 +295,9 @@ impl Player {
         } else {
             self.has_jumped = false;
         }
-        self.slamming = false;
         if self.input.slam() {
             self.facing[1] += 1.0;
             if self.can_slam {
-                self.slamming = true;
                 self.attacks.push(
                     Attack::new(
                         AttackKind::Slam,
@@ -381,7 +375,6 @@ impl Player {
                 )
             );
 
-            self.dashing = 0.3;
             self.dash_cooldown = 3.0;
         }
     }
@@ -413,11 +406,10 @@ impl Player {
     fn attack(&mut self, kind: &AttackKind, attacker: &mut Player) {
         match kind {
             AttackKind::Dash => {
-                if self.dashing > 0.0 {
+                if self.is_doing_attack(&kind) {
                     for player in [self, attacker] {
                         player.vel[0] = player.vel[0].signum() * -50.0 * player.knockback_multiplier;
                         player.vel[1] = player.vel[1].signum() * -200.0 * player.knockback_multiplier;
-                        player.dashing = 0.0;
                         player.stunned = 5.0;
                         player.knockback_multiplier += 0.01;
                         player.remove_dashes();
@@ -430,18 +422,20 @@ impl Player {
                 }
                 attacker.vel[0] *= -0.5;
                 attacker.vel[1] *= -0.5;
-                attacker.dashing = 0.0;
             }
             AttackKind::Light => {
                 self.stunned = 0.5;
                 self.invulnerable_timer = 0.1;
                 self.knockback_multiplier += 0.01;
-                self.dashing = 0.0;
+                self.remove_dashes();
+                self.remove_slams();
             }
             AttackKind::Slam => {
                 self.vel[1] = attacker.vel[1] * 1.5 * self.knockback_multiplier;
                 self.stunned = 0.1;
                 self.knockback_multiplier += 0.02;
+                self.remove_dashes();
+                self.remove_slams();
 
                 attacker.vel[1] = -50.0;
                 attacker.can_slam = false;
@@ -453,12 +447,17 @@ impl Player {
                 self.vel[0] = attacker.facing[0] * 400.0 * self.knockback_multiplier;
                 self.vel[1] = attacker.facing[1] * 400.0 * self.knockback_multiplier;
                 self.knockback_multiplier += 0.015;
-                self.dashing = 0.0;
+                self.remove_dashes();
+                self.remove_slams();
             }
         }
     }
 
     pub fn attacks(&self) -> &Vec<Attack> {
         &self.attacks
+    }
+
+    pub fn is_doing_attack(&self, kind: &AttackKind) -> bool {
+        self.attacks.iter().any(|atk| atk.kind() == kind)
     }
 }
