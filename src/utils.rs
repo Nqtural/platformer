@@ -5,10 +5,8 @@ use tokio::sync::RwLock;
 use std::collections::HashSet;
 use std::net::SocketAddr;
 use crate::{
-    attack::AttackKind,
     network::ServerMessage,
     team::Team,
-    player::Player,
 };
 
 pub fn approach_zero(value: f32, step: f32) -> f32 {
@@ -18,21 +16,6 @@ pub fn approach_zero(value: f32, step: f32) -> f32 {
         (value + step).min(0.0)
     } else {
         0.0
-    }
-}
-
-pub fn handle_collisions<'a>(
-    player: &mut Player,
-    others: impl Iterator<Item = &'a mut Player>,
-) {
-    for other in others {
-        if player.get_rect().overlaps(&other.get_rect()) {
-            if player.dashing > 0.0 {
-                AttackKind::Dash.attack(other, player);
-            } else if player.slamming {
-                AttackKind::Slam.attack(other, player);
-            }
-        }
     }
 }
 

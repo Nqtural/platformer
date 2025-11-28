@@ -1,6 +1,7 @@
 use ggez::{
     Context,
     ContextBuilder,
+    GameError,
     GameResult,
 };
 use tokio::net::UdpSocket;
@@ -50,7 +51,7 @@ impl ClientState {
             .collect();
 
         let teams_array: [Team; 2] = team_list.try_into()
-            .expect("exactly 2 teams required");
+            .map_err(|_| GameError::ResourceLoadError("Exactly 2 teams required".to_string()))?;
 
         let gs = GameState::new(teams_array, ctx)?;
         self.game_state = Some(gs);

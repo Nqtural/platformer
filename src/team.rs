@@ -7,14 +7,12 @@ use serde::{
     Serialize,
 };
 use crate::{
-    attack::Attack,
     network::InitTeamData,
     player::Player,
     trail::TrailSquare,
-    utils::handle_collisions,
 };
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Team {
     pub players: Vec<Player>,
     pub color_default: Color,
@@ -63,7 +61,6 @@ impl Team {
             team_idx: usize,
             map: &Rect,
             winner: usize,
-            active_attacks: &mut Vec<Attack>,
             mut dt: f32,
         ) {
             if winner > 0 {
@@ -78,23 +75,22 @@ impl Team {
             let (head, right) = self.players.split_at_mut(player_idx);
             let (player, rest) = right.split_first_mut().unwrap();
 
+            for atk in player.attacks.clone().iter() {
+                for enemy in &mut enemy_team.players {
+                    enemy.handle_attack_collisions(atk, player);
+                }
+            }
+
             player.update(map, enemy_team, dt);
 
-            active_attacks.extend(
-                player.apply_input(
-                    map,
-                    team_idx,
-                    player_idx,
-                    dt
-                )
-            );
+            player.apply_input(map, team_idx, player_idx, dt);
 
             if player.dashing > 0.0 || player.slamming {
                 let others = head.iter_mut()
                     .chain(rest.iter_mut())
                     .chain(enemy_team.players.iter_mut());
 
-                handle_collisions(player, others);
+                //handle_collisions(player, others);
 
                 while player.trail_timer >= self.trail_interval {
                     player.trail_timer -= self.trail_interval;

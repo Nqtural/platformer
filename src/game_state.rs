@@ -49,7 +49,6 @@ use serde::{
 pub struct GameState {
     pub teams: [Team; 2],
     pub map: Map,
-    pub active_attacks: Vec<Attack>,
     pub camera_pos: Vec2,
     pub winner: usize,
     #[serde(skip)]
@@ -68,7 +67,6 @@ impl GameState {
         Ok(Self {
             teams,
             map: Map::new(),
-            active_attacks: Vec::new(),
             camera_pos: Vec2::new(0.0, 0.0),
             winner: 0,
             background_image: Some(bg_img),
@@ -84,11 +82,6 @@ impl GameState {
                     p.to_net(team_id, player_id)
                 })
             }).collect(),
-
-            attacks: self.active_attacks
-                .iter()
-                .map(|a| a.to_net())
-                .collect(),
         }
     }
 
@@ -101,14 +94,13 @@ impl GameState {
                     player.pos = net_player.pos;
                     player.vel = net_player.vel;
                     player.lives = net_player.lives as i32;
+                    player.attacks = net_player.attacks
+                        .iter()
+                        .map(|na| Attack::from_net(na.clone()))
+                        .collect();
                     player.stunned = net_player.stunned;
                     player.invulnerable_timer = net_player.invulnerable;
                 }
-        }
-
-        self.active_attacks.clear();
-        for net_attack in snapshot.attacks {
-            self.active_attacks.push(Attack::from_net(net_attack));
         }
     }
 
@@ -124,10 +116,6 @@ impl GameState {
         NetSnapshot {
             winner: self.winner,
             players: net_players,
-            attacks: self.active_attacks
-                .iter()
-                .map(|a| a.to_net())
-                .collect(),
         }
     }
 
@@ -140,31 +128,6 @@ impl GameState {
             for player in &team.players {
                 if player.lives > 0 { continue; }
                 self.winner = if team_idx == 0 { 2 } else { 1 };
-            }
-        }
-    }
-
-    fn handle_attack_collisions(&mut self) {
-        for atk in &self.active_attacks {
-            let owner_team_idx = atk.owner_team();
-            let owner_player_idx = atk.owner_player();
-
-            let (left, right) = self.teams.split_at_mut(owner_team_idx);
-            let (owner_team, other_teams) = right.split_first_mut().unwrap();
-
-            let owner_player = &mut owner_team.players[owner_player_idx];
-
-            for team in left.iter_mut().chain(other_teams.iter_mut()) {
-                for player in &mut team.players {
-                    if player.stunned > 0.0
-                    || player.invulnerable_timer > 0.0
-                    || !atk.get_rect().overlaps(&player.get_rect())
-                    {
-                        continue;
-                    }
-
-                    atk.attack(owner_player, player);
-                }
             }
         }
     }
@@ -223,16 +186,19 @@ impl GameState {
 
         Ok(())
     }
-    
+
     fn draw_attacks(
         &self,
         game_canvas: &mut Canvas,
+        player_pos: [f32; 2],
+        player_facing: [f32; 2],
+        attacks: &Vec<Attack>,
     ) -> GameResult {
-        for atk in &self.active_attacks {
-            let rect = atk.get_rect();
+        for atk in attacks {
+            let rect = atk.get_rect(player_pos, player_facing);
 
             // get attack image rotation
-            let rotation_degrees: f32 = match atk.facing() {
+            let rotation_degrees: f32 = match player_facing {
                 [0.0, 1.0] => 90.0,
                 [0.0, -1.0] => -90.0,
                 [1.0, 0.0] => 0.0,
@@ -249,11 +215,12 @@ impl GameState {
 
             if let Some(img) = self.attack_image.as_ref() {
                 let draw_param = self.drawparam_constructor(
-                    // add half the width for rotation around centre
+                    // add half the width to balance offset
                     rect.x + rect.w * 0.5,
                     rect.y + rect.h * 0.5,
                 )
-                    .offset([0.5, 0.5]) // rotate around centre
+                    // offset to be able to rotate around centre
+                    .offset([0.5, 0.5])
                     .rotation(rotation);
 
                 game_canvas.draw(img, draw_param);
@@ -333,6 +300,8 @@ impl GameState {
                 ) * zoom + camera_translation;
 
                 game_canvas.draw(&text, DrawParam::default().dest(text_pos));
+
+                self.draw_attacks(game_canvas, player.pos, player.facing, &player.attacks)?;
             }
         }
 
@@ -431,12 +400,7 @@ impl EventHandler for GameState {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         let dt = ctx.time.delta().as_secs_f32();
 
-        for attack in &mut self.active_attacks {
-            attack.update(dt);
-        }
-        self.active_attacks.retain(|atk| !atk.is_expired());
-
-        self.handle_attack_collisions();
+        //self.handle_attack_collisions();
 
         self.check_for_win();
 
@@ -447,7 +411,6 @@ impl EventHandler for GameState {
                 i,
                 &self.map.get_rect(),
                 self.winner,
-                &mut self.active_attacks,
                 dt,
             );
         }
@@ -511,7 +474,6 @@ impl EventHandler for GameState {
 
         self.draw_map(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
         self.draw_trails(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
-        self.draw_attacks(&mut game_canvas)?;
         self.draw_players(&mut game_canvas, ctx, camera_translation, zoom)?;
         self.draw_hud(&mut game_canvas, ctx)?;
 

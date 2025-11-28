@@ -1,7 +1,4 @@
-use ggez::graphics::{
-    Color,
-    Rect,
-};
+use ggez::graphics::Color;
 use serde::{
     Serialize,
     Deserialize,
@@ -24,7 +21,6 @@ pub struct InitTeamData {
 pub struct NetSnapshot {
     pub winner: usize,
     pub players: Vec<NetPlayer>,
-    pub attacks: Vec<NetAttack>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -33,6 +29,7 @@ pub struct NetPlayer {
     pub player_id: usize,
     pub pos: [f32; 2],
     pub vel: [f32; 2],
+    pub attacks: Vec<NetAttack>,
     pub stunned: f32,
     pub invulnerable: f32,
     pub lives: u8,
@@ -40,12 +37,10 @@ pub struct NetPlayer {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct NetAttack {
+    pub duration: f32,
     pub owner_team: usize,
     pub owner_player: usize,
-    pub rect: Rect,
-    pub time_left: f32,
     pub kind: AttackKind,
-    pub facing: [f32; 2],
 }
 
 #[derive(Serialize, Deserialize)]

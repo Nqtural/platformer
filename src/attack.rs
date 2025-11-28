@@ -6,133 +6,87 @@ use serde::{
 use crate::{
     constants::PLAYER_SIZE,
     network::NetAttack,
-    player::Player,
 };
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub enum AttackKind {
     Dash,
     Light,
-    Slam,
     Normal,
+    Slam,
 }
 
-impl AttackKind {
-    pub fn attack(&self, enemy: &mut Player, player: &mut Player) {
-        match self {
-            AttackKind::Dash => {
-                if enemy.dashing > 0.0 {
-                    enemy.vel[0] = player.vel[0].signum() * 100.0 * enemy.knockback_multiplier;
-                    enemy.vel[1] = player.vel[1].signum() * 100.0 * enemy.knockback_multiplier;
-                    enemy.dashing = 0.0;
-                    enemy.stunned = 1.0;
-                    enemy.knockback_multiplier += 0.01;
-
-                    player.stunned = 1.0;
-                } else {
-                    enemy.vel[0] = player.vel[0] * enemy.knockback_multiplier;
-                    enemy.vel[1] = player.vel[1] * enemy.knockback_multiplier;
-                    enemy.stunned = 0.5;
-                }
-                player.vel[0] *= -0.5;
-                player.vel[0] = player.vel[1] * -0.5;
-                player.dashing = 0.0;
-            }
-            AttackKind::Light => {
-                player.stunned = 0.5;
-                player.invulnerable_timer = 0.1;
-                player.knockback_multiplier += 0.01;
-                player.dashing = 0.0;
-            }
-            AttackKind::Slam => {
-                let player_bottom = player.pos[1] + PLAYER_SIZE;
-                let enemy_top = enemy.pos[1];
-
-                if player_bottom <= enemy_top + 5.0 && player.vel[1] > 0.0 {
-                    enemy.vel[1] = player.vel[1] * 1.5 * enemy.knockback_multiplier;
-                    enemy.stunned = 0.1;
-                    enemy.knockback_multiplier += 0.03;
-
-                    player.vel[1] = -50.0;
-                    player.can_slam = false;
-                }
-            }
-            AttackKind::Normal => {
-                player.stunned = 0.4;
-                player.invulnerable_timer = 0.1;
-                player.vel[0] = enemy.facing[0] * 400.0 * player.knockback_multiplier;
-                player.vel[1] = enemy.facing[1] * 400.0 * player.knockback_multiplier;
-                player.knockback_multiplier += 0.02;
-                player.dashing = 0.0;
-            }
+fn offset_and_size(kind: &AttackKind) -> (f32, f32) {
+    match kind {
+        AttackKind::Dash => {
+            (0.0, PLAYER_SIZE)
+        }
+        AttackKind::Light => {
+            (15.0, PLAYER_SIZE + 30.0)
+        }
+        AttackKind::Normal => {
+            (15.0, PLAYER_SIZE + 30.0)
+        }
+        AttackKind::Slam => {
+            (0.0, PLAYER_SIZE)
         }
     }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Attack {
-    x: f32,
-    y: f32,
-    w: f32,
-    h: f32,
+    offset: f32,
+    size: f32,
     kind: AttackKind,
     duration: f32,
     timer: f32,
     owner_team: usize,
     owner_player: usize,
-    facing: [f32; 2],
 }
 
 impl Attack {
     pub fn new(
-        player: &Player,
         kind: AttackKind,
         owner_team: usize,
         owner_player: usize,
     ) -> Attack {
+        let (offset, size) = offset_and_size(&kind);
         Attack {
-            x: player.pos[0] - 15.0 + (15.0 * player.facing[0]),
-            y: player.pos[1] - 15.0 + (15.0 * player.facing[1]),
-            w: PLAYER_SIZE + 30.0,
-            h: PLAYER_SIZE + 30.0,
+            offset,
+            size,
             kind,
             duration: 0.1,
             timer: 0.0,
             owner_team,
             owner_player,
-            facing: player.facing,
         }
     }
 
     pub fn from_net(net: NetAttack) -> Self {
-        let duration = net.time_left.max(0.0);
-        let timer = 0.0;
-
-        let rect: Rect = net.rect;
+        let (offset, size) = offset_and_size(&net.kind);
 
         Attack {
-            x: rect.x,
-            y: rect.y,
-            w: rect.w,
-            h: rect.h,
+            offset,
+            size,
             kind: net.kind,
-            duration,
-            timer,
+            duration: net.duration,
+            timer: 0.0,
             owner_team: net.owner_team,
             owner_player: net.owner_player,
-            facing: net.facing,
         }
     }
 
     pub fn to_net(&self) -> NetAttack {
         NetAttack {
+            duration: self.duration,
             owner_team: self.owner_team,
             owner_player: self.owner_player,
-            rect: self.get_rect(),
-            time_left: (self.duration - self.timer).max(0.0),
             kind: self.kind.clone(),
-            facing: self.facing,
         }
+    }
+
+    pub fn update(&mut self, dt: f32) {
+        self.timer += dt;
     }
 
     pub fn owner_team(&self) -> usize {
@@ -143,23 +97,28 @@ impl Attack {
         self.owner_player
     }
 
-    pub fn attack(&self, enemy: &mut Player, player: &mut Player) {
-        self.kind.attack(enemy, player);
-    }
-
-    pub fn update(&mut self, dt: f32) {
-        self.timer += dt;
+    pub fn kind(&self) -> &AttackKind {
+        &self.kind
     }
 
     pub fn is_expired(&self) -> bool {
         self.timer >= self.duration
     }
 
-    pub fn get_rect(&self) -> Rect {
-        Rect::new(self.x, self.y, self.w, self.h)
+    pub fn get_rect(&self, player_pos: [f32; 2], player_facing: [f32; 2]) -> Rect {
+        Rect::new(
+            self.x(player_pos, player_facing),
+            self.y(player_pos, player_facing),
+            self.size,
+            self.size,
+        )
     }
-    
-    pub fn facing(&self) -> [f32; 2] {
-        self.facing
+
+    pub fn x(&self, player_pos: [f32; 2], player_facing: [f32; 2]) -> f32 {
+        player_pos[0] - self.offset + (self.offset * player_facing[0])
+    }
+
+    pub fn y(&self, player_pos: [f32; 2], player_facing: [f32; 2]) -> f32 {
+        player_pos[1] - self.offset + (self.offset * player_facing[1])
     }
 }
