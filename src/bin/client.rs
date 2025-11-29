@@ -100,10 +100,16 @@ async fn main() -> GameResult {
     let gs_clone_send = Arc::clone(&game_state);
     let gs_clone_recv = Arc::clone(&game_state);
 
-    let ip = config.serverip();
-    let port = config.serverport();
-    let server_addr: SocketAddr = format!("{}:{}", ip, port).parse().unwrap();
-    let socket = Arc::new(UdpSocket::bind("0.0.0.0:0").await.unwrap());
+    let server_addr: SocketAddr = format!(
+        "{}:{}",
+        config.serverip(),
+        config.serverport(),
+    ).parse().unwrap();
+    let socket = Arc::new(UdpSocket::bind(format!(
+        "{}:{}",
+        config.clientip(),
+        config.clientport(),
+    )).await.unwrap());
     socket.connect(server_addr).await.unwrap();
 
 
