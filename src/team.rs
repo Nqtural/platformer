@@ -39,8 +39,6 @@ impl Team {
     }
 
     pub fn from_init(init: InitTeamData) -> Team {
-        // Build players: if server provided start_positions per player use that,
-        // otherwise fall back to team start pos (first) or zeros.
         let mut players = Vec::new();
         let names = init.player_names;
         let positions = init.start_positions;
@@ -72,7 +70,7 @@ impl Team {
             self.trail_squares.retain(|s| s.lifetime > 0.0);
 
         for player_idx in 0..self.players.len() {
-            // Split self.players into [head | current | rest]
+            // split self.players into [head | current | rest]
             let (head, right) = self.players.split_at_mut(player_idx);
             let (player, rest) = right.split_first_mut().unwrap();
 

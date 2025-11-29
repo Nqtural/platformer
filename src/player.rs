@@ -86,7 +86,7 @@ impl Player {
                 .collect(),
             stunned: self.stunned,
             invulnerable: self.invulnerable_timer,
-            lives: self.lives.max(0) as u8, // clamp negative lives just in case
+            lives: self.lives.max(0) as u8,
         }
     }
 
@@ -143,27 +143,27 @@ impl Player {
         self.pos[0] += self.vel[0] * dt;
         self.pos[1] += self.vel[1] * dt;
 
-        // Sweep test to prevent downward tunneling through platform
+        // sweep test to prevent downward tunneling through platform
         if let Some(corrected_y) = self.sweep_down(old_pos[1], self.pos[1], map)
         {
-            // Snap onto platform
+            // snap onto platform
             self.pos[1] = corrected_y;
             self.vel[1] = 0.0;
         }
 
-        // Sweep test to prevent downward tunneling through an opponent
+        // sweep test to prevent downward tunneling through an opponent
         if self.is_doing_attack(&AttackKind::Slam) {
             for opponent in enemy_team.players.iter() {
                 if opponent.invulnerable_timer == 0.0
                     && let Some(corrected_y) = self.sweep_down(old_pos[1], self.pos[1], &opponent.get_rect()) {
-                        // Snap onto opponent
+                        // snap onto opponent
                         self.pos[1] = corrected_y;
                         self.vel[1] = 0.0;
                     }
             }
         }
 
-        // Apply friction
+        // apply friction
         self.vel[0] = approach_zero(self.vel[0], RESISTANCE * dt);
     }
 
@@ -174,12 +174,12 @@ impl Player {
         object: &Rect,
     ) -> Option<f32> {
         if self.get_rect().x + PLAYER_SIZE > object.x && self.get_rect().x < object.x + object.w {
-            // Only downward motion matters for slam
+            // only downward motion matters for slam
             if new_y > old_y {
                 let old_bottom = old_y + PLAYER_SIZE;
                 let new_bottom = new_y + PLAYER_SIZE;
 
-                // If player bottom crossed the object's top between frames:
+                // if player bottom crossed the object's top between frames:
                 if old_bottom <= object.y && new_bottom >= object.y {
                     return Some(object.y - PLAYER_SIZE);
                 }

@@ -407,14 +407,12 @@ impl EventHandler for GameState {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         let dt = ctx.time.delta().as_secs_f32();
 
-        //self.handle_attack_collisions();
-
         self.check_for_win();
 
         for i in 0..2 {
             let (current, enemy) = current_and_enemy(&mut self.teams, i);
             current.update_players(
-                enemy, // &mut Team
+                enemy,
                 i,
                 &self.map.get_rect(),
                 self.winner,
@@ -450,7 +448,7 @@ impl EventHandler for GameState {
             )
         );
 
-        // Draw background
+        // draw background
         if let Some(img) = self.background_image.as_ref() {
             game_canvas.draw(
                 img,
