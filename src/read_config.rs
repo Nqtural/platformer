@@ -33,6 +33,17 @@ struct RGB {
     b: f32,
 }
 
+impl RGB {
+    fn to_color_object(&self) -> Color {
+        Color::new(
+            self.r,
+            self.g,
+            self.b,
+            1.0,
+        )
+    }
+}
+
 #[derive(Deserialize)]
 struct Camera {
     bias: f32,
@@ -56,12 +67,10 @@ impl Config {
     // GETTERS
     pub fn playername(&self) -> &str { &self.player.name }
     pub fn team_one_color(&self) -> Color {
-        Color::new(
-            self.teams.team_one_color.r,
-            self.teams.team_one_color.g,
-            self.teams.team_one_color.b,
-            1.0,
-        )
+        self.teams.team_one_color.to_color_object()
+    }
+    pub fn team_two_color(&self) -> Color {
+        self.teams.team_two_color.to_color_object()
     }
     pub fn serverip(&self) -> &str { &self.server.ip }
     pub fn serverport(&self) -> &str { &self.server.port }

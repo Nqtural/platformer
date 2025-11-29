@@ -10,8 +10,6 @@ use crate::{
         C_TEAM,
         NAME_COLOR,
         PLAYER_SIZE,
-        TEAM_ONE_COLOR,
-        TEAM_TWO_COLOR,
         VIRTUAL_HEIGHT,
         VIRTUAL_WIDTH,
     },
@@ -56,6 +54,8 @@ pub struct GameState {
     pub camera_pos: Vec2,
     bias_strength: f32,
     pub winner: usize,
+    team_one_color: Color,
+    team_two_color: Color,
     #[serde(skip)]
     #[serde(default)]
     background_image: Option<Image>,
@@ -76,6 +76,8 @@ impl GameState {
             camera_pos: Vec2::new(0.0, 0.0),
             bias_strength: config.camera_bias(),
             winner: 0,
+            team_one_color: config.team_one_color(),
+            team_two_color: config.team_two_color(),
             background_image: Some(bg_img),
             attack_image: Some(attack_img),
         })
@@ -381,9 +383,9 @@ impl GameState {
                 scale: Some(PxScale::from(200.0)),
                 color: Some(
                     if self.winner == 1 {
-                        TEAM_ONE_COLOR
+                        self.team_one_color
                     } else {
-                        TEAM_TWO_COLOR
+                        self.team_two_color
                     }
                 ),
             });
