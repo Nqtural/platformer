@@ -70,13 +70,11 @@ impl Team {
             self.trail_squares.retain(|s| s.lifetime > 0.0);
 
         for player_idx in 0..self.players.len() {
-            // split self.players into [head | current | rest]
-            let (head, right) = self.players.split_at_mut(player_idx);
-            let (player, rest) = right.split_first_mut().unwrap();
+            let mut player = &mut self.players[player_idx];
 
             for atk in player.attacks.clone().iter() {
                 for enemy in &mut enemy_team.players {
-                    enemy.handle_attack_collisions(atk, player);
+                    enemy.handle_attack_collisions(atk, &mut player);
                 }
             }
 
