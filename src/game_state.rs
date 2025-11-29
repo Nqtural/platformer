@@ -17,6 +17,7 @@ use crate::{
     },
     map::Map,
     network::NetSnapshot,
+    read_config::Config,
     team::Team,
     traits::IntoMint,
     utils::current_and_enemy,
@@ -53,6 +54,7 @@ pub struct GameState {
     pub teams: [Team; 2],
     pub map: Map,
     pub camera_pos: Vec2,
+    bias_strength: f32,
     pub winner: usize,
     #[serde(skip)]
     #[serde(default)]
@@ -66,11 +68,13 @@ impl GameState {
     pub fn new(teams: [Team; 2], ctx: &mut Context) -> GameResult<Self> {
         let bg_img = Image::from_path(&ctx.gfx, BACKGROUND_IMAGE)?;
         let attack_img = Image::from_path(&ctx.gfx, ATTACK_IMAGE)?;
+        let config = Config::get()?;
 
         Ok(Self {
             teams,
             map: Map::new(),
             camera_pos: Vec2::new(0.0, 0.0),
+            bias_strength: config.camera_bias(),
             winner: 0,
             background_image: Some(bg_img),
             attack_image: Some(attack_img),
@@ -170,9 +174,7 @@ impl GameState {
             map_rect.y + map_rect.h / 2.0,
         );
 
-        let bias_strength = 0.7;
-
-        let biased_target = player_center.lerp(map_center, bias_strength);
+        let biased_target = player_center.lerp(map_center, self.bias_strength);
 
         let lerp_factor = 0.1;
         self.camera_pos = self.camera_pos.lerp(biased_target, lerp_factor);

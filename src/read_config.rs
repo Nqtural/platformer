@@ -65,4 +65,5 @@ impl Config {
     }
     pub fn serverip(&self) -> &str { &self.server.ip }
     pub fn serverport(&self) -> &str { &self.server.port }
+    pub fn camera_bias(&self) -> f32 { self.camera.bias }
 }
