@@ -58,7 +58,6 @@ pub enum ServerMessage {
     Welcome {
         team_id: usize,
         player_id: usize,
-        name: String,
     },
     LobbyStatus {
         players: Vec<LobbyPlayer>,

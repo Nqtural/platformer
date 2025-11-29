@@ -45,13 +45,8 @@ impl Lobby {
     pub fn assign_slot(
         &mut self,
         addr: SocketAddr,
-        mut name: String
+        name: String
     ) -> (usize, usize) {
-        // prevent duplicate names
-        while self.players.iter().any(|p| p.name == name) {
-            name = format!("{}{}", name, rand::random::<u16>());
-        }
-
         // assign team + player slots
         let team_id = self.next_team;
         let player_id = self.next_player;

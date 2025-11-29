@@ -123,7 +123,7 @@ async fn main() -> GameResult {
         &buf[..len],
         bincode_config,
     ).map_err(|e| ggez::GameError::CustomError(e.to_string()))?;
-    if let ServerMessage::Welcome { team_id, player_id, ref name } = msg {
+    if let ServerMessage::Welcome { team_id, player_id } = msg {
         client.team_id = team_id;
         client.player_id = player_id;
     }

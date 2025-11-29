@@ -102,7 +102,6 @@ async fn main() -> GameResult {
         let welcome = ServerMessage::Welcome {
             team_id,
             player_id,
-            name: name.clone(),
         };
         send_to(addr, welcome, &socket, &bincode_config).await;
 
