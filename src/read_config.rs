@@ -53,6 +53,7 @@ impl Config {
         Ok(config)
     }
 
+    // GETTERS
     pub fn playername(&self) -> &str { &self.player.name }
     pub fn team_one_color(&self) -> Color {
         Color::new(

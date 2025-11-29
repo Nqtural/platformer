@@ -103,6 +103,7 @@ impl Team {
         }
     }
 
+    // GETTERS
     pub fn get_color(&self, invulnerable: bool, stunned: bool) -> Color {
         let color = if stunned {
             self.color_stunned

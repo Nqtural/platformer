@@ -14,7 +14,6 @@ pub struct PlayerInput {
     dash: bool,
     light: bool,
     normal: bool,
-    lunge: bool,
 }
 
 impl PlayerInput {
@@ -28,7 +27,6 @@ impl PlayerInput {
             dash: false,
             light: false,
             normal: false,
-            lunge: false,
         }
     }
 
@@ -42,23 +40,23 @@ impl PlayerInput {
             KeyCode::H => self.dash = value,
             KeyCode::J => self.normal = value,
             KeyCode::K => self.light = value,
-            KeyCode::L => self.lunge = value,
             _ => {}
         }
     }
 
+    // GETTERS
     pub fn jump(&self) -> bool { self.jump }
-    pub fn set_jump(&mut self, value: bool) { self.up = value }
     pub fn up(&self) -> bool { self.up }
     pub fn left(&self) -> bool { self.left }
     pub fn right(&self) -> bool { self.right }
     pub fn slam(&self) -> bool { self.slam }
-    pub fn set_slam(&mut self, value: bool) { self.slam = value }
     pub fn dash(&self) -> bool { self.dash }
     pub fn light(&self) -> bool { self.light }
-    pub fn set_light(&mut self, value: bool) { self.light = value }
     pub fn normal(&self) -> bool { self.normal }
+
+    // SETTERS
+    pub fn set_jump(&mut self, value: bool) { self.up = value }
+    pub fn set_slam(&mut self, value: bool) { self.slam = value }
+    pub fn set_light(&mut self, value: bool) { self.light = value }
     pub fn set_normal(&mut self, value: bool) { self.normal = value }
-    pub fn lunge(&self) -> bool { self.lunge }
-    pub fn set_lunge(&mut self, value: bool) { self.lunge = value }
 }

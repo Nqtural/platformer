@@ -42,16 +42,17 @@ impl Lobby {
         }
     }
 
-    /// Assign a slot to a newly connecting client.
-    pub fn assign_slot(&mut self, addr: SocketAddr, mut name: String)
-        -> (usize, usize)
-    {
-        // Prevent duplicate names
+    pub fn assign_slot(
+        &mut self,
+        addr: SocketAddr,
+        mut name: String
+    ) -> (usize, usize) {
+        // prevent duplicate names
         while self.players.iter().any(|p| p.name == name) {
             name = format!("{}{}", name, rand::random::<u16>());
         }
 
-        // Assign team + player slots, 2 players per team
+        // assign team + player slots
         let team_id = self.next_team;
         let player_id = self.next_player;
 
@@ -63,7 +64,7 @@ impl Lobby {
             connected: true,
         });
 
-        // Rotate slots
+        // rotate slots
         self.next_player += 1;
         if self.next_player >= 2 {
             self.next_player = 0;
@@ -73,19 +74,6 @@ impl Lobby {
         (team_id, player_id)
     }
 
-    /// Return a cleaned-up list for ServerMessage::LobbyStatus
-    pub fn players_list(&self) -> Vec<(usize, usize, String)> {
-        self.players
-            .iter()
-            .map(|p| (p.team_id, p.player_id, p.name.clone()))
-            .collect()
-    }
-
-    pub fn connected_count(&self) -> usize {
-        self.players.len()
-    }
-
-    /// Provide InitTeamData for ServerMessage::GameStart
     pub fn initial_teams(&self) -> Vec<InitTeamData> {
         let mut map: HashMap<usize, InitTeamData> = HashMap::new();
 
@@ -107,4 +95,13 @@ impl Lobby {
 
         map.into_values().collect()
     }
+
+    // GETTERS
+    pub fn players_list(&self) -> Vec<(usize, usize, String)> {
+        self.players
+            .iter()
+            .map(|p| (p.team_id, p.player_id, p.name.clone()))
+            .collect()
+    }
+    pub fn connected_count(&self) -> usize { self.players.len() }
 }

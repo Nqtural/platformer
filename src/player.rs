@@ -90,10 +90,6 @@ impl Player {
         }
     }
 
-    pub fn get_rect(&self) -> Rect {
-        Rect::new(self.pos[0], self.pos[1], PLAYER_SIZE, PLAYER_SIZE)
-    }
-
     pub fn update(&mut self, map: &Rect, enemy_team: &Team, normal_dt: f32) {
         self.update_cooldowns(normal_dt);
         if self.respawn_timer > 0.0 {
@@ -191,14 +187,6 @@ impl Player {
         }
 
         None
-    }
-
-    fn is_on_platform(&self, map: &Rect) -> bool {
-        let rect = self.get_rect();
-        let player_bottom = rect.y + rect.h;
-        let platform_top = map.y;
-
-        (player_bottom - platform_top).abs() < 5.0 && rect.overlaps(map)
     }
 
     fn check_platform_collision(
@@ -454,11 +442,19 @@ impl Player {
         }
     }
 
-    pub fn attacks(&self) -> &Vec<Attack> {
-        &self.attacks
-    }
-
+    // GETTERS
+    pub fn attacks(&self) -> &Vec<Attack> { &self.attacks }
     pub fn is_doing_attack(&self, kind: &AttackKind) -> bool {
         self.attacks.iter().any(|atk| atk.kind() == kind)
+    }
+    pub fn get_rect(&self) -> Rect {
+        Rect::new(self.pos[0], self.pos[1], PLAYER_SIZE, PLAYER_SIZE)
+    }
+    fn is_on_platform(&self, map: &Rect) -> bool {
+        let rect = self.get_rect();
+        let player_bottom = rect.y + rect.h;
+        let platform_top = map.y;
+
+        (player_bottom - platform_top).abs() < 5.0 && rect.overlaps(map)
     }
 }

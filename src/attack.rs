@@ -109,26 +109,12 @@ impl Attack {
         self.timer += dt;
     }
 
-    pub fn owner_team(&self) -> usize {
-        self.owner_team
-    }
-
-    pub fn owner_player(&self) -> usize {
-        self.owner_player
-    }
-
-    pub fn kind(&self) -> &AttackKind {
-        &self.kind
-    }
-
-    pub fn facing(&self) -> [f32; 2] {
-        self.facing
-    }
-
-    pub fn is_expired(&self) -> bool {
-        self.timer >= self.duration
-    }
-
+    // GETTERS
+    pub fn owner_team(&self) -> usize { self.owner_team }
+    pub fn owner_player(&self) -> usize { self.owner_player }
+    pub fn kind(&self) -> &AttackKind { &self.kind }
+    pub fn facing(&self) -> [f32; 2] { self.facing }
+    pub fn is_expired(&self) -> bool { self.timer >= self.duration }
     pub fn get_rect(&self, player_pos: [f32; 2]) -> Rect {
         Rect::new(
             self.x(player_pos),
@@ -137,11 +123,9 @@ impl Attack {
             self.size,
         )
     }
-
     pub fn x(&self, player_pos: [f32; 2]) -> f32 {
         player_pos[0] - self.offset + (self.offset * self.facing[0])
     }
-
     pub fn y(&self, player_pos: [f32; 2]) -> f32 {
         player_pos[1] - self.offset + (self.offset * self.facing[1])
     }

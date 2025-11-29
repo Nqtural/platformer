@@ -28,6 +28,7 @@ impl Map {
         }
     }
 
+    // GETTERS
     pub fn get_rect(&self) -> Rect { self.rect }
     pub fn get_color(&self) -> Color { self.color }
 }
