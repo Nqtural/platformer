@@ -16,21 +16,37 @@ pub enum AttackKind {
     Slam,
 }
 
-fn get_attack_properties(kind: &AttackKind) -> (f32, f32, f32) {
-    match kind {
-        AttackKind::Dash => {
-            (0.0, PLAYER_SIZE, 0.3)
-        }
-        AttackKind::Light => {
-            (15.0, PLAYER_SIZE + 30.0, 0.1)
-        }
-        AttackKind::Normal => {
-            (15.0, PLAYER_SIZE + 30.0, 0.1)
-        }
-        AttackKind::Slam => {
-            (0.0, PLAYER_SIZE, 99.9)
+impl AttackKind {
+    fn properties(&self) -> AttackProperties {
+        match self {
+            AttackKind::Dash => AttackProperties {
+                offset: 0.0,
+                size: PLAYER_SIZE,
+                duration: 0.3,
+            },
+            AttackKind::Light => AttackProperties {
+                offset: 15.0,
+                size: PLAYER_SIZE + 30.0,
+                duration: 0.1,
+            },
+            AttackKind::Normal => AttackProperties {
+                offset: 15.0,
+                size: PLAYER_SIZE + 30.0,
+                duration: 0.1,
+            },
+            AttackKind::Slam => AttackProperties {
+                offset: 0.0,
+                size: PLAYER_SIZE,
+                duration: 99.9,
+            },
         }
     }
+}
+
+pub struct AttackProperties {
+    offset: f32,
+    size: f32,
+    duration: f32,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -52,12 +68,12 @@ impl Attack {
         owner_player: usize,
         facing: [f32; 2]
     ) -> Attack {
-        let (offset, size, duration) = get_attack_properties(&kind);
+        let properties = kind.properties();
         Attack {
-            offset,
-            size,
+            offset: properties.offset,
+            size: properties.size,
             kind,
-            duration,
+            duration: properties.duration,
             timer: 0.0,
             owner_team,
             owner_player,
@@ -66,13 +82,13 @@ impl Attack {
     }
 
     pub fn from_net(net: NetAttack) -> Self {
-        let (offset, size, duration) = get_attack_properties(&net.kind);
+        let properties = net.kind.properties();
 
         Attack {
-            offset,
-            size,
+            offset: properties.offset,
+            size: properties.size,
             kind: net.kind,
-            duration,
+            duration: properties.duration,
             timer: 0.0,
             owner_team: net.owner_team,
             owner_player: net.owner_player,
