@@ -142,9 +142,9 @@ impl SnapshotBuffer {
                     stunned: pb.stunned,
                     invulnerable: pb.invulnerable,
                     lives: pb.lives,
+                    attacks: pb.attacks.clone(),
                 }
             }).collect(),
-            attacks: b.attacks.clone(),
         }
     }
 }
@@ -199,6 +199,7 @@ async fn main() -> GameResult {
 
     let bincode_config = config::standard();
     let gs_clone_send = Arc::clone(&game_state);
+    let gs_clone_recv = Arc::clone(&game_state);
     let buffer_clone_for_task = Arc::clone(&shared_buffer);
     let start_clone_for_task = Arc::clone(&start);
 
@@ -251,7 +252,7 @@ async fn main() -> GameResult {
                 Ok((len, _)) => {
                     // decode snapshot from server
                     if let Ok((ServerMessage::Snapshot{ tick, state }, _)) =
-                    decode_from_slice::<ServerMessage, _>(&buf[..len], config_recv)
+                    decode_from_slice::<ServerMessage, _>(&buf[..len], bincode_config)
                     {
                         // timestamp using the shared Instant
                         let now = start_clone_for_task.elapsed().as_secs_f64();
