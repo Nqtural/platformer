@@ -201,11 +201,11 @@ impl GameState {
         game_canvas: &mut Canvas,
         player_pos: [f32; 2],
         attacks: &Vec<Attack>,
-    ) -> GameResult {
+    ) {
         for atk in attacks {
             if *atk.kind() == AttackKind::Dash
             || *atk.kind() == AttackKind::Slam {
-                return Ok(());
+                return;
             }
 
             let rect = atk.get_rect(player_pos);
@@ -239,8 +239,6 @@ impl GameState {
                 game_canvas.draw(img, draw_param);
             }
         }
-
-        Ok(())
     }
 
     fn draw_trails(
@@ -315,7 +313,7 @@ impl GameState {
 
                 game_canvas.draw(&text, DrawParam::default().dest(text_pos));
 
-                self.draw_attacks(game_canvas, player.pos, &player.attacks)?;
+                self.draw_attacks(game_canvas, player.pos, &player.attacks);
             }
         }
 
@@ -326,7 +324,7 @@ impl GameState {
         &self,
         game_canvas: &mut Canvas,
         ctx: &Context,
-    ) -> GameResult {
+    ) {
         const MARGIN: f32 = 40.0;
         const START_X_LEFT: f32 = MARGIN;
         const START_X_RIGHT: f32 = VIRTUAL_WIDTH - MARGIN;
@@ -405,8 +403,6 @@ impl GameState {
                 ).to_mint_point())
             );
         }
-
-        Ok(())
     }
 }
 
@@ -487,7 +483,7 @@ impl EventHandler for GameState {
         self.draw_map(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
         self.draw_trails(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
         self.draw_players(&mut game_canvas, ctx, camera_translation, zoom)?;
-        self.draw_hud(&mut game_canvas, ctx)?;
+        self.draw_hud(&mut game_canvas, ctx);
 
         game_canvas.finish(&mut ctx.gfx)?;
 
