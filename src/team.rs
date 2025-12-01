@@ -98,7 +98,7 @@ impl Team {
                         player.pos,
                         player.color,
                     )
-                )
+                );
             }
         }
     }

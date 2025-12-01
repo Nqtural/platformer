@@ -515,7 +515,7 @@ impl EventHandler for GameState {
     ) -> GameResult {
         if let Some(keycode) = key.keycode {
             let input = &mut self.teams[C_TEAM].players[C_PLAYER].input;
-            input.update(keycode, true)
+            input.update(keycode, true);
         }
 
         Ok(())
@@ -528,7 +528,7 @@ impl EventHandler for GameState {
     ) -> GameResult {
         if let Some(keycode) = key.keycode {
             let input = &mut self.teams[C_TEAM].players[C_PLAYER].input;
-            input.update(keycode, false)
+            input.update(keycode, false);
         }
 
         Ok(())
