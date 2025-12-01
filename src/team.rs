@@ -71,6 +71,7 @@ impl Team {
 
         for player_idx in 0..self.players.len() {
             let mut player = &mut self.players[player_idx];
+            if player.lives <= 0 { continue; }
 
             for atk in player.attacks.clone().iter() {
                 for enemy in &mut enemy_team.players {
@@ -92,7 +93,7 @@ impl Team {
                 self.trail_squares.push(
                     TrailSquare::new(
                         player.pos,
-                        self.color_default
+                        player.color_default,
                     )
                 )
             }
