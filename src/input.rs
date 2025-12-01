@@ -14,6 +14,7 @@ pub struct PlayerInput {
     dash: bool,
     light: bool,
     normal: bool,
+    pary: bool,
 }
 
 impl PlayerInput {
@@ -27,6 +28,7 @@ impl PlayerInput {
             dash: false,
             light: false,
             normal: false,
+            pary: false,
         }
     }
 
@@ -40,6 +42,8 @@ impl PlayerInput {
             KeyCode::H => self.dash = value,
             KeyCode::J => self.normal = value,
             KeyCode::K => self.light = value,
+            KeyCode::L => self.pary = value,
+            KeyCode::LShift => self.pary = value,
             _ => {}
         }
     }
@@ -53,6 +57,7 @@ impl PlayerInput {
     pub fn dash(&self) -> bool { self.dash }
     pub fn light(&self) -> bool { self.light }
     pub fn normal(&self) -> bool { self.normal }
+    pub fn pary(&self) -> bool { self.pary }
 
     // SETTERS
     pub fn set_jump(&mut self, value: bool) { self.up = value }

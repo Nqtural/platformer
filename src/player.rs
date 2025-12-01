@@ -35,6 +35,7 @@ pub struct Player {
     pub name: String,
     pub stunned: f32,
     pub invulnerable_timer: f32,
+    pub pary: f32,
     pub slow: f32,
     pub double_jumps: u8,
     pub knockback_multiplier: f32,
@@ -43,6 +44,7 @@ pub struct Player {
     pub dash_cooldown: f32,
     pub normal_cooldown: f32,
     pub light_cooldown: f32,
+    pub pary_cooldown: f32,
     pub respawn_timer: f32,
     pub trail_timer: f32,
     pub facing: [f32; 2],
@@ -61,6 +63,7 @@ impl Player {
             name,
             stunned: 0.0,
             invulnerable_timer: 0.0,
+            pary: 0.0,
             slow: 0.0,
             double_jumps: 2,
             knockback_multiplier: 1.0,
@@ -69,6 +72,7 @@ impl Player {
             dash_cooldown: 0.0,
             normal_cooldown: 0.0,
             light_cooldown: 0.0,
+            pary_cooldown: 0.0,
             respawn_timer: 0.0,
             trail_timer: 0.0,
             facing: [0.0, 0.0],
@@ -126,6 +130,8 @@ impl Player {
         let mut cooldowns = [
             &mut self.normal_cooldown,
             &mut self.light_cooldown,
+            &mut self.pary,
+            &mut self.pary_cooldown,
             &mut self.stunned,
             &mut self.invulnerable_timer,
             &mut self.slow,
@@ -371,6 +377,11 @@ impl Player {
 
             self.dash_cooldown = 3.0;
         }
+        if self.input.pary() && self.pary_cooldown <= 0.0 {
+            self.pary_cooldown = 2.0;
+            self.pary = 0.5;
+            self.invulnerable_timer = 0.5;
+        }
     }
 
     fn remove_slams(&mut self) {
@@ -398,6 +409,12 @@ impl Player {
     }
 
     fn attack(&mut self, kind: &AttackKind, attacker: &mut Player) {
+        if self.pary > 0.0 {
+            self.dash_cooldown = 0.0;
+
+            attacker.stunned = 1.0;
+            return;
+        }
         match kind {
             AttackKind::Dash => {
                 if self.is_doing_attack(&kind) {
