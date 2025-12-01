@@ -398,13 +398,7 @@ impl Player {
         self.attacks.retain(|atk| !atk.is_expired());
     }
 
-    pub fn handle_attack_collisions(&mut self, atk: &Attack, attacker: &mut Player) {
-        if atk.get_rect(attacker.pos).overlaps(&self.get_rect()) {
-            self.attack(atk.kind(), attacker);
-        }
-    }
-
-    fn attack(&mut self, kind: &AttackKind, attacker: &mut Player) {
+    pub fn attack(&mut self, kind: &AttackKind, attacker: &mut Player) {
         if self.invulnerable_timer > 0.0 {
             return;
         }
