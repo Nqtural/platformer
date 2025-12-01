@@ -66,7 +66,7 @@ impl Team {
 
             for atk_index in 0..attacker.attacks.len() {
                 let kind = attacker.attacks[atk_index].kind().clone();
-                let atk_rect = attacker.attacks[atk_index].get_rect(attacker.pos).clone();
+                let atk_rect = attacker.attacks[atk_index].get_rect(attacker.pos);
 
                 for enemy in head.iter_mut().chain(tail.iter_mut()) {
                     if atk_rect.overlaps(&enemy.get_rect()) {
@@ -77,7 +77,7 @@ impl Team {
         }
 
         for player_idx in 0..self.players.len() {
-            let mut player = &mut self.players[player_idx];
+            let player = &mut self.players[player_idx];
             if player.lives <= 0 { continue; }
 
             player.update(map, enemy_team, dt);
