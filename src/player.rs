@@ -93,7 +93,7 @@ impl Player {
             vel: self.vel,
             attacks: self.attacks
                 .iter()
-                .map(|a| a.to_net())
+                .map(Attack::to_net)
                 .collect(),
             stunned: self.stunned,
             invulnerable: self.invulnerable_timer,
