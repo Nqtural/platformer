@@ -188,7 +188,7 @@ async fn main() -> GameResult {
                     }
                 }
                 Err(e) => {
-                    eprintln!("Receive error: {}", e);
+                    eprintln!("Receive error: {e}");
                 }
             }
         }
@@ -212,7 +212,7 @@ async fn main() -> GameResult {
                 Ok(data) => {
                     let _ = socket_send.send_to(&data, server_addr).await;
                 }
-                Err(e) => eprintln!("Encoding error: {}", e),
+                Err(e) => eprintln!("Encoding error: {e}"),
             }
 
             tokio::time::sleep(std::time::Duration::from_millis(16)).await;

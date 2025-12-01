@@ -360,7 +360,7 @@ impl GameState {
 
         let fps = ctx.time.fps();
         let fps_text = Text::new(TextFragment {
-            text: format!("FPS: {:.0}", fps),
+            text: format!("FPS: {fps:.0}"),
             font: None,
             scale: Some(PxScale::from(32.0)),
             ..Default::default()

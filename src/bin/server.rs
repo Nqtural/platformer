@@ -83,8 +83,8 @@ async fn main() -> GameResult {
     // bind UDP socket to listen on server port
     let ip = config.serverip();
     let port = config.serverport();
-    let socket = Arc::new(UdpSocket::bind(format!("{}:{}", ip, port)).await.unwrap());
-    println!("Server listening on {}:{}", ip, port);
+    let socket = Arc::new(UdpSocket::bind(format!("{ip}:{port}")).await.unwrap());
+    println!("Server listening on {ip}:{port}");
 
     // handshake with clients
     let mut buf = [0u8; 1500];
@@ -96,7 +96,7 @@ async fn main() -> GameResult {
     ).map_err(|e| ggez::GameError::CustomError(e.to_string()))?;
 
     if let ClientMessage::Hello { name } = msg {
-        println!("{} connected as {}", addr, name);
+        println!("{addr} connected as {name}");
         let mut lobby = lobby_state.write().await;
 
         let (team_id, player_id) = lobby.assign_slot(addr, name.clone());
@@ -152,7 +152,7 @@ async fn main() -> GameResult {
                         }
                     }
                 }
-                Err(e) => eprintln!("Receive error: {}", e),
+                Err(e) => eprintln!("Receive error: {e}"),
             }
         }
     });
@@ -170,7 +170,7 @@ async fn main() -> GameResult {
             let data = match encode_to_vec(&snapshot_msg, bincode_config) {
                 Ok(d) => d,
                 Err(e) => {
-                    eprintln!("Encoding error: {}", e);
+                    eprintln!("Encoding error: {e}");
                     continue;
                 }
             };
