@@ -23,16 +23,19 @@ impl AttackKind {
                 offset: 0.0,
                 size: PLAYER_SIZE,
                 duration: 0.3,
+                frame_count: 1,
             },
             AttackKind::Light | AttackKind::Normal => AttackProperties {
                 offset: 15.0,
                 size: PLAYER_SIZE + 30.0,
                 duration: 0.1,
+                frame_count: 3,
             },
             AttackKind::Slam => AttackProperties {
                 offset: 0.0,
                 size: PLAYER_SIZE,
                 duration: 99.9,
+                frame_count: 1,
             },
         }
     }
@@ -42,6 +45,7 @@ pub struct AttackProperties {
     offset: f32,
     size: f32,
     duration: f32,
+    frame_count: usize,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -53,7 +57,16 @@ pub struct Attack {
     timer: f32,
     owner_team: usize,
     owner_player: usize,
-    facing: [f32; 2]
+    facing: [f32; 2],
+
+    // animation
+    #[serde(skip)]
+    #[serde(default)]
+    frame: usize,
+
+    #[serde(skip)]
+    #[serde(default)]
+    frame_count: usize,
 }
 
 impl Attack {
@@ -74,6 +87,8 @@ impl Attack {
             owner_team,
             owner_player,
             facing,
+            frame: 0,
+            frame_count: properties.frame_count,
         }
     }
 
@@ -86,25 +101,32 @@ impl Attack {
             size: properties.size,
             kind: net.kind,
             duration: properties.duration,
-            timer: 0.0,
+            timer: net.timer,
             owner_team: net.owner_team,
             owner_player: net.owner_player,
             facing: net.facing,
+            frame: net.frame,
+            frame_count: properties.frame_count,
         }
     }
 
     #[must_use]
     pub fn to_net(&self) -> NetAttack {
         NetAttack {
+            timer: self.timer,
             owner_team: self.owner_team,
             owner_player: self.owner_player,
             kind: self.kind.clone(),
             facing: self.facing,
+            frame: self.frame,
         }
     }
 
     pub fn update(&mut self, dt: f32) {
         self.timer += dt;
+
+        self.frame = ((self.timer / self.duration) * self.frame_count as f32)
+            .floor() as usize % self.frame_count;
     }
 
     // GETTERS
@@ -142,4 +164,7 @@ impl Attack {
     pub fn y(&self, player_pos: [f32; 2]) -> f32 {
         player_pos[1] - self.offset + (self.offset * self.facing[1])
     }
+
+    #[must_use]
+    pub fn frame(&self) -> usize { self.frame }
 }

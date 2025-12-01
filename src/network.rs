@@ -37,10 +37,12 @@ pub struct NetPlayer {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct NetAttack {
+    pub timer: f32,
     pub owner_team: usize,
     pub owner_player: usize,
     pub kind: AttackKind,
     pub facing: [f32; 2],
+    pub frame: usize,
 }
 
 #[derive(Serialize, Deserialize)]
