@@ -283,10 +283,7 @@ impl GameState {
                     &ctx.gfx,
                     DrawMode::fill(),
                     rect,
-                    team.get_color(
-                        player.invulnerable_timer > 0.0,
-                        player.stunned > 0.0,
-                    )
+                    player.get_color(),
                 )?;
                 game_canvas.draw(&mesh, camera_transform);
                 let outline = Mesh::new_rectangle(

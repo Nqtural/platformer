@@ -14,6 +14,7 @@ use platform::{
         C_PLAYER,
         ENABLE_VSYNC,
         TEAM_ONE_START_POS,
+        TEAM_SIZE,
         TEAM_TWO_START_POS,
         VIRTUAL_HEIGHT,
         VIRTUAL_WIDTH,
@@ -85,18 +86,14 @@ async fn main() -> GameResult {
     let game_state = Arc::new(Mutex::new(GameState::new(
         [
             Team::new(
-                vec![
-                    Player::new(TEAM_ONE_START_POS, "Player1".into()),
-                    Player::new(TEAM_ONE_START_POS, "Player2".into()),
-                ],
-                config.team_one_color(),
+                (0..TEAM_SIZE)
+                    .map(|_| Player::new(TEAM_ONE_START_POS, "Player".into(), config.team_one_color()))
+                    .collect()
             ),
             Team::new(
-                vec![
-                    Player::new(TEAM_TWO_START_POS, "Player3".into()),
-                    Player::new(TEAM_TWO_START_POS, "Player4".into()),
-                ],
-                config.team_two_color(),
+                (0..TEAM_SIZE)
+                    .map(|_| Player::new(TEAM_TWO_START_POS, "Player".into(), config.team_two_color()))
+                    .collect()
             ),
         ],
         &mut ctx

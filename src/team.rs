@@ -15,23 +15,14 @@ use crate::{
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Team {
     pub players: Vec<Player>,
-    pub color_default: Color,
-    pub color_stunned: Color,
     pub trail_interval: f32,
     pub trail_squares: Vec<TrailSquare>,
 }
 
 impl Team {
-    pub fn new(players: Vec<Player>, color: Color) -> Team {
+    pub fn new(players: Vec<Player>) -> Team {
         Team {
             players,
-            color_default: color,
-            color_stunned: Color::new(
-                (color.r + 0.4).min(1.0),
-                (color.g + 0.4).min(1.0),
-                (color.b + 0.4).min(1.0),
-                1.0,
-            ),
             trail_interval: 0.01,
             trail_squares: Vec::new(),
         }
@@ -47,26 +38,26 @@ impl Team {
                 .get(i)
                 .cloned()
                 .unwrap_or_else(|| positions.first().cloned().unwrap_or([0.0, 0.0]));
-            players.push(Player::new(pos, name.clone()));
+            players.push(Player::new(pos, name.clone(), init.color));
         }
 
-        Team::new(players, init.color)
+        Team::new(players)
     }
 
     pub fn update_players(
-            &mut self,
-            enemy_team: &mut Team,
-            team_idx: usize,
-            map: &Rect,
-            winner: usize,
-            mut dt: f32,
-        ) {
-            if winner > 0 {
-                dt /= 2.0;
-            }
+        &mut self,
+        enemy_team: &mut Team,
+        team_idx: usize,
+        map: &Rect,
+        winner: usize,
+        mut dt: f32,
+    ) {
+        if winner > 0 {
+            dt /= 2.0;
+        }
 
-            self.trail_squares.iter_mut().for_each(|s| s.update(dt));
-            self.trail_squares.retain(|s| s.lifetime > 0.0);
+        self.trail_squares.iter_mut().for_each(|s| s.update(dt));
+        self.trail_squares.retain(|s| s.lifetime > 0.0);
 
         for player_idx in 0..self.players.len() {
             let mut player = &mut self.players[player_idx];
@@ -97,21 +88,5 @@ impl Team {
                 )
             }
         }
-    }
-
-    // GETTERS
-    pub fn get_color(&self, invulnerable: bool, stunned: bool) -> Color {
-        let color = if stunned {
-            self.color_stunned
-        } else {
-            self.color_default
-        };
-
-        Color::new(
-            color.r,
-            color.g,
-            color.b,
-            if invulnerable { 0.5 } else { 1.0 }
-        )
     }
 }

@@ -1,4 +1,7 @@
-use ggez::graphics::Rect;
+use ggez::graphics::{
+    Color,
+    Rect,
+};
 use serde::{
     Deserialize,
     Serialize,
@@ -50,7 +53,7 @@ pub struct Player {
 }
 
 impl Player {
-    pub fn new(start_pos: [f32; 2], name: String) -> Player {
+    pub fn new(start_pos: [f32; 2], name: String, color: Color) -> Player {
         Player {
             pos: start_pos,
             vel: [0.0, 0.0],
