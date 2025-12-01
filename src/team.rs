@@ -62,25 +62,18 @@ impl Team {
         self.trail_squares.retain(|s| s.lifetime > 0.0);
 
         for player_idx in 0..self.players.len() {
-            let (head, player_and_tail) = self.players.split_at_mut(player_idx);
-            let (player_slice, tail) = player_and_tail.split_at_mut(1);
-            let player = &mut player_slice[0];
+            let player = &mut self.players[player_idx];
+            if player.lives == 0 { continue; }
 
-            for atk_index in 0..player.attacks.len() {
-                let kind = player.attacks[atk_index].kind().clone();
-                let atk_rect = player.attacks[atk_index].get_rect(player.pos);
+            for atk in player.attacks.clone() {
+                let atk_rect = atk.get_rect(player.pos);
 
-                for enemy in head.iter_mut().chain(tail.iter_mut()) {
+                for enemy in &mut enemy_team.players {
                     if atk_rect.overlaps(&enemy.get_rect()) {
-                        enemy.attack(&kind, player);
+                        enemy.attack(atk.kind(), player);
                     }
                 }
             }
-        }
-
-        for player_idx in 0..self.players.len() {
-            let player = &mut self.players[player_idx];
-            if player.lives == 0 { continue; }
 
             player.update(map, enemy_team, dt);
 
