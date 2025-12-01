@@ -38,8 +38,8 @@ impl Team {
         for (i, name) in names.iter().enumerate() {
             let pos = positions
                 .get(i)
-                .cloned()
-                .unwrap_or_else(|| positions.first().cloned().unwrap_or([0.0, 0.0]));
+                .copied()
+                .unwrap_or_else(|| positions.first().copied().unwrap_or([0.0, 0.0]));
             players.push(Player::new(pos, name.clone(), init.color));
         }
 

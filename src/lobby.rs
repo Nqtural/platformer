@@ -79,7 +79,7 @@ impl Lobby {
                 .or_insert_with(|| InitTeamData {
                     name: format!("Team {}", p.team_id),
                     color: self.team_colors.get(&p.team_id)
-                        .cloned()
+                        .copied()
                         .unwrap_or(Color::WHITE),
                     player_names: Vec::new(),
                     start_positions: self.team_start_positions

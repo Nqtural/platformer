@@ -299,7 +299,7 @@ impl GameState {
                 game_canvas.draw(&outline, camera_transform);
 
                 let text = Text::new(TextFragment {
-                    text: player.name.to_string(),
+                    text: player.name.clone(),
                     font: None,
                     scale: Some(PxScale::from(14.0 * zoom)),
                     color: Some(NAME_COLOR),
