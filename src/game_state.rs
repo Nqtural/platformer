@@ -338,8 +338,8 @@ impl GameState {
                 let y = START_Y + player_idx as f32 * LINE_HEIGHT;
                 let text = Text::new(TextFragment {
                     text: format!(
-                        "Player {} Lives: {}",
-                        player_idx + 1,
+                        "{}: {}",
+                        player.name,
                         player.lives,
                     ),
                     font: None,
