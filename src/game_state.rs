@@ -134,9 +134,9 @@ impl GameState {
         }
 
         for (team_idx, team) in self.teams.iter_mut().enumerate() {
-            for player in &team.players {
-                if player.lives > 0 { continue; }
+            if team.players.iter().all(|p| p.lives <= 0) {
                 self.winner = if team_idx == 0 { 2 } else { 1 };
+                break;
             }
         }
     }
