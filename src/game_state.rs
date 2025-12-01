@@ -274,8 +274,8 @@ impl GameState {
         let camera_transform = DrawParam::default()
             .dest(camera_translation)
             .scale(Vec2::new(zoom, zoom).to_mint_vec());
-        for team in &self.teams {
-            for player in &team.players {
+        for (ti, team) in self.teams.iter().enumerate() {
+            for (pi, player) in team.players.iter().enumerate() {
                 if player.lives <= 0 { continue; }
 
                 let rect = player.get_rect();
@@ -293,7 +293,11 @@ impl GameState {
                     &ctx.gfx,
                     DrawMode::stroke(2.0),
                     rect,
-                    Color::new(0.0, 0.0, 0.0, 1.0),
+                    if ti == C_TEAM && pi == C_PLAYER {
+                        Color::new(0.75, 0.75, 0.75, 1.0)
+                    } else {
+                        Color::new(0.0, 0.0, 0.0, 1.0)
+                    },
                 )?;
                 game_canvas.draw(&outline, camera_transform);
 
