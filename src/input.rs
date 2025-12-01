@@ -42,8 +42,7 @@ impl PlayerInput {
             KeyCode::H => self.dash = value,
             KeyCode::J => self.normal = value,
             KeyCode::K => self.light = value,
-            KeyCode::L => self.pary = value,
-            KeyCode::LShift => self.pary = value,
+            KeyCode::L | KeyCode::LShift => self.pary = value,
             _ => {}
         }
     }

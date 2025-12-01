@@ -24,12 +24,7 @@ impl AttackKind {
                 size: PLAYER_SIZE,
                 duration: 0.3,
             },
-            AttackKind::Light => AttackProperties {
-                offset: 15.0,
-                size: PLAYER_SIZE + 30.0,
-                duration: 0.1,
-            },
-            AttackKind::Normal => AttackProperties {
+            AttackKind::Light | AttackKind::Normal => AttackProperties {
                 offset: 15.0,
                 size: PLAYER_SIZE + 30.0,
                 duration: 0.1,
