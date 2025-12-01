@@ -9,9 +9,6 @@ pub const C_PLAYER: usize = 0;
 
 pub const REQUIRED_PLAYERS: usize = 2;
 
-pub const SERVER_IP: &str = "0.0.0.0";
-pub const SERVER_PORT: &str = "4000";
-
 pub const VIRTUAL_WIDTH: f32 = 1980.0;
 pub const VIRTUAL_HEIGHT: f32 = 1080.0;
 
