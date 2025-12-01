@@ -103,7 +103,7 @@ impl GameState {
                 && let Some(player) = team.players.get_mut(net_player.player_id) {
                     player.pos = net_player.pos;
                     player.vel = net_player.vel;
-                    player.lives = net_player.lives as i32;
+                    player.lives = net_player.lives;
                     player.attacks = net_player.attacks
                         .iter()
                         .map(|na| Attack::from_net(na.clone()))
@@ -136,7 +136,7 @@ impl GameState {
         }
 
         for (team_idx, team) in self.teams.iter_mut().enumerate() {
-            if team.players.iter().all(|p| p.lives <= 0) {
+            if team.players.iter().all(|p| p.lives == 0) {
                 self.winner = if team_idx == 0 { 2 } else { 1 };
                 break;
             }
@@ -278,7 +278,7 @@ impl GameState {
             .scale(Vec2::new(zoom, zoom).to_mint_vec());
         for (ti, team) in self.teams.iter().enumerate() {
             for (pi, player) in team.players.iter().enumerate() {
-                if player.lives <= 0 { continue; }
+                if player.lives == 0 { continue; }
 
                 let rect = player.get_rect();
                 let mesh = Mesh::new_rectangle(

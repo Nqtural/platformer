@@ -31,7 +31,7 @@ use crate::{
 pub struct Player {
     pub pos: [f32; 2],
     pub vel: [f32; 2],
-    pub lives: i32,
+    pub lives: u8,
     pub name: String,
     pub stunned: f32,
     pub invulnerable_timer: f32,
@@ -97,7 +97,7 @@ impl Player {
                 .collect(),
             stunned: self.stunned,
             invulnerable: self.invulnerable_timer,
-            lives: self.lives.max(0) as u8,
+            lives: self.lives,
         }
     }
 
@@ -278,7 +278,7 @@ impl Player {
         dt: f32,
     ) {
         self.facing = [0.0, 0.0];
-        if self.stunned > 0.0 || self.lives <= 0 {
+        if self.stunned > 0.0 || self.lives == 0 {
             return;
         }
 

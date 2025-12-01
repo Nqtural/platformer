@@ -80,7 +80,7 @@ impl Team {
 
         for player_idx in 0..self.players.len() {
             let player = &mut self.players[player_idx];
-            if player.lives <= 0 { continue; }
+            if player.lives == 0 { continue; }
 
             player.update(map, enemy_team, dt);
 
