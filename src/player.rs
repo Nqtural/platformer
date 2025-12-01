@@ -342,7 +342,7 @@ impl Player {
                     self.facing,
                 )
             );
-            self.normal_cooldown = 0.6;
+            self.normal_cooldown = 0.75;
         }
         if self.input.dash() && self.dash_cooldown <= 0.0 {
             let x = self.facing[0];
@@ -443,6 +443,8 @@ impl Player {
                 self.knockback_multiplier += 0.015;
                 self.remove_dashes();
                 self.remove_slams();
+
+                attacker.normal_cooldown -= 0.25;
             }
         }
     }
