@@ -2,7 +2,7 @@ use ggez::graphics::Color;
 
 pub const ENABLE_VSYNC: bool = true;
 
-pub const TEAM_SIZE: usize = 2;
+pub const TEAM_SIZE: u8 = 2;
 
 pub const C_TEAM: usize = 0;
 pub const C_PLAYER: usize = 0;
