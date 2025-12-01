@@ -205,7 +205,7 @@ impl GameState {
         for atk in attacks {
             if *atk.kind() == AttackKind::Dash
             || *atk.kind() == AttackKind::Slam {
-                return;
+                continue;
             }
 
             let rect = atk.get_rect(player_pos);
