@@ -265,7 +265,7 @@ impl Player {
         dt: f32,
     ) {
         self.facing = [0.0, 0.0];
-        if self.stunned > 0.0 && self.lives <= 0 {
+        if self.stunned > 0.0 || self.lives <= 0 {
             return;
         }
 
