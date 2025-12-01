@@ -1,5 +1,4 @@
 use ggez::graphics::{
-    Color,
     Rect,
 };
 use serde::{
@@ -93,7 +92,7 @@ impl Team {
                 self.trail_squares.push(
                     TrailSquare::new(
                         player.pos,
-                        player.color_default,
+                        player.color,
                     )
                 )
             }

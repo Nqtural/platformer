@@ -46,6 +46,7 @@ pub struct Player {
     pub input: PlayerInput,
     pub has_jumped: bool,
     pub start_pos: [f32; 2],
+    pub color: Color,
 }
 
 impl Player {
@@ -71,6 +72,7 @@ impl Player {
             input: PlayerInput::new(),
             has_jumped: false,
             start_pos,
+            color,
         }
     }
 
@@ -456,5 +458,25 @@ impl Player {
         let platform_top = map.y;
 
         (player_bottom - platform_top).abs() < 5.0 && rect.overlaps(map)
+    }
+
+    pub fn get_color(&self) -> Color {
+        let color = if self.stunned > 0.0 {
+            Color::new(
+                (self.color.r + 0.4).min(1.0),
+                (self.color.g + 0.4).min(1.0),
+                (self.color.b + 0.4).min(1.0),
+                1.0,
+            )
+        } else {
+            self.color
+        };
+
+        Color::new(
+            color.r,
+            color.g,
+            color.b,
+            if self.invulnerable_timer > 0.0 { 0.5 } else { 1.0 }
+        )
     }
 }
