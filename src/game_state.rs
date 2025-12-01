@@ -227,6 +227,20 @@ impl GameState {
             let rotation = rotation_degrees.to_radians();
 
             if let Some(img) = self.attack_image.as_ref() {
+                // get frame to draw
+                // get height of a single frame
+                let img_h = img.height() as f32;
+                let frame_h = img_h / atk.frame_count() as f32;
+
+                // normalized source rect
+                let src = Rect::new(
+                    0.0,
+                    (atk.frame() as f32 * frame_h) / img_h,
+                    1.0,
+                    frame_h / img_h,
+                );
+
+                // draw frame
                 let draw_param = self.drawparam_constructor(
                     // add half the width to balance offset
                     rect.x + rect.w * 0.5,
@@ -234,7 +248,8 @@ impl GameState {
                 )
                     // offset to be able to rotate around centre
                     .offset([0.5, 0.5])
-                    .rotation(rotation);
+                    .rotation(rotation)
+                    .src(src);
 
                 game_canvas.draw(img, draw_param);
             }

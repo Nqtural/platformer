@@ -29,7 +29,7 @@ impl AttackKind {
                 offset: 15.0,
                 size: PLAYER_SIZE + 30.0,
                 duration: 0.1,
-                frame_count: 3,
+                frame_count: 4,
             },
             AttackKind::Slam => AttackProperties {
                 offset: 0.0,
@@ -167,4 +167,7 @@ impl Attack {
 
     #[must_use]
     pub fn frame(&self) -> usize { self.frame }
+
+    #[must_use]
+    pub fn frame_count(&self) -> usize { self.kind.properties().frame_count }
 }
