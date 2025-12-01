@@ -380,7 +380,6 @@ impl Player {
         if self.input.pary() && self.pary_cooldown <= 0.0 {
             self.pary_cooldown = 2.0;
             self.pary = 0.5;
-            self.invulnerable_timer = 0.5;
         }
     }
 
@@ -400,15 +399,15 @@ impl Player {
     }
 
     pub fn handle_attack_collisions(&mut self, atk: &Attack, attacker: &mut Player) {
-        if self.invulnerable_timer > 0.0 // invulnerable
-        || !atk.get_rect(attacker.pos).overlaps(&self.get_rect()) { // miss
-            return;
+        if atk.get_rect(attacker.pos).overlaps(&self.get_rect()) {
+            self.attack(atk.kind(), attacker);
         }
-
-        self.attack(atk.kind(), attacker);
     }
 
     fn attack(&mut self, kind: &AttackKind, attacker: &mut Player) {
+        if self.invulnerable_timer > 0.0 {
+            return;
+        }
         if self.pary > 0.0 {
             self.dash_cooldown = 0.0;
 
