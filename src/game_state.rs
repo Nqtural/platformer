@@ -83,6 +83,7 @@ impl GameState {
         })
     }
 
+    #[must_use]
     pub fn to_net(&self) -> NetSnapshot {
         NetSnapshot {
             winner: self.winner,
@@ -113,6 +114,7 @@ impl GameState {
         }
     }
 
+    #[must_use]
     pub fn to_snapshot(&self) -> NetSnapshot {
         let mut net_players = Vec::new();
 

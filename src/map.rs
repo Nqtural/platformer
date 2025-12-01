@@ -21,6 +21,7 @@ impl Default for Map {
 }
 
 impl Map {
+    #[must_use]
     pub fn new() -> Map {
         Map {
             rect: Rect::new(200.0, 350.0, 400.0, 30.0),
@@ -29,6 +30,9 @@ impl Map {
     }
 
     // GETTERS
+    #[must_use]
     pub fn get_rect(&self) -> Rect { self.rect }
+
+    #[must_use]
     pub fn get_color(&self) -> Color { self.color }
 }

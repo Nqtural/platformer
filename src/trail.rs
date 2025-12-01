@@ -19,6 +19,7 @@ pub struct TrailSquare {
 }
 
 impl TrailSquare {
+    #[must_use]
     pub fn new(pos: [f32; 2], color: Color) -> TrailSquare {
         TrailSquare {
             rect: Rect::new(pos[0], pos[1], PLAYER_SIZE, PLAYER_SIZE),

@@ -9,6 +9,7 @@ use crate::{
     team::Team,
 };
 
+#[must_use]
 pub fn approach_zero(value: f32, step: f32) -> f32 {
     if value > 0.0 {
         (value - step).max(0.0)

@@ -32,6 +32,7 @@ impl Default for Lobby {
 }
 
 impl Lobby {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             players: Vec::new(),
@@ -69,6 +70,7 @@ impl Lobby {
         (team_id, player_id)
     }
 
+    #[must_use]
     pub fn initial_teams(&self) -> Vec<InitTeamData> {
         let mut map: HashMap<usize, InitTeamData> = HashMap::new();
 
@@ -92,11 +94,14 @@ impl Lobby {
     }
 
     // GETTERS
+    #[must_use]
     pub fn players_list(&self) -> Vec<(usize, usize, String)> {
         self.players
             .iter()
             .map(|p| (p.team_id, p.player_id, p.name.clone()))
             .collect()
     }
+
+    #[must_use]
     pub fn connected_count(&self) -> usize { self.players.len() }
 }

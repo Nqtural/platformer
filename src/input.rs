@@ -18,6 +18,7 @@ pub struct PlayerInput {
 }
 
 impl PlayerInput {
+    #[must_use]
     pub fn new() -> PlayerInput {
         PlayerInput {
             jump: false,
@@ -48,14 +49,31 @@ impl PlayerInput {
     }
 
     // GETTERS
+    #[must_use]
     pub fn jump(&self) -> bool { self.jump }
+
+    #[must_use]
     pub fn up(&self) -> bool { self.up }
+
+    #[must_use]
     pub fn left(&self) -> bool { self.left }
+
+    #[must_use]
     pub fn right(&self) -> bool { self.right }
+
+    #[must_use]
     pub fn slam(&self) -> bool { self.slam }
+
+    #[must_use]
     pub fn dash(&self) -> bool { self.dash }
+
+    #[must_use]
     pub fn light(&self) -> bool { self.light }
+
+    #[must_use]
     pub fn normal(&self) -> bool { self.normal }
+
+    #[must_use]
     pub fn pary(&self) -> bool { self.pary }
 
     // SETTERS

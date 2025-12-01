@@ -55,6 +55,7 @@ pub struct Player {
 }
 
 impl Player {
+    #[must_use]
     pub fn new(start_pos: [f32; 2], name: String, color: Color) -> Player {
         Player {
             pos: start_pos,
@@ -83,6 +84,7 @@ impl Player {
         }
     }
 
+    #[must_use]
     pub fn to_net(&self, team_id: usize, player_id: usize) -> NetPlayer {
         NetPlayer {
             team_id,
@@ -460,13 +462,19 @@ impl Player {
     }
 
     // GETTERS
+    #[must_use]
     pub fn attacks(&self) -> &Vec<Attack> { &self.attacks }
+
+    #[must_use]
     pub fn is_doing_attack(&self, kind: &AttackKind) -> bool {
         self.attacks.iter().any(|atk| atk.kind() == kind)
     }
+
+    #[must_use]
     pub fn get_rect(&self) -> Rect {
         Rect::new(self.pos[0], self.pos[1], PLAYER_SIZE, PLAYER_SIZE)
     }
+
     fn is_on_platform(&self, map: &Rect) -> bool {
         let rect = self.get_rect();
         let player_bottom = rect.y + rect.h;
@@ -475,6 +483,7 @@ impl Player {
         (player_bottom - platform_top).abs() < 5.0 && rect.overlaps(map)
     }
 
+    #[must_use]
     pub fn get_color(&self) -> Color {
         let color = if self.stunned > 0.0 {
             Color::new(

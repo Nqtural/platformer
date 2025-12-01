@@ -20,6 +20,7 @@ pub struct Team {
 }
 
 impl Team {
+    #[must_use]
     pub fn new(players: Vec<Player>) -> Team {
         Team {
             players,
@@ -28,6 +29,7 @@ impl Team {
         }
     }
 
+    #[must_use]
     pub fn from_init(init: InitTeamData) -> Team {
         let mut players = Vec::new();
         let names = init.player_names;

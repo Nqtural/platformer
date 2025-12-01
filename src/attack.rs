@@ -57,6 +57,7 @@ pub struct Attack {
 }
 
 impl Attack {
+    #[must_use]
     pub fn new(
         kind: AttackKind,
         owner_team: usize,
@@ -76,6 +77,7 @@ impl Attack {
         }
     }
 
+    #[must_use]
     pub fn from_net(net: NetAttack) -> Self {
         let properties = net.kind.properties();
 
@@ -91,6 +93,7 @@ impl Attack {
         }
     }
 
+    #[must_use]
     pub fn to_net(&self) -> NetAttack {
         NetAttack {
             owner_team: self.owner_team,
@@ -105,11 +108,22 @@ impl Attack {
     }
 
     // GETTERS
+    #[must_use]
     pub fn owner_team(&self) -> usize { self.owner_team }
+
+    #[must_use]
     pub fn owner_player(&self) -> usize { self.owner_player }
+
+    #[must_use]
     pub fn kind(&self) -> &AttackKind { &self.kind }
+
+    #[must_use]
     pub fn facing(&self) -> [f32; 2] { self.facing }
+
+    #[must_use]
     pub fn is_expired(&self) -> bool { self.timer >= self.duration }
+
+    #[must_use]
     pub fn get_rect(&self, player_pos: [f32; 2]) -> Rect {
         Rect::new(
             self.x(player_pos),
@@ -118,9 +132,13 @@ impl Attack {
             self.size,
         )
     }
+
+    #[must_use]
     pub fn x(&self, player_pos: [f32; 2]) -> f32 {
         player_pos[0] - self.offset + (self.offset * self.facing[0])
     }
+
+    #[must_use]
     pub fn y(&self, player_pos: [f32; 2]) -> f32 {
         player_pos[1] - self.offset + (self.offset * self.facing[1])
     }

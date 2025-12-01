@@ -65,16 +65,31 @@ impl Config {
     }
 
     // GETTERS
+    #[must_use]
     pub fn playername(&self) -> &str { &self.player.name }
+
+    #[must_use]
     pub fn team_one_color(&self) -> Color {
         self.teams.team_one_color.to_color_object()
     }
+
+    #[must_use]
     pub fn team_two_color(&self) -> Color {
         self.teams.team_two_color.to_color_object()
     }
+
+    #[must_use]
     pub fn serverip(&self) -> &str { &self.server.ip }
+
+    #[must_use]
     pub fn serverport(&self) -> &str { &self.server.port }
+
+    #[must_use]
     pub fn clientip(&self) -> &str { &self.client.ip }
+
+    #[must_use]
     pub fn clientport(&self) -> &str { &self.client.port }
+
+    #[must_use]
     pub fn camera_bias(&self) -> f32 { self.camera.bias }
 }
