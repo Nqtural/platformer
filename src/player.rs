@@ -166,7 +166,7 @@ impl Player {
 
         // sweep test to prevent downward tunneling through an opponent
         if self.is_doing_attack(&AttackKind::Slam) {
-            for opponent in enemy_team.players.iter() {
+            for opponent in &enemy_team.players {
                 if opponent.invulnerable_timer == 0.0
                     && let Some(corrected_y) = self.sweep_down(old_pos[1], self.pos[1], &opponent.get_rect()) {
                         // snap onto opponent
@@ -412,7 +412,7 @@ impl Player {
         }
         match kind {
             AttackKind::Dash => {
-                if self.is_doing_attack(&kind) {
+                if self.is_doing_attack(kind) {
                     for player in [self, attacker] {
                         player.vel[0] = player.vel[0].signum() * -50.0 * player.knockback_multiplier;
                         player.vel[1] = player.vel[1].signum() * -200.0 * player.knockback_multiplier;

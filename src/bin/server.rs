@@ -181,7 +181,7 @@ async fn main() -> GameResult {
             };
 
             // broadcast snapshot to all clients
-            for client in client_addrs.iter() {
+            for client in &client_addrs {
                 let _ = socket_send.send_to(&data, client).await;
             }
         }
