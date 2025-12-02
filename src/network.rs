@@ -19,9 +19,9 @@ pub struct InitTeamData {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct NetSnapshot {
+    pub tick: u64,
     pub winner: usize,
     pub players: Vec<NetPlayer>,
-    pub tick: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
