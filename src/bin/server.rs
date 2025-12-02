@@ -10,6 +10,7 @@ use platform::{
         TEAM_ONE_START_POS,
         TEAM_SIZE,
         TEAM_TWO_START_POS,
+        TICK_RATE,
         VIRTUAL_HEIGHT,
         VIRTUAL_WIDTH,
     },
@@ -29,9 +30,20 @@ use platform::{
 };
 use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
 use ggez::{
+    Context,
     ContextBuilder,
+    event::EventHandler,
     GameResult,
 };
+
+/*
+type InputBuffer = HashMap<u64, PlayerInput>;
+
+struct ServerPlayer {
+    input_buffer: InputBuffer,
+    state: PlayerState,
+}
+*/
 
 #[tokio::main]
 async fn main() -> GameResult {
@@ -140,7 +152,7 @@ async fn main() -> GameResult {
                     // decode incoming ClientMessage
                     if let Ok((msg, _)) = decode_from_slice::<ClientMessage, _>(&buf[..len], config_recv) {
                         match msg {
-                            ClientMessage::Input { team_id, player_id, input } => {
+                            ClientMessage::Input { tick: _, team_id, player_id, input } => {
                                 let mut gs = game_state_recv.lock().await;
                                 // update player input in game state
                                 if let Some(team) = gs.teams.get_mut(team_id)
@@ -154,6 +166,26 @@ async fn main() -> GameResult {
                 }
                 Err(e) => eprintln!("Receive error: {e}"),
             }
+        }
+    });
+
+    // simulation loop
+    let game_state_tick = Arc::clone(&game_state);
+    tokio::spawn(async move {
+        let tick_duration = std::time::Duration::from_millis(1000 / TICK_RATE as u64);
+        let mut last = std::time::Instant::now();
+
+        loop {
+            let now = std::time::Instant::now();
+            let dt = (now - last).as_secs_f32();
+            last = now;
+
+            {
+                let mut gs = game_state_tick.lock().await;
+                gs.fixed_update(dt);
+            }
+
+            tokio::time::sleep(tick_duration).await;
         }
     });
 
@@ -192,19 +224,15 @@ async fn main() -> GameResult {
 
 struct SharedGameState(Arc<Mutex<GameState>>);
 
-impl ggez::event::EventHandler for SharedGameState {
-    fn update(&mut self, ctx: &mut ggez::Context) -> GameResult {
-        let gs = self.0.try_lock();
-        if let Ok(mut gs) = gs {
-            gs.update(ctx)
-        } else {
-            Ok(())
-        }
+impl EventHandler for SharedGameState {
+    fn update(&mut self, _ctx: &mut Context) -> GameResult {
+        // this must stay empty in order
+        // to sepparate logic from rendering
+        Ok(())
     }
 
-    fn draw(&mut self, ctx: &mut ggez::Context) -> GameResult {
-        let gs = self.0.try_lock();
-        if let Ok(mut gs) = gs {
+    fn draw(&mut self, ctx: &mut Context) -> GameResult {
+        if let Ok(mut gs) = self.0.try_lock() {
             gs.draw(ctx)
         } else {
             Ok(())

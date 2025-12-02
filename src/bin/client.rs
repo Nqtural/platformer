@@ -1,8 +1,10 @@
 use ggez::{
     Context,
     ContextBuilder,
+    event::EventHandler,
     GameError,
     GameResult,
+    input::keyboard::KeyInput,
 };
 use tokio::net::UdpSocket;
 use tokio::sync::Mutex;
@@ -204,6 +206,7 @@ async fn main() -> GameResult {
             };
 
             let msg = ClientMessage::Input {
+                tick: 0,
                 team_id: C_TEAM,
                 player_id: C_PLAYER,
                 input: input.clone(),
@@ -224,19 +227,17 @@ async fn main() -> GameResult {
 
 struct SharedGameState(Arc<Mutex<GameState>>);
 
-impl ggez::event::EventHandler for SharedGameState {
-    fn update(&mut self, ctx: &mut ggez::Context) -> GameResult {
-        let gs = self.0.try_lock();
-        if let Ok(mut gs) = gs {
-            gs.update(ctx)
+impl EventHandler for SharedGameState {
+    fn update(&mut self, ctx: &mut Context) -> GameResult {
+        if let Ok(mut gs) = self.0.try_lock() {
+            gs.render_update(ctx)
         } else {
             Ok(())
         }
     }
 
-    fn draw(&mut self, ctx: &mut ggez::Context) -> GameResult {
-        let gs = self.0.try_lock();
-        if let Ok(mut gs) = gs {
+    fn draw(&mut self, ctx: &mut Context) -> GameResult {
+        if let Ok(mut gs) = self.0.try_lock() {
             gs.draw(ctx)
         } else {
             Ok(())
@@ -245,26 +246,26 @@ impl ggez::event::EventHandler for SharedGameState {
 
     fn key_down_event(
         &mut self,
-        ctx: &mut ggez::Context,
-        input: ggez::input::keyboard::KeyInput,
-        repeated: bool,
+        _ctx: &mut Context,
+        key: KeyInput,
+        _repeated: bool,
     ) -> GameResult {
-        if let Ok(mut gs) = self.0.try_lock() {
-            gs.key_down_event(ctx, input, repeated)
-        } else {
-            Ok(())
+        if let Some(keycode) = key.keycode {
+            if let Ok(mut gs) = self.0.try_lock() {
+                let input = &mut gs.teams[C_TEAM].players[C_PLAYER].input;
+                input.update(keycode, true);
+            }
         }
+        Ok(())
     }
 
-    fn key_up_event(
-        &mut self,
-        ctx: &mut ggez::Context,
-        input: ggez::input::keyboard::KeyInput,
-    ) -> GameResult {
-        if let Ok(mut gs) = self.0.try_lock() {
-            gs.key_up_event(ctx, input)
-        } else {
-            Ok(())
+    fn key_up_event(&mut self, _ctx: &mut Context, key: KeyInput) -> GameResult {
+        if let Some(keycode) = key.keycode {
+            if let Ok(mut gs) = self.0.try_lock() {
+                let input = &mut gs.teams[C_TEAM].players[C_PLAYER].input;
+                input.update(keycode, false);
+            }
         }
+        Ok(())
     }
 }

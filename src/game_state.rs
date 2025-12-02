@@ -89,9 +89,46 @@ impl GameState {
         })
     }
 
+    pub fn render_update(&mut self, ctx: &mut Context) -> GameResult {
+        let dt = ctx.time.delta().as_secs_f32();
+
+        self.check_for_win();
+
+        for i in 0..2 {
+            let (current, enemy) = current_and_enemy(&mut self.teams, i);
+            current.update_players(
+                enemy,
+                i,
+                &self.map.get_rect(),
+                self.winner,
+                dt,
+            );
+        }
+
+        self.update_camera();
+
+        Ok(())
+    }
+
+    pub fn fixed_update(&mut self, dt: f32) {
+        self.check_for_win();
+
+        for i in 0..2 {
+            let (current, enemy) = current_and_enemy(&mut self.teams, i);
+            current.update_players(
+                enemy,
+                i,
+                &self.map.get_rect(),
+                self.winner,
+                dt,
+            );
+        }
+    }
+
     #[must_use]
     pub fn to_net(&self) -> NetSnapshot {
         NetSnapshot {
+            tick: 0,
             winner: self.winner,
             players: self.teams.iter().enumerate().flat_map(|(team_id, team)| {
                 team.players.iter().enumerate().map(move |(player_id, p)| {
@@ -132,6 +169,7 @@ impl GameState {
         }
 
         NetSnapshot {
+            tick: 0,
             winner: self.winner,
             players: net_players,
         }
@@ -189,6 +227,85 @@ impl GameState {
 
         let lerp_factor = 0.1;
         self.camera_pos = self.camera_pos.lerp(biased_target, lerp_factor);
+    }
+
+    pub fn draw(&mut self, ctx: &mut Context) -> GameResult {
+        let target_image = Image::new_canvas_image(
+            &ctx.gfx,
+            ImageFormat::Rgba8UnormSrgb,
+            VIRTUAL_WIDTH as u32,
+            VIRTUAL_HEIGHT as u32,
+            1,
+        );
+
+        let mut game_canvas = Canvas::from_image(
+            &ctx.gfx,
+            target_image.clone(),
+            Color::new(0.1, 0.1, 0.15, 1.0),
+        );
+        game_canvas.set_screen_coordinates(
+            Rect::new(
+                0.0,
+                0.0,
+                VIRTUAL_WIDTH,
+                VIRTUAL_HEIGHT
+            )
+        );
+
+        // draw background
+        if let Some(img) = self.background_image.as_ref() {
+            game_canvas.draw(
+                img,
+                DrawParam::default()
+                    .dest([0.0, 0.0])
+                    .scale([
+                        VIRTUAL_WIDTH  / img.width()  as f32,
+                        VIRTUAL_HEIGHT / img.height() as f32,
+                    ]),
+            );
+        }
+
+        let (win_w, win_h) = ctx.gfx.drawable_size();
+        let virtual_aspect = VIRTUAL_WIDTH / VIRTUAL_HEIGHT;
+        let window_aspect = win_w / win_h;
+
+        let zoom = 1.1;
+
+        let screen_center = Vec2::new(
+            VIRTUAL_WIDTH / 2.0,
+            VIRTUAL_HEIGHT / 2.0
+        );
+        let camera_translation = screen_center - self.camera_pos * zoom;
+
+        let camera_transform = DrawParam::default()
+            .dest(camera_translation)
+            .scale(Vec2::new(zoom, zoom).to_mint_vec());
+
+        self.draw_map(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
+        self.draw_trails(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
+        self.draw_players(&mut game_canvas, ctx, camera_translation, zoom)?;
+        self.draw_hud(&mut game_canvas, ctx);
+
+        game_canvas.finish(&mut ctx.gfx)?;
+
+        let mut final_canvas = Canvas::from_frame(&ctx.gfx, Color::BLACK);
+
+        let scale = if window_aspect > virtual_aspect {
+            let scale = win_h / VIRTUAL_HEIGHT;
+            let x_offset = (win_w - VIRTUAL_WIDTH * scale) / 2.0;
+            DrawParam::default()
+                .dest(Vec2::new(x_offset, 0.0).to_mint_point())
+                .scale(Vec2::new(scale, scale).to_mint_vec())
+        } else {
+            let scale = win_w / VIRTUAL_WIDTH;
+            let y_offset = (win_h - VIRTUAL_HEIGHT * scale) / 2.0;
+            DrawParam::default()
+                .dest(Vec2::new(0.0, y_offset).to_mint_point())
+                .scale(Vec2::new(scale, scale).to_mint_vec())
+        };
+
+        final_canvas.draw(&target_image, scale);
+        final_canvas.finish(&mut ctx.gfx)
     }
 
     fn draw_map(&self, game_canvas: &mut Canvas, gfx: &mut GraphicsContext, camera_transform: &DrawParam) -> GameResult {
@@ -444,134 +561,5 @@ impl GameState {
                 ).to_mint_point())
             );
         }
-    }
-}
-
-impl EventHandler for GameState {
-    fn update(&mut self, ctx: &mut Context) -> GameResult {
-        let dt = ctx.time.delta().as_secs_f32();
-
-        self.check_for_win();
-
-        for i in 0..2 {
-            let (current, enemy) = current_and_enemy(&mut self.teams, i);
-            current.update_players(
-                enemy,
-                i,
-                &self.map.get_rect(),
-                self.winner,
-                dt,
-            );
-        }
-
-        self.update_camera();
-
-        Ok(())
-    }
-
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        let target_image = Image::new_canvas_image(
-            &ctx.gfx,
-            ImageFormat::Rgba8UnormSrgb,
-            VIRTUAL_WIDTH as u32,
-            VIRTUAL_HEIGHT as u32,
-            1,
-        );
-
-        let mut game_canvas = Canvas::from_image(
-            &ctx.gfx,
-            target_image.clone(),
-            Color::new(0.1, 0.1, 0.15, 1.0),
-        );
-        game_canvas.set_screen_coordinates(
-            Rect::new(
-                0.0,
-                0.0,
-                VIRTUAL_WIDTH,
-                VIRTUAL_HEIGHT
-            )
-        );
-
-        // draw background
-        if let Some(img) = self.background_image.as_ref() {
-            game_canvas.draw(
-                img,
-                DrawParam::default()
-                    .dest([0.0, 0.0])
-                    .scale([
-                        VIRTUAL_WIDTH  / img.width()  as f32,
-                        VIRTUAL_HEIGHT / img.height() as f32,
-                    ]),
-            );
-        }
-
-        let (win_w, win_h) = ctx.gfx.drawable_size();
-        let virtual_aspect = VIRTUAL_WIDTH / VIRTUAL_HEIGHT;
-        let window_aspect = win_w / win_h;
-
-        let zoom = 1.1;
-
-        let screen_center = Vec2::new(
-            VIRTUAL_WIDTH / 2.0,
-            VIRTUAL_HEIGHT / 2.0
-        );
-        let camera_translation = screen_center - self.camera_pos * zoom;
-
-        let camera_transform = DrawParam::default()
-            .dest(camera_translation)
-            .scale(Vec2::new(zoom, zoom).to_mint_vec());
-
-        self.draw_map(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
-        self.draw_trails(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
-        self.draw_players(&mut game_canvas, ctx, camera_translation, zoom)?;
-        self.draw_hud(&mut game_canvas, ctx);
-
-        game_canvas.finish(&mut ctx.gfx)?;
-
-        let mut final_canvas = Canvas::from_frame(&ctx.gfx, Color::BLACK);
-
-        let scale = if window_aspect > virtual_aspect {
-            let scale = win_h / VIRTUAL_HEIGHT;
-            let x_offset = (win_w - VIRTUAL_WIDTH * scale) / 2.0;
-            DrawParam::default()
-                .dest(Vec2::new(x_offset, 0.0).to_mint_point())
-                .scale(Vec2::new(scale, scale).to_mint_vec())
-        } else {
-            let scale = win_w / VIRTUAL_WIDTH;
-            let y_offset = (win_h - VIRTUAL_HEIGHT * scale) / 2.0;
-            DrawParam::default()
-                .dest(Vec2::new(0.0, y_offset).to_mint_point())
-                .scale(Vec2::new(scale, scale).to_mint_vec())
-        };
-
-        final_canvas.draw(&target_image, scale);
-        final_canvas.finish(&mut ctx.gfx)
-    }
-
-    fn key_down_event(
-        &mut self,
-        _ctx: &mut Context,
-        key: KeyInput,
-        _repeated: bool,
-    ) -> GameResult {
-        if let Some(keycode) = key.keycode {
-            let input = &mut self.teams[C_TEAM].players[C_PLAYER].input;
-            input.update(keycode, true);
-        }
-
-        Ok(())
-    }
-
-    fn key_up_event(
-        &mut self,
-        _ctx: &mut Context,
-        key: KeyInput,
-    ) -> GameResult {
-        if let Some(keycode) = key.keycode {
-            let input = &mut self.teams[C_TEAM].players[C_PLAYER].input;
-            input.update(keycode, false);
-        }
-
-        Ok(())
     }
 }
