@@ -384,7 +384,7 @@ impl Player {
         && self.pary_cooldown <= 0.0
         && !self.is_doing_attack(&AttackKind::Dash)
         && !self.is_doing_attack(&AttackKind::Slam) {
-            self.pary_cooldown = 2.0;
+            self.pary_cooldown = 4.0;
             self.pary = 0.5;
         }
     }
