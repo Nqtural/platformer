@@ -6,6 +6,7 @@ use crate::{
     constants::{
         ATTACK_IMAGE,
         BACKGROUND_IMAGE,
+        PARY_IMAGE,
         C_PLAYER,
         C_TEAM,
         NAME_COLOR,
@@ -62,12 +63,16 @@ pub struct GameState {
     #[serde(skip)]
     #[serde(default)]
     attack_image: Option<Image>,
+    #[serde(skip)]
+    #[serde(default)]
+    pary_image: Option<Image>,
 }
 
 impl GameState {
     pub fn new(teams: [Team; 2], ctx: &mut Context) -> GameResult<Self> {
         let bg_img = Image::from_path(&ctx.gfx, BACKGROUND_IMAGE)?;
         let attack_img = Image::from_path(&ctx.gfx, ATTACK_IMAGE)?;
+        let pary_img = Image::from_path(&ctx.gfx, PARY_IMAGE)?;
         let config = Config::get()?;
 
         Ok(Self {
@@ -80,6 +85,7 @@ impl GameState {
             team_two_color: config.team_two_color(),
             background_image: Some(bg_img),
             attack_image: Some(attack_img),
+            pary_image: Some(pary_img),
         })
     }
 
@@ -194,6 +200,22 @@ impl GameState {
         game_canvas.draw(&map_mesh, *camera_transform);
 
         Ok(())
+    }
+
+    fn draw_pary(
+        &self,
+        game_canvas: &mut Canvas,
+        player_pos: [f32; 2],
+    ) {
+        if let Some(img) = self.pary_image.as_ref() {
+            // draw frame
+            let draw_param = self.drawparam_constructor(
+                (player_pos[0] + PLAYER_SIZE / 2.0) - (img.width() as f32 / 2.0),
+                (player_pos[1] + PLAYER_SIZE / 2.0) - (img.width() as f32 / 2.0),
+            );
+
+            game_canvas.draw(img, draw_param);
+        }
     }
 
     fn draw_attacks(
@@ -329,6 +351,9 @@ impl GameState {
                 game_canvas.draw(&text, DrawParam::default().dest(text_pos));
 
                 self.draw_attacks(game_canvas, player.pos, &player.attacks);
+                if player.parying() {
+                    self.draw_pary(game_canvas, player.pos)
+                }
             }
         }
 

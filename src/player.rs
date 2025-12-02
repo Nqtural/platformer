@@ -503,4 +503,7 @@ impl Player {
             if self.invulnerable_timer > 0.0 { 0.5 } else { 1.0 }
         )
     }
+
+    #[must_use]
+    pub fn parying(&self) -> bool { self.pary > 0.0 }
 }
