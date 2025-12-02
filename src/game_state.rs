@@ -23,7 +23,6 @@ use crate::{
 };
 use ggez::{
     Context,
-    event::EventHandler,
     GameResult,
     graphics::{
         Canvas,
@@ -40,7 +39,6 @@ use ggez::{
         Text,
         TextFragment,
     },
-    input::keyboard::KeyInput,
 };
 use glam::Vec2;
 use serde::{
