@@ -21,6 +21,7 @@ pub struct InitTeamData {
 pub struct NetSnapshot {
     pub winner: usize,
     pub players: Vec<NetPlayer>,
+    pub tick: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -50,6 +51,7 @@ pub struct NetAttack {
 pub enum ClientMessage {
     Hello { name: String },
     Input {
+        tick: u64,
         team_id: usize,
         player_id: usize,
         input: PlayerInput,
