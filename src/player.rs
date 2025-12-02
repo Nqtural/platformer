@@ -353,7 +353,7 @@ impl Player {
             );
             self.normal_cooldown = 0.75;
         }
-        if self.input.dash() && self.dash_cooldown <= 0.0 {
+        if self.input.dash() && self.dash_cooldown <= 0.0 && !self.parying() {
             let x = self.facing[0];
             let y = self.facing[1];
             let mag = (x * x + y * y).sqrt();
@@ -380,7 +380,10 @@ impl Player {
 
             self.dash_cooldown = 3.0;
         }
-        if self.input.pary() && self.pary_cooldown <= 0.0 {
+        if self.input.pary()
+        && self.pary_cooldown <= 0.0
+        && !self.is_doing_attack(&AttackKind::Dash)
+        && !self.is_doing_attack(&AttackKind::Slam) {
             self.pary_cooldown = 2.0;
             self.pary = 0.5;
         }
@@ -408,7 +411,7 @@ impl Player {
         if self.pary > 0.0 {
             self.dash_cooldown = 0.0;
 
-            attacker.stunned = 1.0;
+            attacker.stunned = 0.75;
             return;
         }
         match kind {
