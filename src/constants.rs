@@ -26,6 +26,9 @@ pub const TEAM_TWO_START_POS: [f32; 2] = [550.0, 300.0];
 
 pub const PLAYER_SIZE: f32 = 20.0;
 
+// ticks per second
+pub const TICK_RATE: usize = 60;
+
 pub const MAX_SPEED: [f32; 2] = [300.0, 600.0];
 pub const ACCELERATION: f32 = 5000.0;
 pub const GRAVITY: f32 = 1400.0;
