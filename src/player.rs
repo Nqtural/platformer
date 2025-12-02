@@ -74,7 +74,7 @@ impl Player {
             normal_cooldown: 0.0,
             light_cooldown: 0.0,
             pary_cooldown: 0.0,
-            respawn_timer: 0.0,
+            respawn_timer: RESPAWN_TIME,
             trail_timer: 0.0,
             facing: [0.0, 0.0],
             input: PlayerInput::new(),
