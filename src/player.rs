@@ -97,6 +97,7 @@ impl Player {
                 .collect(),
             stunned: self.stunned,
             invulnerable: self.invulnerable_timer,
+            pary: self.pary,
             lives: self.lives,
         }
     }

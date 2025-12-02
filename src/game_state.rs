@@ -116,6 +116,7 @@ impl GameState {
                         .collect();
                     player.stunned = net_player.stunned;
                     player.invulnerable_timer = net_player.invulnerable;
+                    player.pary = net_player.pary;
                 }
         }
     }
