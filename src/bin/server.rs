@@ -60,6 +60,7 @@ async fn main() -> GameResult {
             ggez::conf::WindowMode::default()
                 .dimensions(VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
                 .resizable(true)
+                .visible(config.render_server())
         )
         .build()?;
 
