@@ -452,19 +452,20 @@ impl GameState {
                 let text = Text::new(TextFragment {
                     text: player.name.clone(),
                     font: None,
-                    scale: Some(PxScale::from(14.0 * self.zoom)),
+                    scale: Some(PxScale::from(14.0)),
                     color: Some(NAME_COLOR),
                 });
 
                 let text_dims = text.dimensions(ctx).unwrap();
-                let text_pos = Vec2::new(
-                    player.pos[0] + (PLAYER_SIZE / 2.0) - (text_dims.w / 2.0),
-                    player.pos[1] + 25.0,
-                ) * self.zoom + camera_translation;
 
-                game_canvas.draw(&text, DrawParam::default().dest(text_pos));
+                let draw_param = self.drawparam_constructor(
+                    player.pos[0] + (PLAYER_SIZE / 2.0) - (text_dims.w / 2.0),
+                    player.pos[1] + PLAYER_SIZE + (text_dims.h / 2.0),
+                );
+                game_canvas.draw(&text, draw_param);
 
                 self.draw_attacks(game_canvas, player.pos, &player.attacks);
+
                 if player.parying() {
                     self.draw_pary(game_canvas, player.pos)
                 }
