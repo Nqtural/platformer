@@ -38,6 +38,7 @@ pub struct Player {
     pub pary: f32,
     pub slow: f32,
     pub double_jumps: u8,
+    combo: u32,
     pub knockback_multiplier: f32,
     pub attacks: Vec<Attack>,
     pub can_slam: bool,
@@ -67,6 +68,7 @@ impl Player {
             pary: 0.0,
             slow: 0.0,
             double_jumps: 2,
+            combo: 0,
             knockback_multiplier: 1.0,
             attacks: Vec::new(),
             can_slam: true,
@@ -414,6 +416,12 @@ impl Player {
             attacker.stunned = atk.stun();
             return;
         }
+
+        self.remove_dashes();
+        self.remove_slams();
+
+        self.stunned = atk.stun();
+
         match atk.kind() {
             AttackKind::Dash => {
                 if self.is_doing_attack(atk.kind()) {
@@ -427,7 +435,6 @@ impl Player {
                 } else {
                     self.vel[0] = attacker.vel[0] * self.knockback_multiplier;
                     self.vel[1] = attacker.vel[1] * self.knockback_multiplier;
-                    self.remove_dashes();
                 }
                 attacker.vel[0] *= -0.5;
                 attacker.vel[1] *= -0.5;
@@ -435,14 +442,10 @@ impl Player {
             AttackKind::Light => {
                 self.invulnerable_timer = 0.1;
                 self.knockback_multiplier += 0.01;
-                self.remove_dashes();
-                self.remove_slams();
             }
             AttackKind::Slam => {
                 self.vel[1] = attacker.vel[1] * 1.5 * self.knockback_multiplier;
                 self.knockback_multiplier += 0.02;
-                self.remove_dashes();
-                self.remove_slams();
 
                 attacker.vel[1] = -50.0;
                 attacker.can_slam = false;
@@ -453,8 +456,6 @@ impl Player {
                 self.vel[0] = attacker.facing[0] * 400.0 * self.knockback_multiplier;
                 self.vel[1] = attacker.facing[1] * 400.0 * self.knockback_multiplier;
                 self.knockback_multiplier += 0.015;
-                self.remove_dashes();
-                self.remove_slams();
 
                 attacker.normal_cooldown -= 0.25;
             }
