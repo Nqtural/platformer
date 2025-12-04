@@ -55,6 +55,7 @@ pub struct GameState {
     pub winner: usize,
     team_one_color: Color,
     team_two_color: Color,
+    zoom: f32,
     #[serde(skip)]
     #[serde(default)]
     background_image: Option<Image>,
@@ -81,6 +82,7 @@ impl GameState {
             winner: 0,
             team_one_color: config.team_one_color(),
             team_two_color: config.team_two_color(),
+            zoom: config.camera_zoom(),
             background_image: Some(bg_img),
             attack_image: Some(attack_img),
             pary_image: Some(pary_img),
@@ -187,16 +189,15 @@ impl GameState {
     }
 
     fn drawparam_constructor(&self, x: f32, y: f32) -> DrawParam {
-        let zoom = 1.1;
         let screen_center = Vec2::new(VIRTUAL_WIDTH / 2.0, VIRTUAL_HEIGHT / 2.0);
 
         DrawParam::default()
             .dest(
                 screen_center 
-                + Vec2::new(x, y) * zoom 
-                - self.camera_pos * zoom
+                + Vec2::new(x, y) * self.zoom 
+                - self.camera_pos * self.zoom
             )
-            .scale(Vec2::new(zoom, zoom).to_mint_vec())
+            .scale(Vec2::new(self.zoom, self.zoom).to_mint_vec())
     }
 
     fn update_camera(&mut self) {
@@ -267,21 +268,19 @@ impl GameState {
         let virtual_aspect = VIRTUAL_WIDTH / VIRTUAL_HEIGHT;
         let window_aspect = win_w / win_h;
 
-        let zoom = 1.1;
-
         let screen_center = Vec2::new(
             VIRTUAL_WIDTH / 2.0,
             VIRTUAL_HEIGHT / 2.0
         );
-        let camera_translation = screen_center - self.camera_pos * zoom;
+        let camera_translation = screen_center - self.camera_pos * self.zoom;
 
         let camera_transform = DrawParam::default()
             .dest(camera_translation)
-            .scale(Vec2::new(zoom, zoom).to_mint_vec());
+            .scale(Vec2::new(self.zoom, self.zoom).to_mint_vec());
 
         self.draw_map(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
         self.draw_trails(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
-        self.draw_players(&mut game_canvas, ctx, camera_translation, zoom)?;
+        self.draw_players(&mut game_canvas, ctx, camera_translation)?;
         self.draw_hud(&mut game_canvas, ctx);
 
         game_canvas.finish(&mut ctx.gfx)?;
@@ -422,11 +421,10 @@ impl GameState {
         game_canvas: &mut Canvas,
         ctx: &mut Context,
         camera_translation: Vec2,
-        zoom: f32,
     ) -> GameResult {
         let camera_transform = DrawParam::default()
             .dest(camera_translation)
-            .scale(Vec2::new(zoom, zoom).to_mint_vec());
+            .scale(Vec2::new(self.zoom, self.zoom).to_mint_vec());
         for (ti, team) in self.teams.iter().enumerate() {
             for (pi, player) in team.players.iter().enumerate() {
                 if player.lives == 0 { continue; }
@@ -454,7 +452,7 @@ impl GameState {
                 let text = Text::new(TextFragment {
                     text: player.name.clone(),
                     font: None,
-                    scale: Some(PxScale::from(14.0 * zoom)),
+                    scale: Some(PxScale::from(14.0 * self.zoom)),
                     color: Some(NAME_COLOR),
                 });
 
@@ -462,7 +460,7 @@ impl GameState {
                 let text_pos = Vec2::new(
                     player.pos[0] + (PLAYER_SIZE / 2.0) - (text_dims.w / 2.0),
                     player.pos[1] + 25.0,
-                ) * zoom + camera_translation;
+                ) * self.zoom + camera_translation;
 
                 game_canvas.draw(&text, DrawParam::default().dest(text_pos));
 

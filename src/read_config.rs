@@ -47,6 +47,7 @@ impl RGB {
 #[derive(Deserialize)]
 struct Camera {
     bias: f32,
+    zoom: f32,
 }
 
 #[derive(Deserialize)]
@@ -102,4 +103,7 @@ impl Config {
 
     #[must_use]
     pub fn camera_bias(&self) -> f32 { self.camera.bias }
+
+    #[must_use]
+    pub fn camera_zoom(&self) -> f32 { self.camera.zoom }
 }

@@ -26,6 +26,12 @@ team_two_color = { r = 1.0, g = 0.0, b = 0.0 }
 # default: 0.7
 bias = 0.7
 
+# How zoomed in the camera is
+#
+# Can be any positive float
+#
+# default: 1.1
+zoom = 1.1
 
 
 [client]
