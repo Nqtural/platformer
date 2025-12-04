@@ -20,6 +20,11 @@ pub fn approach_zero(value: f32, step: f32) -> f32 {
     }
 }
 
+#[must_use]
+pub fn get_combo_multiplier(combo: u32) -> f32 {
+    (combo * combo) as f32 * 0.01 + 1.0
+}
+
 pub fn current_and_enemy<const N: usize>(teams: &mut [Team; N], i: usize) -> (&mut Team, &mut Team) {
     assert!(N == 2 && (i == 0 || i == 1));
     let (left, right) = teams.split_at_mut(1);

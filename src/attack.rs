@@ -16,6 +16,15 @@ pub enum AttackKind {
     Slam,
 }
 
+pub struct AttackProperties {
+    offset: f32,
+    size: f32,
+    duration: f32,
+    frame_count: usize,
+    stun: f32,
+    knockback_increase: f32,
+}
+
 impl AttackKind {
     fn properties(&self) -> AttackProperties {
         match self {
@@ -25,6 +34,7 @@ impl AttackKind {
                 duration: 0.3,
                 frame_count: 1,
                 stun: 0.5,
+                knockback_increase: 0.01,
             },
             AttackKind::Light => AttackProperties {
                 offset: 15.0,
@@ -32,6 +42,7 @@ impl AttackKind {
                 duration: 0.1,
                 frame_count: 4,
                 stun: 2.0,
+                knockback_increase: 0.01,
             },
             AttackKind::Normal => AttackProperties {
                 offset: 15.0,
@@ -39,6 +50,7 @@ impl AttackKind {
                 duration: 0.1,
                 frame_count: 4,
                 stun: 0.4,
+                knockback_increase: 0.015,
             },
             AttackKind::Slam => AttackProperties {
                 offset: 0.0,
@@ -46,17 +58,10 @@ impl AttackKind {
                 duration: 99.9,
                 frame_count: 1,
                 stun: 0.1,
+                knockback_increase: 0.02,
             },
         }
     }
-}
-
-pub struct AttackProperties {
-    offset: f32,
-    size: f32,
-    duration: f32,
-    frame_count: usize,
-    stun: f32,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -70,6 +75,7 @@ pub struct Attack {
     owner_player: usize,
     facing: [f32; 2],
     stun: f32,
+    knockback_increase: f32,
 
     // animation
     #[serde(skip)]
@@ -100,6 +106,7 @@ impl Attack {
             owner_player,
             facing,
             stun: properties.stun,
+            knockback_increase: properties.knockback_increase,
             frame: 0,
             frame_count: properties.frame_count,
         }
@@ -119,6 +126,7 @@ impl Attack {
             owner_player: net.owner_player,
             facing: net.facing,
             stun: properties.stun,
+            knockback_increase: properties.knockback_increase,
             frame: net.frame,
             frame_count: properties.frame_count,
         }
@@ -158,6 +166,9 @@ impl Attack {
 
     #[must_use]
     pub fn stun(&self) -> f32 { self.stun }
+
+    #[must_use]
+    pub fn knockback_increase(&self) -> f32 { self.knockback_increase }
 
     #[must_use]
     pub fn is_expired(&self) -> bool { self.timer >= self.duration }

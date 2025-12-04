@@ -24,7 +24,10 @@ use crate::{
     input::PlayerInput,
     network::NetPlayer,
     team::Team,
-    utils::approach_zero,
+    utils::{
+        approach_zero,
+        get_combo_multiplier,
+    },
 };
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -39,6 +42,7 @@ pub struct Player {
     pub slow: f32,
     pub double_jumps: u8,
     combo: u32,
+    combo_timer: f32,
     pub knockback_multiplier: f32,
     pub attacks: Vec<Attack>,
     pub can_slam: bool,
@@ -69,6 +73,7 @@ impl Player {
             slow: 0.0,
             double_jumps: 2,
             combo: 0,
+            combo_timer: 0.0,
             knockback_multiplier: 1.0,
             attacks: Vec::new(),
             can_slam: true,
@@ -116,6 +121,10 @@ impl Player {
             normal_dt
         };
 
+        if self.combo > 0 && self.combo_timer == 0.0 {
+            self.combo = 0;
+        }
+
         if self.is_doing_attack(&AttackKind::Slam)
         || self.is_doing_attack(&AttackKind::Dash) {
             self.trail_timer += dt;
@@ -142,6 +151,7 @@ impl Player {
             &mut self.slow,
             &mut self.dash_cooldown,
             &mut self.respawn_timer,
+            &mut self.combo_timer,
         ];
         for cooldown in &mut cooldowns {
             if **cooldown > 0.0 {
@@ -407,13 +417,20 @@ impl Player {
     }
 
     pub fn attack(&mut self, atk: &Attack, attacker: &mut Player) {
-        if self.invulnerable_timer > 0.0 {
-            return;
-        }
+        if self.invulnerable_timer > 0.0 { return; }
+
         if self.pary > 0.0 {
+            // get dash ability back when successfully parrying
             self.dash_cooldown = 0.0;
 
+            // stun attacker with own attack's stun
             attacker.stunned = atk.stun();
+
+            // half the velocity to avoid next
+            // to garantueed kill when dashing
+            attacker.vel[0] /= 2.0;
+            attacker.vel[1] /= 2.0;
+
             return;
         }
 
@@ -421,6 +438,11 @@ impl Player {
         self.remove_slams();
 
         self.stunned = atk.stun();
+        self.knockback_multiplier += atk.knockback_increase();
+        self.invulnerable_timer = 0.3;
+
+        self.combo += 1;
+        self.combo_timer = 1.0;
 
         match atk.kind() {
             AttackKind::Dash => {
@@ -429,7 +451,7 @@ impl Player {
                         player.vel[0] = player.vel[0].signum() * -50.0 * player.knockback_multiplier;
                         player.vel[1] = player.vel[1].signum() * -200.0 * player.knockback_multiplier;
                         player.stunned = atk.stun();
-                        player.knockback_multiplier += 0.01;
+                        player.knockback_multiplier += atk.knockback_increase();
                         player.remove_dashes();
                     }
                 } else {
@@ -440,22 +462,36 @@ impl Player {
                 attacker.vel[1] *= -0.5;
             }
             AttackKind::Light => {
-                self.invulnerable_timer = 0.1;
-                self.knockback_multiplier += 0.01;
+                // if player is in a combo, this attack is used as a finisher
+                if self.combo > 0 {
+                    // overwrite default attack stun
+                    self.stunned = 0.5;
+
+                    // launch player
+                    self.vel[0] = attacker.facing[0]
+                        * 600.0
+                        * self.knockback_multiplier
+                        * get_combo_multiplier(self.combo);
+                    self.vel[1] = attacker.facing[1]
+                        * 600.0
+                        * self.knockback_multiplier
+                        * get_combo_multiplier(self.combo);
+
+                    // reset combo
+                    self.combo = 0;
+                    self.combo_timer = 0.0;
+                }
             }
             AttackKind::Slam => {
                 self.vel[1] = attacker.vel[1] * 1.5 * self.knockback_multiplier;
-                self.knockback_multiplier += 0.02;
 
                 attacker.vel[1] = -50.0;
                 attacker.can_slam = false;
                 attacker.remove_slams();
             }
             AttackKind::Normal => {
-                self.invulnerable_timer = 0.1;
-                self.vel[0] = attacker.facing[0] * 400.0 * self.knockback_multiplier;
-                self.vel[1] = attacker.facing[1] * 400.0 * self.knockback_multiplier;
-                self.knockback_multiplier += 0.015;
+                self.vel[0] = attacker.facing[0] * 450.0;
+                self.vel[1] = attacker.facing[1] * 450.0;
 
                 attacker.normal_cooldown -= 0.25;
             }
