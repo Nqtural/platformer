@@ -70,7 +70,7 @@ impl Team {
 
                 for enemy in &mut enemy_team.players {
                     if atk_rect.overlaps(&enemy.get_rect()) {
-                        enemy.attack(atk.kind(), player);
+                        enemy.attack(&atk, player);
                     }
                 }
             }

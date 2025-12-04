@@ -404,37 +404,35 @@ impl Player {
         self.attacks.retain(|atk| !atk.is_expired());
     }
 
-    pub fn attack(&mut self, kind: &AttackKind, attacker: &mut Player) {
+    pub fn attack(&mut self, atk: &Attack, attacker: &mut Player) {
         if self.invulnerable_timer > 0.0 {
             return;
         }
         if self.pary > 0.0 {
             self.dash_cooldown = 0.0;
 
-            attacker.stunned = 0.75;
+            attacker.stunned = atk.stun();
             return;
         }
-        match kind {
+        match atk.kind() {
             AttackKind::Dash => {
-                if self.is_doing_attack(kind) {
+                if self.is_doing_attack(atk.kind()) {
                     for player in [self, attacker] {
                         player.vel[0] = player.vel[0].signum() * -50.0 * player.knockback_multiplier;
                         player.vel[1] = player.vel[1].signum() * -200.0 * player.knockback_multiplier;
-                        player.stunned = 5.0;
+                        player.stunned = atk.stun();
                         player.knockback_multiplier += 0.01;
                         player.remove_dashes();
                     }
                 } else {
                     self.vel[0] = attacker.vel[0] * self.knockback_multiplier;
                     self.vel[1] = attacker.vel[1] * self.knockback_multiplier;
-                    self.stunned = 0.5;
                     self.remove_dashes();
                 }
                 attacker.vel[0] *= -0.5;
                 attacker.vel[1] *= -0.5;
             }
             AttackKind::Light => {
-                self.stunned = 1.0;
                 self.invulnerable_timer = 0.1;
                 self.knockback_multiplier += 0.01;
                 self.remove_dashes();
@@ -442,7 +440,6 @@ impl Player {
             }
             AttackKind::Slam => {
                 self.vel[1] = attacker.vel[1] * 1.5 * self.knockback_multiplier;
-                self.stunned = 0.1;
                 self.knockback_multiplier += 0.02;
                 self.remove_dashes();
                 self.remove_slams();
@@ -452,7 +449,6 @@ impl Player {
                 attacker.remove_slams();
             }
             AttackKind::Normal => {
-                self.stunned = 0.4;
                 self.invulnerable_timer = 0.1;
                 self.vel[0] = attacker.facing[0] * 400.0 * self.knockback_multiplier;
                 self.vel[1] = attacker.facing[1] * 400.0 * self.knockback_multiplier;

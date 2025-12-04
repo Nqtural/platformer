@@ -24,18 +24,28 @@ impl AttackKind {
                 size: PLAYER_SIZE,
                 duration: 0.3,
                 frame_count: 1,
+                stun: 0.5,
             },
-            AttackKind::Light | AttackKind::Normal => AttackProperties {
+            AttackKind::Light => AttackProperties {
                 offset: 15.0,
                 size: PLAYER_SIZE + 30.0,
                 duration: 0.1,
                 frame_count: 4,
+                stun: 2.0,
+            },
+            AttackKind::Normal => AttackProperties {
+                offset: 15.0,
+                size: PLAYER_SIZE + 30.0,
+                duration: 0.1,
+                frame_count: 4,
+                stun: 0.4,
             },
             AttackKind::Slam => AttackProperties {
                 offset: 0.0,
                 size: PLAYER_SIZE,
                 duration: 99.9,
                 frame_count: 1,
+                stun: 0.1,
             },
         }
     }
@@ -46,6 +56,7 @@ pub struct AttackProperties {
     size: f32,
     duration: f32,
     frame_count: usize,
+    stun: f32,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -58,6 +69,7 @@ pub struct Attack {
     owner_team: usize,
     owner_player: usize,
     facing: [f32; 2],
+    stun: f32,
 
     // animation
     #[serde(skip)]
@@ -87,6 +99,7 @@ impl Attack {
             owner_team,
             owner_player,
             facing,
+            stun: properties.stun,
             frame: 0,
             frame_count: properties.frame_count,
         }
@@ -105,6 +118,7 @@ impl Attack {
             owner_team: net.owner_team,
             owner_player: net.owner_player,
             facing: net.facing,
+            stun: properties.stun,
             frame: net.frame,
             frame_count: properties.frame_count,
         }
@@ -141,6 +155,9 @@ impl Attack {
 
     #[must_use]
     pub fn facing(&self) -> [f32; 2] { self.facing }
+
+    #[must_use]
+    pub fn stun(&self) -> f32 { self.stun }
 
     #[must_use]
     pub fn is_expired(&self) -> bool { self.timer >= self.duration }
