@@ -250,21 +250,19 @@ impl EventHandler for SharedGameState {
         key: KeyInput,
         _repeated: bool,
     ) -> GameResult {
-        if let Some(keycode) = key.keycode {
-            if let Ok(mut gs) = self.0.try_lock() {
-                let input = &mut gs.teams[C_TEAM].players[C_PLAYER].input;
-                input.update(keycode, true);
-            }
+        if let Some(keycode) = key.keycode
+        && let Ok(mut gs) = self.0.try_lock() {
+            let input = &mut gs.teams[C_TEAM].players[C_PLAYER].input;
+            input.update(keycode, true);
         }
         Ok(())
     }
 
     fn key_up_event(&mut self, _ctx: &mut Context, key: KeyInput) -> GameResult {
-        if let Some(keycode) = key.keycode {
-            if let Ok(mut gs) = self.0.try_lock() {
-                let input = &mut gs.teams[C_TEAM].players[C_PLAYER].input;
-                input.update(keycode, false);
-            }
+        if let Some(keycode) = key.keycode
+        && let Ok(mut gs) = self.0.try_lock() {
+            let input = &mut gs.teams[C_TEAM].players[C_PLAYER].input;
+            input.update(keycode, false);
         }
         Ok(())
     }
