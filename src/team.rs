@@ -40,7 +40,7 @@ impl Team {
                 .get(i)
                 .copied()
                 .unwrap_or_else(|| positions.first().copied().unwrap_or([0.0, 0.0]));
-            players.push(Player::new(pos, name.clone(), init.color));
+            players.push(Player::new(pos, name.clone(), init.color, init.index));
         }
 
         Team::new(players)
@@ -49,7 +49,6 @@ impl Team {
     pub fn update_players(
         &mut self,
         enemy_team: &mut Team,
-        team_idx: usize,
         map: &Rect,
         winner: usize,
         mut dt: f32,
@@ -77,7 +76,7 @@ impl Team {
 
             player.update(map, enemy_team, dt);
 
-            player.apply_input(map, team_idx, player_idx, dt);
+            player.apply_input(map, player_idx, dt);
 
             while player.trail_timer >= self.trail_interval
             && (

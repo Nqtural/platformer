@@ -52,6 +52,7 @@ pub struct Player {
     pub pary_cooldown: f32,
     pub respawn_timer: f32,
     pub trail_timer: f32,
+    team_idx: usize,
     pub facing: [f32; 2],
     pub input: PlayerInput,
     pub has_jumped: bool,
@@ -65,6 +66,7 @@ impl Player {
         start_pos: [f32; 2],
         name: String,
         color: Color,
+        team_idx: usize,
     ) -> Self {
         Self {
             pos: start_pos,
@@ -87,7 +89,8 @@ impl Player {
             pary_cooldown: 0.0,
             respawn_timer: RESPAWN_TIME,
             trail_timer: 0.0,
-            facing: [0.0, 0.0],
+            team_idx,
+            facing: get_facing_from_team(team_idx),
             input: PlayerInput::new(),
             has_jumped: false,
             start_pos,
@@ -98,12 +101,11 @@ impl Player {
     #[must_use]
     pub fn to_net(
         &self,
-        team_id: usize,
-        player_id: usize,
+        player_idx: usize,
     ) -> NetPlayer {
         NetPlayer {
-            team_id,
-            player_id,
+            team_idx: self.team_idx,
+            player_idx,
             pos: self.pos,
             vel: self.vel,
             attacks: self.attacks
@@ -304,7 +306,7 @@ impl Player {
             self.respawn_timer = RESPAWN_TIME;
             self.stunned = RESPAWN_TIME;
             self.invulnerable_timer = RESPAWN_TIME + 0.5;
-            self.facing = [0.0, 0.0];
+            self.facing = get_facing_from_team(self.team_idx);
             self.vel = [0.0, 0.0];
             self.pos = self.start_pos;
         }
@@ -313,14 +315,10 @@ impl Player {
     pub fn apply_input(
         &mut self,
         map: &Rect,
-        team_idx: usize,
         player_idx: usize,
         dt: f32,
     ) {
-        self.facing = [0.0, 0.0];
-        if self.stunned > 0.0 || self.lives == 0 {
-            return;
-        }
+        if self.stunned > 0.0 || self.lives == 0 { return; }
 
         if self.input.up() {
             self.facing[1] -= 1.0;
@@ -343,7 +341,7 @@ impl Player {
                 self.attacks.push(
                     Attack::new(
                         AttackKind::Slam,
-                        team_idx,
+                        self.team_idx,
                         player_idx,
                         self.facing,
                     )
@@ -372,7 +370,7 @@ impl Player {
             self.attacks.push(
                 Attack::new(
                     AttackKind::Light,
-                    team_idx,
+                    self.team_idx,
                     player_idx,
                     self.facing,
                 )
@@ -383,7 +381,7 @@ impl Player {
             self.attacks.push(
                 Attack::new(
                     AttackKind::Normal,
-                    team_idx,
+                    self.team_idx,
                     player_idx,
                     self.facing,
                 )
@@ -411,7 +409,7 @@ impl Player {
             self.attacks.push(
                 Attack::new(
                     AttackKind::Dash,
-                    team_idx,
+                    self.team_idx,
                     player_idx,
                     self.facing,
                 )
@@ -579,4 +577,8 @@ impl Player {
 
     #[must_use]
     pub fn parying(&self) -> bool { self.pary > 0.0 }
+}
+
+fn get_facing_from_team(team_idx: usize) -> [f32; 2] {
+    [if team_idx == 0 { 1.0 } else { -1.0 }, 0.0]
 }

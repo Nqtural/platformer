@@ -89,12 +89,12 @@ async fn main() -> GameResult {
         [
             Team::new(
                 (0..TEAM_SIZE)
-                    .map(|_| Player::new(TEAM_ONE_START_POS, "Player".into(), config.team_one_color()))
+                    .map(|_| Player::new(TEAM_ONE_START_POS, "Player".into(), config.team_one_color(), 0))
                     .collect()
             ),
             Team::new(
                 (0..TEAM_SIZE)
-                    .map(|_| Player::new(TEAM_TWO_START_POS, "Player".into(), config.team_two_color()))
+                    .map(|_| Player::new(TEAM_TWO_START_POS, "Player".into(), config.team_two_color(), 1))
                     .collect()
             ),
         ],

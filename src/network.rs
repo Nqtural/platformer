@@ -15,6 +15,7 @@ pub struct InitTeamData {
     pub color: Color,
     pub player_names: Vec<String>,
     pub start_positions: Vec<[f32; 2]>,
+    pub index: usize,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -26,8 +27,8 @@ pub struct NetSnapshot {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct NetPlayer {
-    pub team_id: usize,
-    pub player_id: usize,
+    pub team_idx: usize,
+    pub player_idx: usize,
     pub pos: [f32; 2],
     pub vel: [f32; 2],
     pub attacks: Vec<NetAttack>,

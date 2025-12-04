@@ -74,20 +74,21 @@ impl Lobby {
     pub fn initial_teams(&self) -> Vec<InitTeamData> {
         let mut map: HashMap<usize, InitTeamData> = HashMap::new();
 
-        for p in &self.players {
-            map.entry(p.team_id)
+        for player in &self.players {
+            map.entry(player.team_id)
                 .or_insert_with(|| InitTeamData {
-                    name: format!("Team {}", p.team_id),
-                    color: self.team_colors.get(&p.team_id)
+                    name: format!("Team {}", player.team_id),
+                    color: self.team_colors.get(&player.team_id)
                         .copied()
                         .unwrap_or(Color::WHITE),
                     player_names: Vec::new(),
                     start_positions: self.team_start_positions
-                        .get(&p.team_id)
+                        .get(&player.team_id)
                         .cloned()
                         .unwrap_or_default(),
+                    index: player.team_id,
                 })
-                .player_names.push(p.name.clone());
+                .player_names.push(player.name.clone());
         }
 
         map.into_values().collect()

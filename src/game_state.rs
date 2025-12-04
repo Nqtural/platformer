@@ -98,7 +98,6 @@ impl GameState {
             let (current, enemy) = current_and_enemy(&mut self.teams, i);
             current.update_players(
                 enemy,
-                i,
                 &self.map.get_rect(),
                 self.winner,
                 dt,
@@ -117,7 +116,6 @@ impl GameState {
             let (current, enemy) = current_and_enemy(&mut self.teams, i);
             current.update_players(
                 enemy,
-                i,
                 &self.map.get_rect(),
                 self.winner,
                 dt,
@@ -130,9 +128,9 @@ impl GameState {
         NetSnapshot {
             tick: 0,
             winner: self.winner,
-            players: self.teams.iter().enumerate().flat_map(|(team_id, team)| {
-                team.players.iter().enumerate().map(move |(player_id, p)| {
-                    p.to_net(team_id, player_id)
+            players: self.teams.iter().flat_map(|team| {
+                team.players.iter().enumerate().map(move |(player_idx, player)| {
+                    player.to_net(player_idx)
                 })
             }).collect(),
         }
@@ -142,8 +140,8 @@ impl GameState {
         self.winner = snapshot.winner;
 
         for net_player in snapshot.players {
-            if let Some(team) = self.teams.get_mut(net_player.team_id)
-                && let Some(player) = team.players.get_mut(net_player.player_id) {
+            if let Some(team) = self.teams.get_mut(net_player.team_idx)
+                && let Some(player) = team.players.get_mut(net_player.player_idx) {
                     player.pos = net_player.pos;
                     player.vel = net_player.vel;
                     player.lives = net_player.lives;
@@ -162,9 +160,9 @@ impl GameState {
     pub fn to_snapshot(&self) -> NetSnapshot {
         let mut net_players = Vec::new();
 
-        for (team_id, team) in self.teams.iter().enumerate() {
-            for (player_id, p) in team.players.iter().enumerate() {
-                net_players.push(p.to_net(team_id, player_id));
+        for team in &self.teams {
+            for (player_idx, player) in team.players.iter().enumerate() {
+                net_players.push(player.to_net(player_idx));
             }
         }
 
