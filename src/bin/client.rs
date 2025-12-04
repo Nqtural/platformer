@@ -169,7 +169,7 @@ async fn main() -> GameResult {
                                 .map(|team| {
                                     team.players
                                         .iter()
-                                        .map(|p| p.input.clone())
+                                        .map(|p| p.get_input().clone())
                                         .collect::<Vec<_>>()
                                 })
                                 .collect();
@@ -184,7 +184,7 @@ async fn main() -> GameResult {
                                         .get(team_idx)
                                         .and_then(|team_inputs| team_inputs.get(player_idx))
                                     {
-                                        player.input = input.clone();
+                                        player.set_input(input.clone());
                                     }
                                 }
                             }
@@ -203,7 +203,7 @@ async fn main() -> GameResult {
             loop {
                 let input = {
                     let gs = gs_clone_send.lock().await;
-                    gs.teams[C_TEAM].players[C_PLAYER].input.clone()
+                    gs.teams[C_TEAM].players[C_PLAYER].get_input().clone()
                 };
 
                 let msg = ClientMessage::Input {
@@ -254,8 +254,7 @@ impl EventHandler for SharedGameState {
     ) -> GameResult {
         if let Some(keycode) = key.keycode
         && let Ok(mut gs) = self.0.try_lock() {
-            let input = &mut gs.teams[C_TEAM].players[C_PLAYER].input;
-            input.update(keycode, true);
+            gs.teams[C_TEAM].players[C_PLAYER].update_input(keycode, true);
         }
         Ok(())
     }
@@ -263,8 +262,7 @@ impl EventHandler for SharedGameState {
     fn key_up_event(&mut self, _ctx: &mut Context, key: KeyInput) -> GameResult {
         if let Some(keycode) = key.keycode
         && let Ok(mut gs) = self.0.try_lock() {
-            let input = &mut gs.teams[C_TEAM].players[C_PLAYER].input;
-            input.update(keycode, false);
+            gs.teams[C_TEAM].players[C_PLAYER].update_input(keycode, false);
         }
         Ok(())
     }

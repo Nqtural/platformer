@@ -141,18 +141,9 @@ impl GameState {
 
         for net_player in snapshot.players {
             if let Some(team) = self.teams.get_mut(net_player.team_idx)
-                && let Some(player) = team.players.get_mut(net_player.player_idx) {
-                    player.pos = net_player.pos;
-                    player.vel = net_player.vel;
-                    player.lives = net_player.lives;
-                    player.attacks = net_player.attacks
-                        .iter()
-                        .map(|na| Attack::from_net(na.clone()))
-                        .collect();
-                    player.stunned = net_player.stunned;
-                    player.invulnerable_timer = net_player.invulnerable;
-                    player.pary = net_player.pary;
-                }
+            && let Some(player) = team.players.get_mut(net_player.player_idx) {
+                player.from_net(net_player);
+            }
         }
     }
 
@@ -179,7 +170,7 @@ impl GameState {
         }
 
         for (team_idx, team) in self.teams.iter_mut().enumerate() {
-            if team.players.iter().all(|p| p.lives == 0) {
+            if team.players.iter().all(|p| p.is_dead()) {
                 self.winner = if team_idx == 0 { 2 } else { 1 };
                 break;
             }
@@ -204,8 +195,11 @@ impl GameState {
 
         for team in &self.teams {
             for player in &team.players {
-                if player.lives == 0 { continue; }
-                sum += Vec2::new(player.pos[0] + PLAYER_SIZE / 2.0, player.pos[1] + PLAYER_SIZE / 2.0);
+                if player.is_dead() { continue; }
+                sum += Vec2::new(
+                    player.position()[0] + PLAYER_SIZE / 2.0,
+                    player.position()[1] + PLAYER_SIZE / 2.0,
+                );
                 count += 1;
             }
         }
@@ -398,15 +392,16 @@ impl GameState {
         camera_transform: &DrawParam,
     ) -> GameResult {
         for team in &self.teams {
-            for square in &team.trail_squares {
-                let mesh = Mesh::new_rectangle(
-                    gfx,
-                    DrawMode::fill(),
-                    square.rect,
-                    square.color,
-                )?;
-                game_canvas.draw(&mesh,
-                    *camera_transform);
+            for player in &team.players {
+                for square in player.trail_squares() {
+                    let mesh = Mesh::new_rectangle(
+                        gfx,
+                        DrawMode::fill(),
+                        square.rect,
+                        square.color,
+                    )?;
+                    game_canvas.draw(&mesh, *camera_transform);
+                }
             }
         }
 
@@ -425,7 +420,7 @@ impl GameState {
             .scale(Vec2::new(self.zoom, self.zoom).to_mint_vec());
         for (ti, team) in self.teams.iter().enumerate() {
             for (pi, player) in team.players.iter().enumerate() {
-                if player.lives == 0 { continue; }
+                if player.is_dead() { continue; }
 
                 let rect = player.get_rect();
                 let mesh = Mesh::new_rectangle(
@@ -448,7 +443,7 @@ impl GameState {
                 game_canvas.draw(&outline, camera_transform);
 
                 let text = Text::new(TextFragment {
-                    text: player.name.clone(),
+                    text: player.name(),
                     font: None,
                     scale: Some(PxScale::from(14.0)),
                     color: Some(NAME_COLOR),
@@ -457,15 +452,15 @@ impl GameState {
                 let text_dims = text.dimensions(ctx).unwrap();
 
                 let draw_param = self.drawparam_constructor(
-                    player.pos[0] + (PLAYER_SIZE / 2.0) - (text_dims.w / 2.0),
-                    player.pos[1] + PLAYER_SIZE + (text_dims.h / 2.0),
+                    player.position()[0] + (PLAYER_SIZE / 2.0) - (text_dims.w / 2.0),
+                    player.position()[1] + PLAYER_SIZE + (text_dims.h / 2.0),
                 );
                 game_canvas.draw(&text, draw_param);
 
-                self.draw_attacks(game_canvas, player.pos, &player.attacks);
+                self.draw_attacks(game_canvas, player.position(), player.attacks());
 
                 if player.parying() {
-                    self.draw_pary(game_canvas, player.pos)
+                    self.draw_pary(game_canvas, player.position())
                 }
             }
         }
@@ -492,8 +487,8 @@ impl GameState {
                 let text = Text::new(TextFragment {
                     text: format!(
                         "{}: {}",
-                        player.name,
-                        player.lives,
+                        player.name(),
+                        player.lives(),
                     ),
                     font: None,
                     scale: Some(PxScale::from(36.0)),

@@ -6,17 +6,13 @@ use serde::{
     Serialize,
 };
 use crate::{
-    attack::AttackKind,
     network::InitTeamData,
     player::Player,
-    trail::TrailSquare,
 };
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Team {
     pub players: Vec<Player>,
-    pub trail_interval: f32,
-    pub trail_squares: Vec<TrailSquare>,
 }
 
 impl Team {
@@ -24,8 +20,6 @@ impl Team {
     pub fn new(players: Vec<Player>) -> Team {
         Team {
             players,
-            trail_interval: 0.01,
-            trail_squares: Vec::new(),
         }
     }
 
@@ -57,15 +51,12 @@ impl Team {
             dt /= 2.0;
         }
 
-        self.trail_squares.iter_mut().for_each(|s| s.update(dt));
-        self.trail_squares.retain(|s| s.lifetime > 0.0);
-
         for player_idx in 0..self.players.len() {
             let player = &mut self.players[player_idx];
-            if player.lives == 0 { continue; }
+            if player.lives() == 0 { continue; }
 
-            for atk in player.attacks.clone() {
-                let atk_rect = atk.get_rect(player.pos);
+            for atk in player.attacks().clone() {
+                let atk_rect = atk.get_rect(player.position());
 
                 for enemy in &mut enemy_team.players {
                     if atk_rect.overlaps(&enemy.get_rect()) {
@@ -77,21 +68,6 @@ impl Team {
             player.update(map, enemy_team, dt);
 
             player.apply_input(map, player_idx, dt);
-
-            while player.trail_timer >= self.trail_interval
-            && (
-                player.is_doing_attack(&AttackKind::Slam)
-                || player.is_doing_attack(&AttackKind::Dash)
-                )
-            {
-                player.trail_timer -= self.trail_interval;
-                self.trail_squares.push(
-                    TrailSquare::new(
-                        player.pos,
-                        player.color,
-                    )
-                );
-            }
         }
     }
 }

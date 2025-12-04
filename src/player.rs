@@ -1,6 +1,9 @@
-use ggez::graphics::{
-    Color,
-    Rect,
+use ggez::{
+    graphics::{
+        Color,
+        Rect,
+    },
+    input::keyboard::KeyCode,
 };
 use serde::{
     Deserialize,
@@ -24,6 +27,7 @@ use crate::{
     input::PlayerInput,
     network::NetPlayer,
     team::Team,
+    trail::TrailSquare,
     utils::{
         approach_zero,
         get_combo_multiplier,
@@ -32,32 +36,32 @@ use crate::{
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Player {
-    pub pos: [f32; 2],
-    pub vel: [f32; 2],
-    pub lives: u8,
-    pub name: String,
-    pub stunned: f32,
-    pub invulnerable_timer: f32,
-    pub pary: f32,
-    pub slow: f32,
-    pub double_jumps: u8,
+    pos: [f32; 2],
+    vel: [f32; 2],
+    lives: u8,
+    name: String,
+    stunned: f32,
+    invulnerable_timer: f32,
+    pary: f32,
+    double_jumps: u8,
     combo: u32,
     combo_timer: f32,
-    pub knockback_multiplier: f32,
-    pub attacks: Vec<Attack>,
-    pub can_slam: bool,
-    pub dash_cooldown: f32,
-    pub normal_cooldown: f32,
-    pub light_cooldown: f32,
-    pub pary_cooldown: f32,
-    pub respawn_timer: f32,
-    pub trail_timer: f32,
+    knockback_multiplier: f32,
+    attacks: Vec<Attack>,
+    trail_squares: Vec<TrailSquare>,
+    can_slam: bool,
+    dash_cooldown: f32,
+    normal_cooldown: f32,
+    light_cooldown: f32,
+    pary_cooldown: f32,
+    respawn_timer: f32,
+    trail_timer: f32,
     team_idx: usize,
-    pub facing: [f32; 2],
-    pub input: PlayerInput,
-    pub has_jumped: bool,
-    pub start_pos: [f32; 2],
-    pub color: Color,
+    facing: [f32; 2],
+    input: PlayerInput,
+    has_jumped: bool,
+    start_pos: [f32; 2],
+    color: Color,
 }
 
 impl Player {
@@ -76,12 +80,12 @@ impl Player {
             stunned: 0.0,
             invulnerable_timer: 0.0,
             pary: 0.0,
-            slow: 0.0,
             double_jumps: 2,
             combo: 0,
             combo_timer: 0.0,
             knockback_multiplier: 1.0,
             attacks: Vec::new(),
+            trail_squares: Vec::new(),
             can_slam: true,
             dash_cooldown: 0.0,
             normal_cooldown: 0.0,
@@ -99,10 +103,7 @@ impl Player {
     }
 
     #[must_use]
-    pub fn to_net(
-        &self,
-        player_idx: usize,
-    ) -> NetPlayer {
+    pub fn to_net(&self, player_idx: usize) -> NetPlayer {
         NetPlayer {
             team_idx: self.team_idx,
             player_idx,
@@ -119,22 +120,28 @@ impl Player {
         }
     }
 
+    pub fn from_net(&mut self, net_player: NetPlayer) {
+        self.pos = net_player.pos;
+        self.vel = net_player.vel;
+        self.lives = net_player.lives;
+        self.attacks = net_player.attacks
+            .iter()
+            .map(|na| Attack::from_net(na.clone()))
+            .collect();
+        self.stunned = net_player.stunned;
+        self.invulnerable_timer = net_player.invulnerable;
+        self.pary = net_player.pary;
+    }
+
     pub fn update(
         &mut self,
         map: &Rect,
         enemy_team: &Team,
-        normal_dt: f32,
+        dt: f32,
     ) {
-        self.update_cooldowns(normal_dt);
-        if self.respawn_timer > 0.0 {
-            return
-        }
+        self.update_cooldowns(dt);
 
-        let dt = if self.slow > normal_dt {
-            normal_dt / 2.0
-        } else {
-            normal_dt
-        };
+        if self.respawn_timer > 0.0 { return; }
 
         if self.combo > 0 && self.combo_timer == 0.0 {
             self.combo = 0;
@@ -153,6 +160,28 @@ impl Player {
             self.remove_slams();
             self.can_slam = false;
         }
+
+        self.update_trail(dt);
+    }
+
+    fn update_trail(&mut self, dt: f32) {
+        self.trail_squares.iter_mut().for_each(|s| s.update(dt));
+        self.trail_squares.retain(|s| s.lifetime > 0.0);
+
+        if self.trail_timer >= 0.01
+        && (
+            self.is_doing_attack(&AttackKind::Slam)
+            || self.is_doing_attack(&AttackKind::Dash)
+            )
+        {
+            self.trail_timer = 0.0;
+            self.trail_squares.push(
+                TrailSquare::new(
+                    self.pos,
+                    self.color,
+                )
+            );
+        }
     }
 
     fn update_cooldowns(&mut self, dt: f32) {
@@ -163,7 +192,6 @@ impl Player {
             &mut self.pary_cooldown,
             &mut self.stunned,
             &mut self.invulnerable_timer,
-            &mut self.slow,
             &mut self.dash_cooldown,
             &mut self.respawn_timer,
             &mut self.combo_timer,
@@ -321,7 +349,7 @@ impl Player {
         if self.stunned > 0.0 || self.lives == 0 { return; }
 
         if self.input.up() {
-            self.facing[1] -= 1.0;
+            self.facing[1] = -1.0;
         }
         if self.input.jump() && !self.has_jumped {
             if self.is_on_platform(map) {
@@ -336,7 +364,7 @@ impl Player {
             self.has_jumped = false;
         }
         if self.input.slam() {
-            self.facing[1] += 1.0;
+            self.facing[1] = 1.0;
             if self.can_slam {
                 self.attacks.push(
                     Attack::new(
@@ -355,13 +383,13 @@ impl Player {
             self.remove_slams();
         }
         if self.input.left() {
-            self.facing[0] -= 1.0;
+            self.facing[0] = -1.0;
             if self.vel[0] > -MAX_SPEED[0] {
                 self.vel[0] -= ACCELERATION * dt;
             }
         }
         if self.input.right() {
-            self.facing[0] += 1.0;
+            self.facing[0] = 1.0;
             if self.vel[0] < MAX_SPEED[0] {
                 self.vel[0] += ACCELERATION * dt;
             }
@@ -509,6 +537,9 @@ impl Player {
                         * self.knockback_multiplier
                         * get_combo_multiplier(self.combo);
 
+                    // apply knockback multiplier boost for combo
+                    self.knockback_multiplier += 0.1 * get_combo_multiplier(self.combo);
+
                     // reset combo
                     self.combo = 0;
                     self.combo_timer = 0.0;
@@ -532,9 +563,20 @@ impl Player {
         }
     }
 
+    pub fn update_input(&mut self, keycode: KeyCode, state: bool) {
+        self.input.update(keycode, state);
+    }
+
+    pub fn set_input(&mut self, input: PlayerInput) {
+        self.input = input;
+    }
+
     // GETTERS
     #[must_use]
     pub fn attacks(&self) -> &Vec<Attack> { &self.attacks }
+
+    #[must_use]
+    pub fn trail_squares(&self) -> &Vec<TrailSquare> { &self.trail_squares }
 
     #[must_use]
     pub fn is_doing_attack(&self, kind: &AttackKind) -> bool {
@@ -556,7 +598,7 @@ impl Player {
 
     #[must_use]
     pub fn get_color(&self) -> Color {
-        let color = if self.stunned > 0.0 {
+        if self.stunned > 0.0 {
             Color::new(
                 (self.color.r + 0.4).min(1.0),
                 (self.color.g + 0.4).min(1.0),
@@ -564,19 +606,30 @@ impl Player {
                 1.0,
             )
         } else {
-            self.color
-        };
-
-        Color::new(
-            color.r,
-            color.g,
-            color.b,
-            if self.invulnerable_timer > 0.0 { 0.5 } else { 1.0 }
-        )
+            self.get_color_default()
+        }
     }
 
     #[must_use]
+    pub fn get_color_default(&self) -> Color { self.color }
+
+    #[must_use]
     pub fn parying(&self) -> bool { self.pary > 0.0 }
+
+    #[must_use]
+    pub fn lives(&self) -> u8 { self.lives }
+
+    #[must_use]
+    pub fn is_dead(&self) -> bool { self.lives == 0 }
+
+    #[must_use]
+    pub fn name(&self) -> String { self.name.clone() }
+
+    #[must_use]
+    pub fn position(&self) -> [f32; 2] { self.pos }
+
+    #[must_use]
+    pub fn get_input(&self) -> &PlayerInput { &self.input }
 }
 
 fn get_facing_from_team(team_idx: usize) -> [f32; 2] {

@@ -149,7 +149,7 @@ async fn main() -> GameResult {
                                 // update player input in game state
                                 if let Some(team) = gs.teams.get_mut(team_id)
                                     && let Some(player) = team.players.get_mut(player_id) {
-                                        player.input = input;
+                                        player.set_input(input.clone());
                                     }
                             },
                             ClientMessage::Hello { .. } => {}
