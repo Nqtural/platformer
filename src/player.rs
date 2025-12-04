@@ -61,8 +61,12 @@ pub struct Player {
 
 impl Player {
     #[must_use]
-    pub fn new(start_pos: [f32; 2], name: String, color: Color) -> Player {
-        Player {
+    pub fn new(
+        start_pos: [f32; 2],
+        name: String,
+        color: Color,
+    ) -> Self {
+        Self {
             pos: start_pos,
             vel: [0.0, 0.0],
             lives: 3,
@@ -92,7 +96,11 @@ impl Player {
     }
 
     #[must_use]
-    pub fn to_net(&self, team_id: usize, player_id: usize) -> NetPlayer {
+    pub fn to_net(
+        &self,
+        team_id: usize,
+        player_id: usize,
+    ) -> NetPlayer {
         NetPlayer {
             team_id,
             player_id,
@@ -109,7 +117,12 @@ impl Player {
         }
     }
 
-    pub fn update(&mut self, map: &Rect, enemy_team: &Team, normal_dt: f32) {
+    pub fn update(
+        &mut self,
+        map: &Rect,
+        enemy_team: &Team,
+        normal_dt: f32,
+    ) {
         self.update_cooldowns(normal_dt);
         if self.respawn_timer > 0.0 {
             return
@@ -163,15 +176,23 @@ impl Player {
         self.update_attacks(dt);
     }
 
-    fn update_position(&mut self, map: &Rect, enemy_team: &Team, dt: f32) {
+    fn update_position(
+        &mut self,
+        map: &Rect,
+        enemy_team: &Team,
+        dt: f32,
+    ) {
         let old_pos = self.pos;
 
         self.pos[0] += self.vel[0] * dt;
         self.pos[1] += self.vel[1] * dt;
 
         // sweep test to prevent downward tunneling through platform
-        if let Some(corrected_y) = self.sweep_down(old_pos[1], self.pos[1], map)
-        {
+        if let Some(corrected_y) = self.sweep_down(
+            old_pos[1],
+            self.pos[1],
+            map
+        ) {
             // snap onto platform
             self.pos[1] = corrected_y;
             self.vel[1] = 0.0;
@@ -181,11 +202,15 @@ impl Player {
         if self.is_doing_attack(&AttackKind::Slam) {
             for opponent in &enemy_team.players {
                 if opponent.invulnerable_timer == 0.0
-                    && let Some(corrected_y) = self.sweep_down(old_pos[1], self.pos[1], &opponent.get_rect()) {
-                        // snap onto opponent
-                        self.pos[1] = corrected_y;
-                        self.vel[1] = 0.0;
-                    }
+                && let Some(corrected_y) = self.sweep_down(
+                    old_pos[1],
+                    self.pos[1],
+                    &opponent.get_rect()
+                ) {
+                    // snap onto opponent
+                    self.pos[1] = corrected_y;
+                    self.vel[1] = 0.0;
+                }
             }
         }
 
@@ -199,13 +224,15 @@ impl Player {
         new_y: f32,
         object: &Rect,
     ) -> Option<f32> {
-        if self.get_rect().x + PLAYER_SIZE > object.x && self.get_rect().x < object.x + object.w {
+        if self.get_rect().x + PLAYER_SIZE > object.x
+        && self.get_rect().x < object.x + object.w {
             // only downward motion matters for slam
             if new_y > old_y {
                 let old_bottom = old_y + PLAYER_SIZE;
                 let new_bottom = new_y + PLAYER_SIZE;
 
-                // if player bottom crossed the object's top between frames:
+                // if player bottom crossed the
+                // object's top between frames:
                 if old_bottom <= object.y && new_bottom >= object.y {
                     return Some(object.y - PLAYER_SIZE);
                 }
@@ -298,17 +325,15 @@ impl Player {
         if self.input.up() {
             self.facing[1] -= 1.0;
         }
-        if self.input.jump() {
-            if !self.has_jumped {
-                if self.is_on_platform(map) {
-                    self.vel[1] = -500.0;
-                } 
-                else if self.double_jumps > 0 {
-                    self.vel[1] = -500.0;
-                    self.double_jumps -= 1;
-                }
-                self.has_jumped = true;
+        if self.input.jump() && !self.has_jumped {
+            if self.is_on_platform(map) {
+                self.vel[1] = -500.0;
+            } 
+            else if self.double_jumps > 0 {
+                self.vel[1] = -500.0;
+                self.double_jumps -= 1;
             }
+            self.has_jumped = true;
         } else {
             self.has_jumped = false;
         }
@@ -365,7 +390,9 @@ impl Player {
             );
             self.normal_cooldown = 0.75;
         }
-        if self.input.dash() && self.dash_cooldown <= 0.0 && !self.parying() {
+        if self.input.dash()
+        && self.dash_cooldown <= 0.0
+        && !self.parying() {
             let x = self.facing[0];
             let y = self.facing[1];
             let mag = (x * x + y * y).sqrt();
@@ -448,21 +475,28 @@ impl Player {
             AttackKind::Dash => {
                 if self.is_doing_attack(atk.kind()) {
                     for player in [self, attacker] {
-                        player.vel[0] = player.vel[0].signum() * -50.0 * player.knockback_multiplier;
-                        player.vel[1] = player.vel[1].signum() * -200.0 * player.knockback_multiplier;
+                        player.vel[0] = player.vel[0].signum()
+                            * -50.0
+                            * player.knockback_multiplier;
+                        player.vel[1] = player.vel[1].signum()
+                            * -200.0
+                            * player.knockback_multiplier;
                         player.stunned = atk.stun();
                         player.knockback_multiplier += atk.knockback_increase();
                         player.remove_dashes();
                     }
                 } else {
-                    self.vel[0] = attacker.vel[0] * self.knockback_multiplier;
-                    self.vel[1] = attacker.vel[1] * self.knockback_multiplier;
+                    self.vel[0] = attacker.vel[0]
+                        * self.knockback_multiplier;
+                    self.vel[1] = attacker.vel[1]
+                        * self.knockback_multiplier;
                 }
                 attacker.vel[0] *= -0.5;
                 attacker.vel[1] *= -0.5;
             }
             AttackKind::Light => {
-                // if player is in a combo, this attack is used as a finisher
+                // if player is in a combo, this
+                // attack is used as a finisher
                 if self.combo > 0 {
                     // overwrite default attack stun
                     self.stunned = 0.5;
@@ -483,7 +517,9 @@ impl Player {
                 }
             }
             AttackKind::Slam => {
-                self.vel[1] = attacker.vel[1] * 1.5 * self.knockback_multiplier;
+                self.vel[1] = attacker.vel[1]
+                    * 1.5
+                    * self.knockback_multiplier;
 
                 attacker.vel[1] = -50.0;
                 attacker.can_slam = false;
