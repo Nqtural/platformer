@@ -101,126 +101,128 @@ async fn main() -> GameResult {
         &mut ctx
     )?));
 
-    let bincode_config = config::standard();
-    let gs_clone_send = Arc::clone(&game_state);
-    let gs_clone_recv = Arc::clone(&game_state);
+    if !config.practice_mode() {
+        let bincode_config = config::standard();
+        let gs_clone_send = Arc::clone(&game_state);
+        let gs_clone_recv = Arc::clone(&game_state);
 
-    let server_addr: SocketAddr = format!(
-        "{}:{}",
-        config.serverip(),
-        config.serverport(),
-    ).parse().unwrap();
-    let socket = Arc::new(UdpSocket::bind(format!(
-        "{}:{}",
-        config.clientip(),
-        config.clientport(),
-    )).await.unwrap());
-    socket.connect(server_addr).await.unwrap();
+        let server_addr: SocketAddr = format!(
+            "{}:{}",
+            config.serverip(),
+            config.serverport(),
+        ).parse().unwrap();
+        let socket = Arc::new(UdpSocket::bind(format!(
+            "{}:{}",
+            config.clientip(),
+            config.clientport(),
+        )).await.unwrap());
+        socket.connect(server_addr).await.unwrap();
 
 
-    // handshake with server
-    let packet = encode_to_vec(
-        ClientMessage::Hello {
-            name: config.playername().to_string(),
-        },
-        bincode_config,
-    ).map_err(|e| ggez::GameError::CustomError(e.to_string()))?;
-    socket.send(&packet).await?;
+        // handshake with server
+        let packet = encode_to_vec(
+            ClientMessage::Hello {
+                name: config.playername().to_string(),
+            },
+            bincode_config,
+        ).map_err(|e| ggez::GameError::CustomError(e.to_string()))?;
+        socket.send(&packet).await?;
 
-    let mut buf = [0u8; 1500];
-    let (len, _addr) = socket.recv_from(&mut buf).await?;
+        let mut buf = [0u8; 1500];
+        let (len, _addr) = socket.recv_from(&mut buf).await?;
 
-    let (msg, _): (ServerMessage, usize) = decode_from_slice(
-        &buf[..len],
-        bincode_config,
-    ).map_err(|e| ggez::GameError::CustomError(e.to_string()))?;
-    if let ServerMessage::Welcome { team_id, player_id } = msg {
-        client.team_id = team_id;
-        client.player_id = player_id;
-    }
+        let (msg, _): (ServerMessage, usize) = decode_from_slice(
+            &buf[..len],
+            bincode_config,
+        ).map_err(|e| ggez::GameError::CustomError(e.to_string()))?;
+        if let ServerMessage::Welcome { team_id, player_id } = msg {
+            client.team_id = team_id;
+            client.player_id = player_id;
+        }
 
-    if let ServerMessage::StartGame { teams } = msg {
-        client.apply_initial_data(teams, &mut ctx)?;
-        client.ready = true;
-    }
+        if let ServerMessage::StartGame { teams } = msg {
+            client.apply_initial_data(teams, &mut ctx)?;
+            client.ready = true;
+        }
 
-    // spawn receive task
-    let socket_recv = Arc::clone(&socket);
-    let config_recv = bincode_config;
+        // spawn receive task
+        let socket_recv = Arc::clone(&socket);
+        let config_recv = bincode_config;
 
-    tokio::spawn(async move {
-        let mut buf = [0u8; 2048];
+        tokio::spawn(async move {
+            let mut buf = [0u8; 2048];
 
-        loop {
-            match socket_recv.recv_from(&mut buf).await {
-                Ok((len, _)) => {
-                    // decode snapshot from server
-                    if let Ok((ServerMessage::Snapshot(server_state), _)) =
-                    decode_from_slice::<ServerMessage, _>(&buf[..len], config_recv)
-                    {
-                        // lock game state
-                        let mut gs = gs_clone_recv.lock().await;
+            loop {
+                match socket_recv.recv_from(&mut buf).await {
+                    Ok((len, _)) => {
+                        // decode snapshot from server
+                        if let Ok((ServerMessage::Snapshot(server_state), _)) =
+                        decode_from_slice::<ServerMessage, _>(&buf[..len], config_recv)
+                        {
+                            // lock game state
+                            let mut gs = gs_clone_recv.lock().await;
 
-                        // preserve local inputs
-                        let local_inputs: Vec<Vec<_>> = gs
-                            .teams
-                            .iter()
-                            .map(|team| {
-                                team.players
-                                    .iter()
-                                    .map(|p| p.input.clone())
-                                    .collect::<Vec<_>>()
-                            })
-                            .collect();
+                            // preserve local inputs
+                            let local_inputs: Vec<Vec<_>> = gs
+                                .teams
+                                .iter()
+                                .map(|team| {
+                                    team.players
+                                        .iter()
+                                        .map(|p| p.input.clone())
+                                        .collect::<Vec<_>>()
+                                })
+                                .collect();
 
-                        // apply server snapshot
-                        gs.apply_snapshot(server_state);
+                            // apply server snapshot
+                            gs.apply_snapshot(server_state);
 
-                        // restore local inputs to prevent input lag
-                        for (team_idx, team) in gs.teams.iter_mut().enumerate() {
-                            for (player_idx, player) in team.players.iter_mut().enumerate() {
-                                if let Some(input) = local_inputs
-                                    .get(team_idx)
-                                    .and_then(|team_inputs| team_inputs.get(player_idx))
-                                {
-                                    player.input = input.clone();
+                            // restore local inputs to prevent input lag
+                            for (team_idx, team) in gs.teams.iter_mut().enumerate() {
+                                for (player_idx, player) in team.players.iter_mut().enumerate() {
+                                    if let Some(input) = local_inputs
+                                        .get(team_idx)
+                                        .and_then(|team_inputs| team_inputs.get(player_idx))
+                                    {
+                                        player.input = input.clone();
+                                    }
                                 }
                             }
                         }
                     }
-                }
-                Err(e) => {
-                    eprintln!("Receive error: {e}");
+                    Err(e) => {
+                        eprintln!("Receive error: {e}");
+                    }
                 }
             }
-        }
-    });
+        });
 
-    // spawn send task
-    let socket_send = Arc::clone(&socket);
-    tokio::spawn(async move {
-        loop {
-            let input = {
-                let gs = gs_clone_send.lock().await;
-                gs.teams[C_TEAM].players[C_PLAYER].input.clone()
-            };
+        // spawn send task
+        let socket_send = Arc::clone(&socket);
+        tokio::spawn(async move {
+            loop {
+                let input = {
+                    let gs = gs_clone_send.lock().await;
+                    gs.teams[C_TEAM].players[C_PLAYER].input.clone()
+                };
 
-            let msg = ClientMessage::Input {
-                tick: 0,
-                team_id: C_TEAM,
-                player_id: C_PLAYER,
-                input: input.clone(),
-            };
-            match encode_to_vec(&msg, bincode_config) {
-                Ok(data) => {
-                    let _ = socket_send.send_to(&data, server_addr).await;
+                let msg = ClientMessage::Input {
+                    tick: 0,
+                    team_id: C_TEAM,
+                    player_id: C_PLAYER,
+                    input: input.clone(),
+                };
+                match encode_to_vec(&msg, bincode_config) {
+                    Ok(data) => {
+                        let _ = socket_send.send_to(&data, server_addr).await;
+                    }
+                    Err(e) => eprintln!("Encoding error: {e}"),
                 }
-                Err(e) => eprintln!("Encoding error: {e}"),
-            }
 
-            tokio::time::sleep(std::time::Duration::from_millis(16)).await;
-        }
-    });
+                tokio::time::sleep(std::time::Duration::from_millis(16)).await;
+            }
+        });
+    }
 
     ggez::event::run(ctx, event_loop, SharedGameState(game_state))
 }
