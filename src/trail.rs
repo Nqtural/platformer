@@ -2,16 +2,12 @@ use ggez::graphics::{
     Color,
     Rect,
 };
-use serde::{
-    Deserialize,
-    Serialize,
-};
 use crate::constants::{
     PLAYER_SIZE,
     TRAIL_OPACITY,
 };
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct TrailSquare {
     pub rect: Rect,
     pub color: Color,

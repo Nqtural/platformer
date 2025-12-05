@@ -19,7 +19,10 @@ use crate::{
     read_config::Config,
     team::Team,
     traits::IntoMint,
-    utils::current_and_enemy,
+    utils::{
+        current_and_enemy,
+        rect_to_ggez,
+    },
 };
 use ggez::{
     Context,
@@ -35,18 +38,14 @@ use ggez::{
         ImageFormat,
         Mesh,
         PxScale,
-        Rect,
+        Rect as GgezRect,
         Text,
         TextFragment,
     },
 };
 use glam::Vec2;
-use serde::{
-    Deserialize,
-    Serialize,
-};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 pub struct GameState {
     pub teams: [Team; 2],
     pub map: Map,
@@ -56,14 +55,8 @@ pub struct GameState {
     team_one_color: Color,
     team_two_color: Color,
     zoom: f32,
-    #[serde(skip)]
-    #[serde(default)]
     background_image: Option<Image>,
-    #[serde(skip)]
-    #[serde(default)]
     attack_image: Option<Image>,
-    #[serde(skip)]
-    #[serde(default)]
     pary_image: Option<Image>,
 }
 
@@ -98,7 +91,7 @@ impl GameState {
             let (current, enemy) = current_and_enemy(&mut self.teams, i);
             current.update_players(
                 enemy,
-                &self.map.get_rect(),
+                self.map.get_rect(),
                 self.winner,
                 dt,
             );
@@ -116,7 +109,7 @@ impl GameState {
             let (current, enemy) = current_and_enemy(&mut self.teams, i);
             current.update_players(
                 enemy,
-                &self.map.get_rect(),
+                self.map.get_rect(),
                 self.winner,
                 dt,
             );
@@ -235,7 +228,7 @@ impl GameState {
             Color::new(0.1, 0.1, 0.15, 1.0),
         );
         game_canvas.set_screen_coordinates(
-            Rect::new(
+            GgezRect::new(
                 0.0,
                 0.0,
                 VIRTUAL_WIDTH,
@@ -301,7 +294,7 @@ impl GameState {
         let map_mesh = Mesh::new_rectangle(
             gfx,
             DrawMode::fill(),
-            self.map.get_rect(),
+            rect_to_ggez(self.map.get_rect()),
             self.map.get_color(),
         )?;
         game_canvas.draw(&map_mesh, *camera_transform);
@@ -362,7 +355,7 @@ impl GameState {
                 let frame_h = img_h / atk.frame_count() as f32;
 
                 // normalized source rect
-                let src = Rect::new(
+                let src = GgezRect::new(
                     0.0,
                     (atk.frame() as f32 * frame_h) / img_h,
                     1.0,
@@ -426,14 +419,14 @@ impl GameState {
                 let mesh = Mesh::new_rectangle(
                     &ctx.gfx,
                     DrawMode::fill(),
-                    rect,
+                    rect_to_ggez(&rect),
                     player.get_color(),
                 )?;
                 game_canvas.draw(&mesh, camera_transform);
                 let outline = Mesh::new_rectangle(
                     &ctx.gfx,
                     DrawMode::stroke(2.0),
-                    rect,
+                    rect_to_ggez(&rect),
                     if ti == C_TEAM && pi == C_PLAYER {
                         Color::new(0.75, 0.75, 0.75, 1.0)
                     } else {

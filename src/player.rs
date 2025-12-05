@@ -1,13 +1,6 @@
 use ggez::{
-    graphics::{
-        Color,
-        Rect,
-    },
+    graphics::Color,
     input::keyboard::KeyCode,
-};
-use serde::{
-    Deserialize,
-    Serialize,
 };
 use crate::{
     attack::{
@@ -26,6 +19,7 @@ use crate::{
     },
     input::PlayerInput,
     network::NetPlayer,
+    rect::Rect,
     team::Team,
     trail::TrailSquare,
     utils::{
@@ -34,7 +28,7 @@ use crate::{
     },
 };
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 pub struct Player {
     pos: [f32; 2],
     vel: [f32; 2],

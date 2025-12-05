@@ -1,11 +1,13 @@
 use bincode::config;
 use bincode::serde::encode_to_vec;
+use ggez::graphics::Rect as GgezRect;
 use tokio::net::UdpSocket;
 use tokio::sync::RwLock;
 use std::collections::HashSet;
 use std::net::SocketAddr;
 use crate::{
     network::ServerMessage,
+    rect::Rect,
     team::Team,
 };
 
@@ -48,4 +50,13 @@ pub async fn broadcast(msg: ServerMessage, clients: &RwLock<HashSet<SocketAddr>>
             let _ = socket.send_to(&data, client).await;
         }
     }
+}
+
+pub fn rect_to_ggez(rect: &Rect) -> GgezRect {
+    GgezRect::new(
+        rect.x,
+        rect.y,
+        rect.w,
+        rect.h,
+    )
 }

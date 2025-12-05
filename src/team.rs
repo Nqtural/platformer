@@ -1,16 +1,10 @@
-use ggez::graphics::{
-    Rect,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
 use crate::{
     network::InitTeamData,
     player::Player,
+    rect::Rect,
 };
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 pub struct Team {
     pub players: Vec<Player>,
 }

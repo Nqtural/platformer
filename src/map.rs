@@ -1,14 +1,12 @@
 use ggez::graphics::{
     Color,
-    Rect,
 };
-use serde::{
-    Deserialize,
-    Serialize,
+use crate::{
+    constants::MAP_COLOR,
+    rect::Rect,
 };
-use crate::constants::MAP_COLOR;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 pub struct Map {
     rect: Rect,
     color: Color,
@@ -31,7 +29,7 @@ impl Map {
 
     // GETTERS
     #[must_use]
-    pub fn get_rect(&self) -> Rect { self.rect }
+    pub fn get_rect(&self) -> &Rect { &self.rect }
 
     #[must_use]
     pub fn get_color(&self) -> Color { self.color }

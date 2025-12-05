@@ -1,4 +1,3 @@
-use ggez::graphics::Rect;
 use serde::{
     Deserialize,
     Serialize,
@@ -6,6 +5,7 @@ use serde::{
 use crate::{
     constants::PLAYER_SIZE,
     network::NetAttack,
+    rect::Rect,
 };
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
@@ -64,7 +64,7 @@ impl AttackKind {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 pub struct Attack {
     offset: f32,
     size: f32,
@@ -78,12 +78,7 @@ pub struct Attack {
     knockback_increase: f32,
 
     // animation
-    #[serde(skip)]
-    #[serde(default)]
     frame: usize,
-
-    #[serde(skip)]
-    #[serde(default)]
     frame_count: usize,
 }
 
