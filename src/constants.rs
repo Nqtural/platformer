@@ -21,8 +21,8 @@ pub const TEAM_ONE_COLOR: Color = Color::new(0.0, 0.0, 1.0, 1.0);
 pub const TEAM_TWO_COLOR: Color = Color::new(1.0, 0.0, 0.0, 1.0);
 pub const TRAIL_OPACITY: f32 = 0.15;
 
-pub const TEAM_ONE_START_POS: [f32; 2] = [250.0, 300.0];
-pub const TEAM_TWO_START_POS: [f32; 2] = [550.0, 300.0];
+pub const TEAM_ONE_START_POS: [f32; 2] = [820.0, 470.0];
+pub const TEAM_TWO_START_POS: [f32; 2] = [1160.0, 470.0];
 
 pub const PLAYER_SIZE: f32 = 20.0;
 

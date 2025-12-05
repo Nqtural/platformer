@@ -2,7 +2,11 @@ use ggez::graphics::{
     Color,
 };
 use crate::{
-    constants::MAP_COLOR,
+    constants::{
+        MAP_COLOR,
+        VIRTUAL_HEIGHT,
+        VIRTUAL_WIDTH,
+    },
     rect::Rect,
 };
 
@@ -22,7 +26,12 @@ impl Map {
     #[must_use]
     pub fn new() -> Map {
         Map {
-            rect: Rect::new(200.0, 350.0, 400.0, 30.0),
+            rect: Rect::new(
+                (VIRTUAL_WIDTH - 400.0) / 2.0,
+                (VIRTUAL_HEIGHT - 30.0) / 2.0,
+                400.0,
+                30.0
+            ),
             color: MAP_COLOR,
         }
     }

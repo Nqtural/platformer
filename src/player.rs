@@ -15,6 +15,7 @@ use crate::{
         RESISTANCE,
         RESPAWN_TIME,
         VIRTUAL_HEIGHT,
+        VIRTUAL_WIDTH,
         WALL_SLIDE_SPEED,
     },
     input::PlayerInput,
@@ -133,6 +134,8 @@ impl Player {
         enemy_team: &Team,
         dt: f32,
     ) {
+        self.facing = [0.0, 0.0];
+
         self.update_cooldowns(dt);
 
         if self.respawn_timer > 0.0 { return; }
@@ -322,7 +325,10 @@ impl Player {
     }
 
     pub fn check_for_death(&mut self) {
-        if self.pos[1] > VIRTUAL_HEIGHT {
+        if self.pos[1] > VIRTUAL_HEIGHT
+        || self.pos[1] < 0.0
+        || self.pos[0] > VIRTUAL_WIDTH
+        || self.pos[0] < 0.0 {
             self.lives -= 1;
             self.double_jumps = 2;
             self.knockback_multiplier = 1.0;
