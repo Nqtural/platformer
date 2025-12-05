@@ -153,6 +153,7 @@ impl Player {
         if self.is_on_platform(map) {
             self.remove_slams();
             self.can_slam = false;
+            self.double_jumps = 2;
         }
 
         self.update_trail(dt);
@@ -354,7 +355,7 @@ impl Player {
                 self.double_jumps -= 1;
             }
             self.has_jumped = true;
-        } else {
+        } else if !self.input.jump() {
             self.has_jumped = false;
         }
         if self.input.slam() {
@@ -582,12 +583,23 @@ impl Player {
         Rect::new(self.pos[0], self.pos[1], PLAYER_SIZE, PLAYER_SIZE)
     }
 
-    fn is_on_platform(&self, map: &Rect) -> bool {
-        let rect = self.get_rect();
-        let player_bottom = rect.y + rect.h;
-        let platform_top = map.y;
+    fn is_on_platform(&self, platform: &Rect) -> bool {
+        let player = self.get_rect();
 
-        (player_bottom - platform_top).abs() < 5.0 && rect.overlaps(map)
+        let player_bottom = player.y + player.h;
+        let platform_top = platform.y;
+
+        // Check horizontal overlap (X)
+        let horizontal_overlap =
+        player.x < platform.x + platform.w &&
+        player.x + player.w > platform.x;
+
+        // Check if player is on top (Y)
+        let on_top =
+        player_bottom <= platform_top + 5.0 &&  // within tolerance above top
+        player_bottom >= platform_top - 5.0;    // avoid floating-point misses
+
+        horizontal_overlap && on_top
     }
 
     #[must_use]
