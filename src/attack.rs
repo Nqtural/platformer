@@ -17,7 +17,7 @@ pub enum AttackKind {
 }
 
 pub struct AttackProperties {
-    offset: f32,
+    offset: [f32; 2],
     size: f32,
     duration: f32,
     frame_count: usize,
@@ -29,7 +29,7 @@ impl AttackKind {
     fn properties(&self) -> AttackProperties {
         match self {
             AttackKind::Dash => AttackProperties {
-                offset: 0.0,
+                offset: [0.0, 0.0],
                 size: PLAYER_SIZE,
                 duration: 0.3,
                 frame_count: 1,
@@ -37,7 +37,7 @@ impl AttackKind {
                 knockback_increase: 0.01,
             },
             AttackKind::Light => AttackProperties {
-                offset: 15.0,
+                offset: [15.0, 15.0],
                 size: PLAYER_SIZE + 30.0,
                 duration: 0.1,
                 frame_count: 4,
@@ -45,7 +45,7 @@ impl AttackKind {
                 knockback_increase: 0.01,
             },
             AttackKind::Normal => AttackProperties {
-                offset: 15.0,
+                offset: [15.0, 15.0],
                 size: PLAYER_SIZE + 30.0,
                 duration: 0.1,
                 frame_count: 4,
@@ -53,7 +53,7 @@ impl AttackKind {
                 knockback_increase: 0.015,
             },
             AttackKind::Slam => AttackProperties {
-                offset: 0.0,
+                offset: [0.0, 10.0],
                 size: PLAYER_SIZE,
                 duration: 99.9,
                 frame_count: 1,
@@ -66,7 +66,7 @@ impl AttackKind {
 
 #[derive(Clone)]
 pub struct Attack {
-    offset: f32,
+    offset: [f32; 2],
     size: f32,
     kind: AttackKind,
     duration: f32,
@@ -180,12 +180,12 @@ impl Attack {
 
     #[must_use]
     pub fn x(&self, player_pos: [f32; 2]) -> f32 {
-        player_pos[0] - self.offset + (self.offset * self.facing[0])
+        player_pos[0] - self.offset[0] + (self.offset[0] * self.facing[0])
     }
 
     #[must_use]
     pub fn y(&self, player_pos: [f32; 2]) -> f32 {
-        player_pos[1] - self.offset + (self.offset * self.facing[1])
+        player_pos[1] - self.offset[1] + (self.offset[1] * self.facing[1])
     }
 
     #[must_use]
