@@ -73,7 +73,7 @@ impl Player {
             vel: [0.0, 0.0],
             lives: 3,
             name,
-            stunned: 0.0,
+            stunned: RESPAWN_TIME,
             invulnerable_timer: 0.0,
             parry: 0.0,
             double_jumps: 2,
@@ -334,17 +334,21 @@ impl Player {
         || self.pos[1] < 0.0
         || self.pos[0] > VIRTUAL_WIDTH
         || self.pos[0] < 0.0 {
-            self.lives -= 1;
-            self.double_jumps = 2;
-            self.combo = 0;
-            self.knockback_multiplier = 1.0;
-            self.respawn_timer = RESPAWN_TIME;
-            self.stunned = RESPAWN_TIME;
-            self.invulnerable_timer = RESPAWN_TIME + 0.5;
-            self.facing = get_facing_from_team(self.team_idx);
-            self.vel = [0.0, 0.0];
-            self.pos = self.start_pos;
+            self.die();
         }
+    }
+
+    pub fn die(&mut self) {
+        self.lives -= 1;
+        self.double_jumps = 2;
+        self.combo = 0;
+        self.knockback_multiplier = 1.0;
+        self.respawn_timer = RESPAWN_TIME;
+        self.stunned = RESPAWN_TIME;
+        self.invulnerable_timer = RESPAWN_TIME + 0.5;
+        self.facing = get_facing_from_team(self.team_idx);
+        self.vel = [0.0, 0.0];
+        self.pos = self.start_pos;
     }
 
     pub fn apply_input(
