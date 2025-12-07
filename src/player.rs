@@ -477,6 +477,9 @@ impl Player {
             // get dash ability back when successfully parrying
             self.dash_cooldown = 0.0;
 
+            // reset combo
+            self.combo = 0;
+
             // stun attacker with own attack's stun
             attacker.stunned = atk.stun();
 
