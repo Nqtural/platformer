@@ -484,6 +484,20 @@ impl GameState {
                 );
                 game_canvas.draw(&text, draw_param);
 
+                if player.combo() > 0 {
+                    let combo_number = Text::new(TextFragment {
+                        text: format!("{}", player.combo()),
+                        font: None,
+                        scale: Some(PxScale::from(20.0)),
+                        color: Some(Color::new(1.0, 1.0, 1.0, 1.0)),
+                    });
+                    let draw_param_number = self.drawparam_constructor(
+                        player.position()[0] + PLAYER_SIZE + 5.0,
+                        player.position()[1] - 10.0,
+                    );
+                    game_canvas.draw(&combo_number, draw_param_number);
+                }
+
                 self.draw_attacks(game_canvas, player.position(), player.attacks());
 
                 if player.parying() {

@@ -641,6 +641,9 @@ impl Player {
     pub fn position(&self) -> [f32; 2] { self.pos }
 
     #[must_use]
+    pub fn combo(&self) -> u32 { self.combo }
+
+    #[must_use]
     pub fn get_input(&self) -> &PlayerInput { &self.input }
 }
 
