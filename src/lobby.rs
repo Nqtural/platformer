@@ -3,9 +3,15 @@ use serde::{
     Serialize,
     Deserialize,
 };
-use std::collections::HashMap;
 use std::net::SocketAddr;
-use crate::network::InitTeamData;
+use crate::{
+    constants::{
+        TEAM_ONE_START_POS,
+        TEAM_SIZE,
+        TEAM_TWO_START_POS,
+    },
+    network::InitTeamData,
+};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct LobbyPlayer {
@@ -18,8 +24,6 @@ pub struct LobbyPlayer {
 
 pub struct Lobby {
     pub players: Vec<LobbyPlayer>,
-    pub team_colors: HashMap<usize, Color>,
-    pub team_start_positions: HashMap<usize, Vec<[f32; 2]>>,
 
     next_team: usize,
     next_player: usize,
@@ -36,8 +40,6 @@ impl Lobby {
     pub fn new() -> Self {
         Self {
             players: Vec::new(),
-            team_colors: HashMap::new(),
-            team_start_positions: HashMap::new(),
             next_team: 0,
             next_player: 0,
         }
@@ -61,37 +63,48 @@ impl Lobby {
         });
 
         // rotate slots
-        self.next_player += 1;
-        if self.next_player >= 2 {
-            self.next_player = 0;
-            self.next_team += 1;
+        if TEAM_SIZE == 1 {
+            self.next_team = (self.next_team + 1) % 2;
+        } else if TEAM_SIZE == 2 {
+            self.next_player = (self.next_player + 1) % TEAM_SIZE as usize;
+            if self.next_player == 0 {
+                self.next_team = (self.next_team + 1) % 2;
+            }
         }
 
         (team_id, player_id)
     }
 
     #[must_use]
-    pub fn initial_teams(&self) -> Vec<InitTeamData> {
-        let mut map: HashMap<usize, InitTeamData> = HashMap::new();
+    pub fn initial_teams(
+        &self,
+        team_one_color: Color,
+        team_two_color: Color
+    ) -> Vec<InitTeamData> {
+        // Prepare output vec of length 2
+        let mut teams = vec![
+            InitTeamData {
+                color: team_one_color,
+                player_names: vec![String::new(); TEAM_SIZE as usize],
+                start_position: TEAM_ONE_START_POS,
+                index: 0,
+            },
+            InitTeamData {
+                color: team_two_color,
+                player_names: vec![String::new(); TEAM_SIZE as usize],
+                start_position: TEAM_TWO_START_POS,
+                index: 1,
+            },
+        ];
 
-        for player in &self.players {
-            map.entry(player.team_id)
-                .or_insert_with(|| InitTeamData {
-                    name: format!("Team {}", player.team_id),
-                    color: self.team_colors.get(&player.team_id)
-                        .copied()
-                        .unwrap_or(Color::WHITE),
-                    player_names: Vec::new(),
-                    start_positions: self.team_start_positions
-                        .get(&player.team_id)
-                        .cloned()
-                        .unwrap_or_default(),
-                    index: player.team_id,
-                })
-                .player_names.push(player.name.clone());
+        // Fill players into correct team + slot
+        for p in &self.players {
+            if p.team_id < 2 && p.player_id < TEAM_SIZE as usize {
+                teams[p.team_id].player_names[p.player_id] = p.name.clone();
+            }
         }
 
-        map.into_values().collect()
+        teams
     }
 
     // GETTERS

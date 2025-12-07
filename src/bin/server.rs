@@ -6,9 +6,7 @@ use tokio::sync::{Mutex, RwLock};
 use platform::{
     constants::{
         ENABLE_VSYNC,
-        TEAM_ONE_START_POS,
         TEAM_SIZE,
-        TEAM_TWO_START_POS,
         TICK_RATE,
         VIRTUAL_HEIGHT,
         VIRTUAL_WIDTH,
@@ -19,9 +17,7 @@ use platform::{
         ClientMessage,
         ServerMessage,
     },
-    player::Player,
     read_config::Config,
-    team::Team,
     utils::{
         broadcast,
         send_to,
@@ -39,44 +35,10 @@ use ggez::{
 async fn main() -> GameResult {
     let config = Config::get()?;
 
-    // setup the ggez window and run event loop
-    let (mut ctx, event_loop) = ContextBuilder::new("server", "platform")
-        .window_setup(
-            ggez::conf::WindowSetup::default()
-                .vsync(ENABLE_VSYNC)
-                .title("Server")
-        )
-        .window_mode(
-            ggez::conf::WindowMode::default()
-                .dimensions(VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
-                .resizable(true)
-                .visible(config.render_server())
-        )
-        .build()?;
-
-    // initialize shared GameState
-    let game_state = Arc::new(Mutex::new(GameState::new(
-        [
-            Team::new(
-                (0..TEAM_SIZE)
-                    .map(|_| Player::new(TEAM_ONE_START_POS, "Player".into(), config.team_one_color(), 0))
-                    .collect()
-            ),
-            Team::new(
-                (0..TEAM_SIZE)
-                    .map(|_| Player::new(TEAM_TWO_START_POS, "Player".into(), config.team_two_color(), 1))
-                    .collect()
-            ),
-        ],
-        &mut ctx
-    )?));
-
     // initialize lobby state
     let lobby_state = Arc::new(RwLock::new(Lobby::new()));
 
     let bincode_config = config::standard();
-    let game_state_recv = Arc::clone(&game_state);
-    let game_state_send = Arc::clone(&game_state);
 
     // store connected client addresses to broadcast state
     let clients = Arc::new(RwLock::new(HashSet::<SocketAddr>::new()));
@@ -103,6 +65,8 @@ async fn main() -> GameResult {
         if let ClientMessage::Hello { ref name } = msg {
             println!("{addr} connected as {name}");
 
+            clients.write().await.insert(addr);
+
             let (team_id, player_id) = lobby.assign_slot(addr, name.clone());
 
             // send welcome to this client
@@ -121,12 +85,47 @@ async fn main() -> GameResult {
         }
     }
     println!("Starting game...");
-    let start_msg = ServerMessage::StartGame {
-        teams: lobby.initial_teams(),
-    };
-    broadcast(start_msg, &clients, &socket, &bincode_config).await;
+
+    // setup the ggez window and run event loop
+    let (mut ctx, event_loop) = ContextBuilder::new("server", "platform")
+        .window_setup(
+            ggez::conf::WindowSetup::default()
+                .vsync(ENABLE_VSYNC)
+                .title("Server")
+        )
+        .window_mode(
+            ggez::conf::WindowMode::default()
+                .dimensions(VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
+                .resizable(true)
+                .visible(config.render_server())
+        )
+        .build()?;
+
+    // generate InitTeamData from lobby
+    let init_teams = lobby.initial_teams(
+        config.team_one_color(),
+        config.team_two_color()
+    );
+
+    // create actual GameState from InitTeamData
+    let gs = GameState::new_from_initial(0, 0, init_teams.clone(), &mut ctx)?;
+
+    // store game state inside Arc<Mutex<_>>
+    let game_state = Arc::new(Mutex::new(gs));
+
+    // broadcast to clients
+    broadcast(
+        ServerMessage::StartGame {
+            teams: init_teams
+        },
+        &clients,
+        &socket,
+        &bincode_config
+    ).await;
 
     // task to receive client messages, update GameState, and track clients
+    let game_state_recv = Arc::clone(&game_state);
+    let game_state_send = Arc::clone(&game_state);
     let socket_recv = Arc::clone(&socket);
     let config_recv = bincode_config;
     tokio::spawn(async move {

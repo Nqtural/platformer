@@ -7,15 +7,16 @@ use crate::{
         ATTACK_IMAGE,
         BACKGROUND_IMAGE,
         PARY_IMAGE,
-        C_PLAYER,
-        C_TEAM,
         NAME_COLOR,
         PLAYER_SIZE,
         VIRTUAL_HEIGHT,
         VIRTUAL_WIDTH,
     },
     map::Map,
-    network::NetSnapshot,
+    network::{
+        InitTeamData,
+        NetSnapshot,
+    },
     read_config::Config,
     team::Team,
     traits::IntoMint,
@@ -26,6 +27,7 @@ use crate::{
 };
 use ggez::{
     Context,
+    GameError,
     GameResult,
     graphics::{
         Canvas,
@@ -42,11 +44,14 @@ use ggez::{
         Text,
         TextFragment,
     },
+    input::keyboard::KeyCode,
 };
 use glam::Vec2;
 
 #[derive(Clone)]
 pub struct GameState {
+    c_team: usize,
+    c_player: usize,
     pub teams: [Team; 2],
     pub map: Map,
     pub camera_pos: Vec2,
@@ -61,13 +66,20 @@ pub struct GameState {
 }
 
 impl GameState {
-    pub fn new(teams: [Team; 2], ctx: &mut Context) -> GameResult<Self> {
+    fn new(
+        c_team: usize,
+        c_player: usize,
+        teams: [Team; 2],
+        ctx: &mut Context
+    ) -> GameResult<Self> {
         let bg_img = Image::from_path(&ctx.gfx, BACKGROUND_IMAGE)?;
         let attack_img = Image::from_path(&ctx.gfx, ATTACK_IMAGE)?;
         let pary_img = Image::from_path(&ctx.gfx, PARY_IMAGE)?;
         let config = Config::get()?;
 
         Ok(Self {
+            c_team,
+            c_player,
             teams,
             map: Map::new(),
             camera_pos: Vec2::new(0.0, 0.0),
@@ -80,6 +92,24 @@ impl GameState {
             attack_image: Some(attack_img),
             pary_image: Some(pary_img),
         })
+    }
+
+    pub fn new_from_initial(
+        c_team: usize,
+        c_player: usize,
+        init: Vec<InitTeamData>,
+        ctx: &mut Context,
+    ) -> GameResult<Self> {
+
+        // convert init teams to runtime Teams
+        let teams: [Team; 2] = init
+            .into_iter()
+            .map(Team::from_init)
+            .collect::<Vec<_>>()
+            .try_into()
+            .map_err(|_| GameError::ResourceLoadError("Exactly 2 teams required".to_string()))?;
+
+        GameState::new(c_team, c_player, teams, ctx)
     }
 
     pub fn render_update(&mut self, ctx: &mut Context) -> GameResult {
@@ -180,6 +210,10 @@ impl GameState {
                 - self.camera_pos * self.zoom
             )
             .scale(Vec2::new(self.zoom, self.zoom).to_mint_vec())
+    }
+
+    pub fn update_input(&mut self, keycode: KeyCode, state: bool) {
+        self.teams[self.c_team].players[self.c_player].update_input(keycode, state);
     }
 
     fn update_camera(&mut self) {
@@ -427,7 +461,7 @@ impl GameState {
                     &ctx.gfx,
                     DrawMode::stroke(2.0),
                     rect_to_ggez(&rect),
-                    if ti == C_TEAM && pi == C_PLAYER {
+                    if ti == self.c_team && pi == self.c_player {
                         Color::new(0.75, 0.75, 0.75, 1.0)
                     } else {
                         Color::new(0.0, 0.0, 0.0, 1.0)

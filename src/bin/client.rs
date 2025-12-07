@@ -2,7 +2,6 @@ use ggez::{
     Context,
     ContextBuilder,
     event::EventHandler,
-    GameError,
     GameResult,
     input::keyboard::KeyInput,
 };
@@ -12,12 +11,7 @@ use std::sync::Arc;
 use std::net::SocketAddr;
 use platform::{
     constants::{
-        C_TEAM,
-        C_PLAYER,
         ENABLE_VSYNC,
-        TEAM_ONE_START_POS,
-        TEAM_SIZE,
-        TEAM_TWO_START_POS,
         VIRTUAL_HEIGHT,
         VIRTUAL_WIDTH,
     },
@@ -28,15 +22,13 @@ use platform::{
         InitTeamData,
     },
     read_config::Config,
-    player::Player,
-    team::Team,
 };
 use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
 
 pub struct ClientState {
     pub team_id: usize,
     pub player_id: usize,
-    pub game_state: Option<GameState>,
+    pub game_state: Option<Arc<Mutex<GameState>>>,
 }
 
 impl ClientState {
@@ -45,16 +37,8 @@ impl ClientState {
         teams: Vec<InitTeamData>,
         ctx: &mut Context,
     ) -> GameResult<()> {
-        let team_list: Vec<Team> = teams
-            .into_iter()
-            .map(Team::from_init)
-            .collect();
-
-        let teams_array: [Team; 2] = team_list.try_into()
-            .map_err(|_| GameError::ResourceLoadError("Exactly 2 teams required".to_string()))?;
-
-        let gs = GameState::new(teams_array, ctx)?;
-        self.game_state = Some(gs);
+        let gs = GameState::new_from_initial(self.team_id, self.player_id, teams, ctx)?;
+        self.game_state = Some(Arc::new(Mutex::new(gs)));
         Ok(())
     }
 }
@@ -83,26 +67,8 @@ async fn main() -> GameResult {
         )
         .build()?;
 
-    let game_state = Arc::new(Mutex::new(GameState::new(
-        [
-            Team::new(
-                (0..TEAM_SIZE)
-                    .map(|_| Player::new(TEAM_ONE_START_POS, "Player".into(), config.team_one_color(), 0))
-                    .collect()
-            ),
-            Team::new(
-                (0..TEAM_SIZE)
-                    .map(|_| Player::new(TEAM_TWO_START_POS, "Player".into(), config.team_two_color(), 1))
-                    .collect()
-            ),
-        ],
-        &mut ctx
-    )?));
-
     if !config.practice_mode() {
         let bincode_config = config::standard();
-        let gs_clone_send = Arc::clone(&game_state);
-        let gs_clone_recv = Arc::clone(&game_state);
 
         let server_addr: SocketAddr = format!(
             "{}:{}",
@@ -116,7 +82,6 @@ async fn main() -> GameResult {
         )).await.unwrap());
         socket.connect(server_addr).await.unwrap();
 
-
         // handshake with server
         let packet = encode_to_vec(
             ClientMessage::Hello {
@@ -127,24 +92,34 @@ async fn main() -> GameResult {
         socket.send(&packet).await?;
 
         let mut buf = [0u8; 1500];
-        let (len, _addr) = socket.recv_from(&mut buf).await?;
+        let init_teams = loop {
+            let (len, _addr) = socket.recv_from(&mut buf).await?;
+            let (msg, _): (ServerMessage, usize) =
+            decode_from_slice(&buf[..len], bincode_config)
+                .map_err(|e| ggez::GameError::CustomError(e.to_string()))?;
 
-        let (msg, _): (ServerMessage, usize) = decode_from_slice(
-            &buf[..len],
-            bincode_config,
-        ).map_err(|e| ggez::GameError::CustomError(e.to_string()))?;
-        if let ServerMessage::Welcome { team_id, player_id } = msg {
-            client.team_id = team_id;
-            client.player_id = player_id;
-        }
+            match msg {
+                ServerMessage::Welcome { team_id, player_id } => {
+                    client.team_id = team_id;
+                    client.player_id = player_id;
+                }
+                ServerMessage::StartGame { teams } => {
+                    break teams;
+                }
+                ServerMessage::LobbyStatus { .. } => {
+                    // TODO: show in UI
+                }
+                _ => {}
+            }
+        };
 
-        if let ServerMessage::StartGame { teams } = msg {
-            client.apply_initial_data(teams, &mut ctx)?;
-        }
+        client.apply_initial_data(init_teams, &mut ctx)?;
 
         // spawn receive task
         let socket_recv = Arc::clone(&socket);
         let config_recv = bincode_config;
+        let gs_clone_send = Arc::clone(client.game_state.as_ref().unwrap());
+        let gs_clone_recv = Arc::clone(client.game_state.as_ref().unwrap());
 
         tokio::spawn(async move {
             let mut buf = [0u8; 2048];
@@ -154,8 +129,7 @@ async fn main() -> GameResult {
                     Ok((len, _)) => {
                         // decode snapshot from server
                         if let Ok((ServerMessage::Snapshot(server_state), _)) =
-                        decode_from_slice::<ServerMessage, _>(&buf[..len], config_recv)
-                        {
+                        decode_from_slice::<ServerMessage, _>(&buf[..len], config_recv) {
                             // lock game state
                             let mut gs = gs_clone_recv.lock().await;
 
@@ -200,13 +174,13 @@ async fn main() -> GameResult {
             loop {
                 let input = {
                     let gs = gs_clone_send.lock().await;
-                    gs.teams[C_TEAM].players[C_PLAYER].get_input().clone()
+                    gs.teams[client.team_id].players[client.player_id].get_input().clone()
                 };
 
                 let msg = ClientMessage::Input {
                     tick: 0,
-                    team_id: C_TEAM,
-                    player_id: C_PLAYER,
+                    team_id: client.team_id,
+                    player_id: client.player_id,
                     input: input.clone(),
                 };
                 match encode_to_vec(&msg, bincode_config) {
@@ -221,7 +195,7 @@ async fn main() -> GameResult {
         });
     }
 
-    ggez::event::run(ctx, event_loop, SharedGameState(game_state))
+    ggez::event::run(ctx, event_loop, SharedGameState(client.game_state.unwrap()))
 }
 
 struct SharedGameState(Arc<Mutex<GameState>>);
@@ -251,7 +225,7 @@ impl EventHandler for SharedGameState {
     ) -> GameResult {
         if let Some(keycode) = key.keycode
         && let Ok(mut gs) = self.0.try_lock() {
-            gs.teams[C_TEAM].players[C_PLAYER].update_input(keycode, true);
+            gs.update_input(keycode, true);
         }
         Ok(())
     }
@@ -259,7 +233,7 @@ impl EventHandler for SharedGameState {
     fn key_up_event(&mut self, _ctx: &mut Context, key: KeyInput) -> GameResult {
         if let Some(keycode) = key.keycode
         && let Ok(mut gs) = self.0.try_lock() {
-            gs.teams[C_TEAM].players[C_PLAYER].update_input(keycode, false);
+            gs.update_input(keycode, false);
         }
         Ok(())
     }

@@ -11,7 +11,7 @@ pub struct Team {
 
 impl Team {
     #[must_use]
-    pub fn new(players: Vec<Player>) -> Team {
+    fn new(players: Vec<Player>) -> Team {
         Team {
             players,
         }
@@ -20,15 +20,9 @@ impl Team {
     #[must_use]
     pub fn from_init(init: InitTeamData) -> Team {
         let mut players = Vec::new();
-        let names = init.player_names;
-        let positions = init.start_positions;
 
-        for (i, name) in names.iter().enumerate() {
-            let pos = positions
-                .get(i)
-                .copied()
-                .unwrap_or_else(|| positions.first().copied().unwrap_or([0.0, 0.0]));
-            players.push(Player::new(pos, name.clone(), init.color, init.index));
+        for name in init.player_names.iter() {
+            players.push(Player::new(init.start_position, name.clone(), init.color, init.index));
         }
 
         Team::new(players)

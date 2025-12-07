@@ -11,10 +11,9 @@ use crate::{
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct InitTeamData {
-    pub name: String,
     pub color: Color,
     pub player_names: Vec<String>,
-    pub start_positions: Vec<[f32; 2]>,
+    pub start_position: [f32; 2],
     pub index: usize,
 }
 

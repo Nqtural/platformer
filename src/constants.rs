@@ -4,9 +4,6 @@ pub const ENABLE_VSYNC: bool = true;
 
 pub const TEAM_SIZE: u8 = 1;
 
-pub const C_TEAM: usize = 1;
-pub const C_PLAYER: usize = 0;
-
 pub const VIRTUAL_WIDTH: f32 = 1980.0;
 pub const VIRTUAL_HEIGHT: f32 = 1080.0;
 
