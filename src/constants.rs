@@ -12,8 +12,6 @@ pub const BACKGROUND_IMAGE: &str = "/background.png";
 pub const PARY_IMAGE: &str = "/pary.png";
 pub const MAP_COLOR: Color = Color::new(0.0, 0.0, 0.0, 1.0);
 pub const NAME_COLOR: Color = Color::new(0.6, 0.6, 0.6, 1.0);
-pub const TEAM_ONE_COLOR: Color = Color::new(0.0, 0.0, 1.0, 1.0);
-pub const TEAM_TWO_COLOR: Color = Color::new(1.0, 0.0, 0.0, 1.0);
 pub const TRAIL_OPACITY: f32 = 0.15;
 
 pub const TEAM_ONE_START_POS: [f32; 2] = [820.0, 470.0];
