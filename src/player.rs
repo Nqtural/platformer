@@ -104,6 +104,8 @@ impl Player {
             player_idx,
             pos: self.pos,
             vel: self.vel,
+            combo: self.combo,
+            knockback_multiplier: self.knockback_multiplier,
             attacks: self.attacks
                 .iter()
                 .map(Attack::to_net)
@@ -119,6 +121,8 @@ impl Player {
         self.pos = net_player.pos;
         self.vel = net_player.vel;
         self.lives = net_player.lives;
+        self.combo = net_player.combo;
+        self.knockback_multiplier = net_player.knockback_multiplier;
         self.attacks = net_player.attacks
             .iter()
             .map(|na| Attack::from_net(na.clone()))

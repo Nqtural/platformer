@@ -30,6 +30,8 @@ pub struct NetPlayer {
     pub player_idx: usize,
     pub pos: [f32; 2],
     pub vel: [f32; 2],
+    pub combo: u32,
+    pub knockback_multiplier: f32,
     pub attacks: Vec<NetAttack>,
     pub stunned: f32,
     pub invulnerable: f32,
