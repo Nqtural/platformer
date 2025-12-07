@@ -495,20 +495,10 @@ impl Player {
             return;
         }
 
-        self.remove_dashes();
-        self.remove_slams();
-
-        self.stunned = atk.stun();
-        self.knockback_multiplier += atk.knockback_increase();
-        self.invulnerable_timer = 0.3;
-
-        self.combo += 1;
-        self.combo_timer = 1.0;
-
         match atk.kind() {
             AttackKind::Dash => {
                 if self.is_doing_attack(atk.kind()) {
-                    for player in [self, attacker] {
+                    for player in [&mut *self, attacker] {
                         player.vel[0] = player.vel[0].signum()
                             * -50.0
                             * player.knockback_multiplier;
@@ -548,12 +538,18 @@ impl Player {
                     // apply knockback multiplier boost for combo
                     self.knockback_multiplier += 0.1 * get_combo_multiplier(self.combo);
 
-                    // reset combo
-                    self.combo = 0;
-                    self.combo_timer = 0.0;
+                    // apply invulnerability because generic attack
+                    // traits are not applied due to early return
+                    self.invulnerable_timer = 0.3;
+
+                    return;
                 }
             }
             AttackKind::Slam => {
+                // must be above player and moving downwards
+                if attacker.pos[1] + PLAYER_SIZE > self.pos[1]
+                || attacker.vel[0] <= 0.0 { return; }
+
                 self.vel[1] = attacker.vel[1]
                     * 1.5
                     * self.knockback_multiplier;
@@ -569,6 +565,18 @@ impl Player {
                 attacker.normal_cooldown -= 0.25;
             }
         }
+
+        // if not returned by this point,
+        // apply generic attack traits
+        self.remove_dashes();
+        self.remove_slams();
+
+        self.stunned = atk.stun();
+        self.knockback_multiplier += atk.knockback_increase();
+        self.invulnerable_timer = 0.3;
+
+        self.combo += 1;
+        self.combo_timer = 1.0;
     }
 
     pub fn update_input(&mut self, keycode: KeyCode, state: bool) {
