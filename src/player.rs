@@ -548,7 +548,7 @@ impl Player {
             AttackKind::Slam => {
                 // must be above player and moving downwards
                 if attacker.pos[1] + PLAYER_SIZE > self.pos[1]
-                || attacker.vel[0] <= 0.0 { return; }
+                || attacker.vel[1] <= 0.0 { return; }
 
                 self.vel[1] = attacker.vel[1]
                     * 1.5
