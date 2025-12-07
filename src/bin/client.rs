@@ -13,6 +13,9 @@ use std::net::SocketAddr;
 use platform::{
     constants::{
         ENABLE_VSYNC,
+        TEAM_ONE_START_POS,
+        TEAM_SIZE,
+        TEAM_TWO_START_POS,
         VIRTUAL_HEIGHT,
         VIRTUAL_WIDTH,
     },
@@ -194,6 +197,24 @@ async fn main() -> GameResult {
                 tokio::time::sleep(std::time::Duration::from_millis(16)).await;
             }
         });
+    } else {
+        client.apply_initial_data(
+            vec![
+                InitTeamData {
+                    color: config.team_one_color(),
+                    player_names: vec![config.playername().to_string(); TEAM_SIZE],
+                    start_position: TEAM_ONE_START_POS,
+                    index: 0,
+                },
+                InitTeamData {
+                    color: config.team_two_color(),
+                    player_names: vec![String::from("Dummy"); TEAM_SIZE],
+                    start_position: TEAM_TWO_START_POS,
+                    index: 1,
+                },
+            ],
+            &mut ctx
+        )?;
     }
 
     ggez::event::run(
