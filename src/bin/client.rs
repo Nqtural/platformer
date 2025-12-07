@@ -36,7 +36,6 @@ use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
 pub struct ClientState {
     pub team_id: usize,
     pub player_id: usize,
-    pub ready: bool,
     pub game_state: Option<GameState>,
 }
 
@@ -65,7 +64,6 @@ async fn main() -> GameResult {
     let mut client = ClientState {
         team_id: 0,
         player_id: 0,
-        ready: false,
         game_state: None,
     };
 
@@ -142,7 +140,6 @@ async fn main() -> GameResult {
 
         if let ServerMessage::StartGame { teams } = msg {
             client.apply_initial_data(teams, &mut ctx)?;
-            client.ready = true;
         }
 
         // spawn receive task
