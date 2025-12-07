@@ -6,7 +6,6 @@ use tokio::sync::{Mutex, RwLock};
 use platform::{
     constants::{
         ENABLE_VSYNC,
-        REQUIRED_PLAYERS,
         TEAM_ONE_START_POS,
         TEAM_SIZE,
         TEAM_TWO_START_POS,
@@ -91,48 +90,48 @@ async fn main() -> GameResult {
     println!("Server listening on {ip}:{port}");
 
     // handshake with clients
-    let mut buf = [0u8; 1500];
-    let (len, addr) = socket.recv_from(&mut buf).await?;
+    let mut lobby = lobby_state.write().await;
+    while lobby.connected_count() != TEAM_SIZE as usize * 2 {
+        let mut buf = [0u8; 1500];
+        let (len, addr) = socket.recv_from(&mut buf).await?;
 
-    let (msg, _): (ClientMessage, usize) = decode_from_slice(
-        &buf[..len],
-        bincode_config,
-    ).map_err(|e| ggez::GameError::CustomError(e.to_string()))?;
+        let (msg, _): (ClientMessage, usize) = decode_from_slice(
+            &buf[..len],
+            bincode_config,
+        ).map_err(|e| ggez::GameError::CustomError(e.to_string()))?;
 
-    if let ClientMessage::Hello { name } = msg {
-        println!("{addr} connected as {name}");
-        let mut lobby = lobby_state.write().await;
+        if let ClientMessage::Hello { ref name } = msg {
+            println!("{addr} connected as {name}");
 
-        let (team_id, player_id) = lobby.assign_slot(addr, name.clone());
+            let (team_id, player_id) = lobby.assign_slot(addr, name.clone());
 
-        // send welcome to this client
-        let welcome = ServerMessage::Welcome {
-            team_id,
-            player_id,
-        };
-        send_to(addr, welcome, &socket, &bincode_config).await;
-
-        // send lobby status to everyone
-        let status = ServerMessage::LobbyStatus {
-            players: lobby.players.clone(),
-            required: REQUIRED_PLAYERS,
-        };
-        broadcast(status, &clients, &socket, &bincode_config).await;
-
-        if lobby.connected_count() == REQUIRED_PLAYERS {
-            let start_msg = ServerMessage::StartGame {
-                teams: lobby.initial_teams(),
+            // send welcome to this client
+            let welcome = ServerMessage::Welcome {
+                team_id,
+                player_id,
             };
-            broadcast(start_msg, &clients, &socket, &bincode_config).await;
+            send_to(addr, welcome, &socket, &bincode_config).await;
+
+            // send lobby status to everyone
+            let status = ServerMessage::LobbyStatus {
+                players: lobby.players.clone(),
+                required: TEAM_SIZE as usize * 2,
+            };
+            broadcast(status, &clients, &socket, &bincode_config).await;
         }
     }
+    println!("Starting game...");
+    let start_msg = ServerMessage::StartGame {
+        teams: lobby.initial_teams(),
+    };
+    broadcast(start_msg, &clients, &socket, &bincode_config).await;
 
     // task to receive client messages, update GameState, and track clients
     let socket_recv = Arc::clone(&socket);
     let config_recv = bincode_config;
     tokio::spawn(async move {
         let mut buf = [0u8; 2048];
-        loop {
+    loop {
             match socket_recv.recv_from(&mut buf).await {
                 Ok((len, addr)) => {
                     // remember the client to send snapshots
