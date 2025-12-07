@@ -47,6 +47,7 @@ use ggez::{
     input::keyboard::KeyCode,
 };
 use glam::Vec2;
+use std::collections::HashSet;
 
 #[derive(Clone)]
 pub struct GameState {
@@ -212,8 +213,8 @@ impl GameState {
             .scale(Vec2::new(self.zoom, self.zoom).to_mint_vec())
     }
 
-    pub fn update_input(&mut self, keycode: KeyCode, state: bool) {
-        self.teams[self.c_team].players[self.c_player].update_input(keycode, state);
+    pub fn update_input(&mut self, pressed: &HashSet<KeyCode>) {
+        self.teams[self.c_team].players[self.c_player].update_input(pressed);
     }
 
     fn update_camera(&mut self) {

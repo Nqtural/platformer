@@ -3,6 +3,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use std::collections::HashSet;
 
 #[derive(Serialize, Deserialize, Clone, Default, PartialEq, Debug)]
 pub struct PlayerInput {
@@ -33,19 +34,17 @@ impl PlayerInput {
         }
     }
 
-    pub fn update(&mut self, keycode: KeyCode, value: bool) {
-        match keycode {
-            KeyCode::Space => self.jump = value,
-            KeyCode::W => self.up = value,
-            KeyCode::A => self.left = value,
-            KeyCode::D => self.right = value,
-            KeyCode::S => self.slam = value,
-            KeyCode::H => self.dash = value,
-            KeyCode::J => self.normal = value,
-            KeyCode::K => self.light = value,
-            KeyCode::L | KeyCode::LShift => self.parry = value,
-            _ => {}
-        }
+    pub fn update(&mut self, pressed: &HashSet<KeyCode>) {
+        self.jump   = pressed.contains(&KeyCode::Space);
+        self.up     = pressed.contains(&KeyCode::W);
+        self.left   = pressed.contains(&KeyCode::A);
+        self.right  = pressed.contains(&KeyCode::D);
+        self.slam   = pressed.contains(&KeyCode::S);
+        self.dash   = pressed.contains(&KeyCode::H);
+        self.normal = pressed.contains(&KeyCode::J);
+        self.light  = pressed.contains(&KeyCode::K);
+        self.parry  = pressed.contains(&KeyCode::L)
+            || pressed.contains(&KeyCode::LShift);
     }
 
     // GETTERS

@@ -2,6 +2,7 @@ use ggez::{
     graphics::Color,
     input::keyboard::KeyCode,
 };
+use std::collections::HashSet;
 use crate::{
     attack::{
         Attack,
@@ -579,8 +580,8 @@ impl Player {
         self.combo_timer = 1.0;
     }
 
-    pub fn update_input(&mut self, keycode: KeyCode, state: bool) {
-        self.input.update(keycode, state);
+    pub fn update_input(&mut self, pressed: &HashSet<KeyCode>) {
+        self.input.update(pressed);
     }
 
     pub fn set_input(&mut self, input: PlayerInput) {
