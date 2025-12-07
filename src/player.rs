@@ -336,6 +336,7 @@ impl Player {
         || self.pos[0] < 0.0 {
             self.lives -= 1;
             self.double_jumps = 2;
+            self.combo = 0;
             self.knockback_multiplier = 1.0;
             self.respawn_timer = RESPAWN_TIME;
             self.stunned = RESPAWN_TIME;
