@@ -53,7 +53,7 @@ async fn main() -> GameResult {
 
     // handshake with clients
     let mut lobby = lobby_state.write().await;
-    while lobby.connected_count() != TEAM_SIZE as usize * 2 {
+    while lobby.connected_count() != TEAM_SIZE * 2 {
         let mut buf = [0u8; 1500];
         let (len, addr) = socket.recv_from(&mut buf).await?;
 
@@ -79,7 +79,7 @@ async fn main() -> GameResult {
             // send lobby status to everyone
             let status = ServerMessage::LobbyStatus {
                 players: lobby.players.clone(),
-                required: TEAM_SIZE as usize * 2,
+                required: TEAM_SIZE * 2,
             };
             broadcast(status, &clients, &socket, &bincode_config).await;
         }

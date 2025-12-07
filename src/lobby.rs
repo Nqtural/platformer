@@ -66,7 +66,7 @@ impl Lobby {
         if TEAM_SIZE == 1 {
             self.next_team = (self.next_team + 1) % 2;
         } else if TEAM_SIZE == 2 {
-            self.next_player = (self.next_player + 1) % TEAM_SIZE as usize;
+            self.next_player = (self.next_player + 1) % TEAM_SIZE;
             if self.next_player == 0 {
                 self.next_team = (self.next_team + 1) % 2;
             }
@@ -85,13 +85,13 @@ impl Lobby {
         let mut teams = vec![
             InitTeamData {
                 color: team_one_color,
-                player_names: vec![String::new(); TEAM_SIZE as usize],
+                player_names: vec![String::new(); TEAM_SIZE],
                 start_position: TEAM_ONE_START_POS,
                 index: 0,
             },
             InitTeamData {
                 color: team_two_color,
-                player_names: vec![String::new(); TEAM_SIZE as usize],
+                player_names: vec![String::new(); TEAM_SIZE],
                 start_position: TEAM_TWO_START_POS,
                 index: 1,
             },
@@ -99,7 +99,7 @@ impl Lobby {
 
         // Fill players into correct team + slot
         for p in &self.players {
-            if p.team_id < 2 && p.player_id < TEAM_SIZE as usize {
+            if p.team_id < 2 && p.player_id < TEAM_SIZE {
                 teams[p.team_id].player_names[p.player_id] = p.name.clone();
             }
         }
