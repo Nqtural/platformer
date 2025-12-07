@@ -299,8 +299,11 @@ impl GameState {
 
         self.draw_map(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
         self.draw_trails(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
-        self.draw_players(&mut game_canvas, ctx, camera_translation)?;
+        self.draw_players(&mut game_canvas, ctx, &camera_translation)?;
         self.draw_hud(&mut game_canvas, ctx);
+
+        // DEBUG
+        //let _ = self.draw_attack_hurtbox(&mut game_canvas, &ctx.gfx, camera_transform);
 
         game_canvas.finish(&mut ctx.gfx)?;
 
@@ -412,6 +415,29 @@ impl GameState {
         }
     }
 
+    fn _draw_attack_hurtbox(
+        &self,
+        game_canvas: &mut Canvas,
+        gfx: &GraphicsContext,
+        camera_transform: DrawParam,
+    ) -> GameResult<()> {
+        for team in &self.teams {
+            for player in &team.players {
+                for attack in player.attacks() {
+                    let mesh = Mesh::new_rectangle(
+                        gfx,
+                        DrawMode::stroke(1.0),
+                        rect_to_ggez(&attack.get_rect(player.position())),
+                        Color::new(1.0, 1.0, 1.0, 0.4),
+                    )?;
+                    game_canvas.draw(&mesh, camera_transform);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     fn draw_trails(
         &self,
         game_canvas: &mut Canvas,
@@ -440,10 +466,10 @@ impl GameState {
         &self,
         game_canvas: &mut Canvas,
         ctx: &mut Context,
-        camera_translation: Vec2,
+        camera_translation: &Vec2,
     ) -> GameResult {
         let camera_transform = DrawParam::default()
-            .dest(camera_translation)
+            .dest(*camera_translation)
             .scale(Vec2::new(self.zoom, self.zoom).to_mint_vec());
         for (ti, team) in self.teams.iter().enumerate() {
             for (pi, player) in team.players.iter().enumerate() {
