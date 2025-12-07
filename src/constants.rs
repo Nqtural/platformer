@@ -9,7 +9,7 @@ pub const VIRTUAL_HEIGHT: f32 = 1080.0;
 
 pub const ATTACK_IMAGE: &str = "/normal.png";
 pub const BACKGROUND_IMAGE: &str = "/background.png";
-pub const PARY_IMAGE: &str = "/pary.png";
+pub const PARRY_IMAGE: &str = "/parry.png";
 pub const MAP_COLOR: Color = Color::new(0.0, 0.0, 0.0, 1.0);
 pub const NAME_COLOR: Color = Color::new(0.6, 0.6, 0.6, 1.0);
 pub const TRAIL_OPACITY: f32 = 0.15;

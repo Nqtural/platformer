@@ -6,7 +6,7 @@ use crate::{
     constants::{
         ATTACK_IMAGE,
         BACKGROUND_IMAGE,
-        PARY_IMAGE,
+        PARRY_IMAGE,
         NAME_COLOR,
         PLAYER_SIZE,
         VIRTUAL_HEIGHT,
@@ -62,7 +62,7 @@ pub struct GameState {
     zoom: f32,
     background_image: Option<Image>,
     attack_image: Option<Image>,
-    pary_image: Option<Image>,
+    parry_image: Option<Image>,
 }
 
 impl GameState {
@@ -74,7 +74,7 @@ impl GameState {
     ) -> GameResult<Self> {
         let bg_img = Image::from_path(&ctx.gfx, BACKGROUND_IMAGE)?;
         let attack_img = Image::from_path(&ctx.gfx, ATTACK_IMAGE)?;
-        let pary_img = Image::from_path(&ctx.gfx, PARY_IMAGE)?;
+        let parry_img = Image::from_path(&ctx.gfx, PARRY_IMAGE)?;
         let config = Config::get()?;
 
         Ok(Self {
@@ -90,7 +90,7 @@ impl GameState {
             zoom: config.camera_zoom(),
             background_image: Some(bg_img),
             attack_image: Some(attack_img),
-            pary_image: Some(pary_img),
+            parry_image: Some(parry_img),
         })
     }
 
@@ -336,12 +336,12 @@ impl GameState {
         Ok(())
     }
 
-    fn draw_pary(
+    fn draw_parry(
         &self,
         game_canvas: &mut Canvas,
         player_pos: [f32; 2],
     ) {
-        if let Some(img) = self.pary_image.as_ref() {
+        if let Some(img) = self.parry_image.as_ref() {
             // draw frame
             let draw_param = self.drawparam_constructor(
                 (player_pos[0] + PLAYER_SIZE / 2.0) - (img.width() as f32 / 2.0),
@@ -500,8 +500,8 @@ impl GameState {
 
                 self.draw_attacks(game_canvas, player.position(), player.attacks());
 
-                if player.parying() {
-                    self.draw_pary(game_canvas, player.position())
+                if player.parrying() {
+                    self.draw_parry(game_canvas, player.position())
                 }
             }
         }

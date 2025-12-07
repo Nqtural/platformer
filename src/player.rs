@@ -37,7 +37,7 @@ pub struct Player {
     name: String,
     stunned: f32,
     invulnerable_timer: f32,
-    pary: f32,
+    parry: f32,
     double_jumps: u8,
     combo: u32,
     combo_timer: f32,
@@ -48,7 +48,7 @@ pub struct Player {
     dash_cooldown: f32,
     normal_cooldown: f32,
     light_cooldown: f32,
-    pary_cooldown: f32,
+    parry_cooldown: f32,
     respawn_timer: f32,
     trail_timer: f32,
     team_idx: usize,
@@ -74,7 +74,7 @@ impl Player {
             name,
             stunned: 0.0,
             invulnerable_timer: 0.0,
-            pary: 0.0,
+            parry: 0.0,
             double_jumps: 2,
             combo: 0,
             combo_timer: 0.0,
@@ -85,7 +85,7 @@ impl Player {
             dash_cooldown: 0.0,
             normal_cooldown: 0.0,
             light_cooldown: 0.0,
-            pary_cooldown: 0.0,
+            parry_cooldown: 0.0,
             respawn_timer: RESPAWN_TIME,
             trail_timer: 0.0,
             team_idx,
@@ -110,7 +110,7 @@ impl Player {
                 .collect(),
             stunned: self.stunned,
             invulnerable: self.invulnerable_timer,
-            pary: self.pary,
+            parry: self.parry,
             lives: self.lives,
         }
     }
@@ -125,7 +125,7 @@ impl Player {
             .collect();
         self.stunned = net_player.stunned;
         self.invulnerable_timer = net_player.invulnerable;
-        self.pary = net_player.pary;
+        self.parry = net_player.parry;
     }
 
     pub fn update(
@@ -186,8 +186,8 @@ impl Player {
         let mut cooldowns = [
             &mut self.normal_cooldown,
             &mut self.light_cooldown,
-            &mut self.pary,
-            &mut self.pary_cooldown,
+            &mut self.parry,
+            &mut self.parry_cooldown,
             &mut self.stunned,
             &mut self.invulnerable_timer,
             &mut self.dash_cooldown,
@@ -419,7 +419,7 @@ impl Player {
         }
         if self.input.dash()
         && self.dash_cooldown <= 0.0
-        && !self.parying() {
+        && !self.parrying() {
             let x = self.facing[0];
             let y = self.facing[1];
             let mag = (x * x + y * y).sqrt();
@@ -446,12 +446,12 @@ impl Player {
 
             self.dash_cooldown = 3.0;
         }
-        if self.input.pary()
-        && self.pary_cooldown <= 0.0
+        if self.input.parry()
+        && self.parry_cooldown <= 0.0
         && !self.is_doing_attack(&AttackKind::Dash)
         && !self.is_doing_attack(&AttackKind::Slam) {
-            self.pary_cooldown = 4.0;
-            self.pary = 0.5;
+            self.parry_cooldown = 4.0;
+            self.parry = 0.5;
         }
     }
 
@@ -473,7 +473,7 @@ impl Player {
     pub fn attack(&mut self, atk: &Attack, attacker: &mut Player) {
         if self.invulnerable_timer > 0.0 { return; }
 
-        if self.pary > 0.0 {
+        if self.parry > 0.0 {
             // get dash ability back when successfully parrying
             self.dash_cooldown = 0.0;
 
@@ -626,7 +626,7 @@ impl Player {
     pub fn get_color_default(&self) -> Color { self.color }
 
     #[must_use]
-    pub fn parying(&self) -> bool { self.pary > 0.0 }
+    pub fn parrying(&self) -> bool { self.parry > 0.0 }
 
     #[must_use]
     pub fn lives(&self) -> u8 { self.lives }

@@ -33,7 +33,7 @@ pub struct NetPlayer {
     pub attacks: Vec<NetAttack>,
     pub stunned: f32,
     pub invulnerable: f32,
-    pub pary: f32,
+    pub parry: f32,
     pub lives: u8,
 }
 
