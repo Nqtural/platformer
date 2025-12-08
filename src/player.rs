@@ -331,7 +331,6 @@ impl Player {
 
     pub fn check_for_death(&mut self) {
         if self.pos[1] > VIRTUAL_HEIGHT
-        || self.pos[1] < 0.0
         || self.pos[0] > VIRTUAL_WIDTH
         || self.pos[0] < 0.0 {
             self.die();
