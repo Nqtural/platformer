@@ -110,7 +110,7 @@ impl GameState {
         // convert init teams to runtime Teams
         let teams: [Team; 2] = init
             .into_iter()
-            .map(|i| net_team::from_init(i))
+            .map(net_team::from_init)
             .collect::<Vec<_>>()
             .try_into()
             .map_err(|_| GameError::ResourceLoadError("Exactly 2 teams required".to_string()))?;

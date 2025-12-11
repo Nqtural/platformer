@@ -31,7 +31,7 @@ pub fn to_net(player: &Player, player_idx: usize) -> NetPlayer {
         knockback_multiplier: player.knockback_multiplier,
         attacks: player.attacks
             .iter()
-            .map(|a| net_attack::to_net(a))
+            .map(net_attack::to_net)
             .collect(),
         stunned: player.stunned,
         invulnerable: player.invulnerable_timer,
