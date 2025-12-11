@@ -1,10 +1,10 @@
 use ggez::{
     GameError,
     GameResult,
-    graphics::Color,
 };
 use serde::Deserialize;
 use toml;
+use crate::color::Color;
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -22,26 +22,8 @@ struct Player {
 
 #[derive(Deserialize)]
 struct Teams {
-    team_one_color: RGB,
-    team_two_color: RGB,
-}
-
-#[derive(Deserialize)]
-struct RGB {
-    r: f32,
-    g: f32,
-    b: f32,
-}
-
-impl RGB {
-    fn to_color_object(&self) -> Color {
-        Color::new(
-            self.r,
-            self.g,
-            self.b,
-            1.0,
-        )
-    }
+    team_one_color: Color,
+    team_two_color: Color,
 }
 
 #[derive(Deserialize)]
@@ -79,12 +61,12 @@ impl Config {
 
     #[must_use]
     pub fn team_one_color(&self) -> Color {
-        self.teams.team_one_color.to_color_object()
+        self.teams.team_one_color.clone()
     }
 
     #[must_use]
     pub fn team_two_color(&self) -> Color {
-        self.teams.team_two_color.to_color_object()
+        self.teams.team_two_color.clone()
     }
 
     #[must_use]

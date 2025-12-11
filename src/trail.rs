@@ -1,13 +1,13 @@
-use ggez::graphics::{
-    Color,
-    Rect,
-};
-use crate::constants::{
-    PLAYER_SIZE,
-    TRAIL_OPACITY,
+use crate::{
+    color::Color,
+    constants::{
+        PLAYER_SIZE,
+        TRAIL_OPACITY,
+    },
+    rect::Rect,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct TrailSquare {
     pub rect: Rect,
     pub color: Color,
@@ -30,7 +30,7 @@ impl TrailSquare {
             self.color.r,
             self.color.g,
             self.color.b,
-            TRAIL_OPACITY * (self.lifetime / 0.15).powf(2.0) 
+            TRAIL_OPACITY * (self.lifetime / 0.15).powf(2.0),
         );
     }
 }

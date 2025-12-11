@@ -7,13 +7,13 @@ name = "Player"
 [teams]
 # Color of team one
 #
-# default: { r = 0.0, g = 0.0, b = 1.0 }
-team_one_color = { r = 0.0, g = 0.0, b = 1.0 }
+# default: { r = 0.0, g = 0.0, b = 1.0, a = 1.0 }
+team_one_color = { r = 0.0, g = 0.0, b = 1.0, a = 1.0 }
 
 # Color of team two
 #
-# default { r = 1.0, g = 0.0, b = 0.0 }
-team_two_color = { r = 1.0, g = 0.0, b = 0.0 }
+# default { r = 1.0, g = 0.0, b = 0.0, a = 1.0 }
+team_two_color = { r = 1.0, g = 0.0, b = 0.0, a = 1.0 }
 
 
 

@@ -1,10 +1,10 @@
-use ggez::graphics::Color;
 use serde::{
     Serialize,
     Deserialize,
 };
 use std::net::SocketAddr;
 use crate::{
+    color::Color,
     constants::{
         TEAM_ONE_START_POS,
         TEAM_SIZE,

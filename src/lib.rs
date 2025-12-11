@@ -1,4 +1,5 @@
 pub mod attack;
+pub mod color;
 pub mod constants;
 pub mod game_state;
 pub mod input;

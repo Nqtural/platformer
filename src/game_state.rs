@@ -3,6 +3,7 @@ use crate::{
         Attack,
         AttackKind,
     },
+    color::Color,
     constants::{
         ATTACK_IMAGE,
         BACKGROUND_IMAGE,
@@ -22,6 +23,7 @@ use crate::{
     traits::IntoMint,
     utils::{
         current_and_enemy,
+        color_to_ggez,
         rect_to_ggez,
     },
 };
@@ -31,7 +33,7 @@ use ggez::{
     GameResult,
     graphics::{
         Canvas,
-        Color,
+        Color as GgezColor,
         GraphicsContext,
             Drawable,
         DrawMode,
@@ -260,7 +262,7 @@ impl GameState {
         let mut game_canvas = Canvas::from_image(
             &ctx.gfx,
             target_image.clone(),
-            Color::new(0.1, 0.1, 0.15, 1.0),
+            GgezColor::new(0.1, 0.1, 0.15, 1.0),
         );
         game_canvas.set_screen_coordinates(
             GgezRect::new(
@@ -308,7 +310,7 @@ impl GameState {
 
         game_canvas.finish(&mut ctx.gfx)?;
 
-        let mut final_canvas = Canvas::from_frame(&ctx.gfx, Color::BLACK);
+        let mut final_canvas = Canvas::from_frame(&ctx.gfx, GgezColor::BLACK);
 
         let scale = if window_aspect > virtual_aspect {
             let scale = win_h / VIRTUAL_HEIGHT;
@@ -429,7 +431,7 @@ impl GameState {
                         gfx,
                         DrawMode::stroke(1.0),
                         rect_to_ggez(&attack.get_rect(player.position())),
-                        Color::new(1.0, 1.0, 1.0, 0.4),
+                        GgezColor::new(1.0, 1.0, 1.0, 0.4),
                     )?;
                     game_canvas.draw(&mesh, camera_transform);
                 }
@@ -451,8 +453,8 @@ impl GameState {
                     let mesh = Mesh::new_rectangle(
                         gfx,
                         DrawMode::fill(),
-                        square.rect,
-                        square.color,
+                        rect_to_ggez(&square.rect),
+                        color_to_ggez(&square.color),
                     )?;
                     game_canvas.draw(&mesh, *camera_transform);
                 }
@@ -481,7 +483,7 @@ impl GameState {
                     &ctx.gfx,
                     DrawMode::fill(),
                     rect_to_ggez(&rect),
-                    player.get_color(),
+                    color_to_ggez(&player.get_color()),
                 )?;
                 game_canvas.draw(&mesh, camera_transform);
                 let outline = Mesh::new_rectangle(
@@ -489,9 +491,9 @@ impl GameState {
                     DrawMode::stroke(2.0),
                     rect_to_ggez(&rect),
                     if ti == self.c_team && pi == self.c_player {
-                        Color::new(0.75, 0.75, 0.75, 1.0)
+                        GgezColor::new(0.75, 0.75, 0.75, 1.0)
                     } else {
-                        Color::new(0.0, 0.0, 0.0, 1.0)
+                        GgezColor::new(0.0, 0.0, 0.0, 1.0)
                     },
                 )?;
                 game_canvas.draw(&outline, camera_transform);
@@ -516,7 +518,7 @@ impl GameState {
                         text: format!("{}", player.combo()),
                         font: None,
                         scale: Some(PxScale::from(20.0)),
-                        color: Some(Color::new(1.0, 1.0, 1.0, 1.0)),
+                        color: Some(GgezColor::new(1.0, 1.0, 1.0, 1.0)),
                     });
                     let draw_param_number = self.drawparam_constructor(
                         player.position()[0] + PLAYER_SIZE + 5.0,
@@ -600,9 +602,9 @@ impl GameState {
                 scale: Some(PxScale::from(200.0)),
                 color: Some(
                     if self.winner == 1 {
-                        self.team_one_color
+                        color_to_ggez(&self.team_one_color)
                     } else {
-                        self.team_two_color
+                        color_to_ggez(&self.team_two_color)
                     }
                 ),
             });

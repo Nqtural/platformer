@@ -22,7 +22,7 @@ impl Team {
         let mut players = Vec::new();
 
         for name in init.player_names.iter() {
-            players.push(Player::new(init.start_position, name.clone(), init.color, init.index));
+            players.push(Player::new(init.start_position, name.clone(), init.color.clone(), init.index));
         }
 
         Team::new(players)

@@ -1,10 +1,10 @@
-use ggez::graphics::Color;
 use serde::{
     Serialize,
     Deserialize,
 };
 use crate::{
     attack::AttackKind,
+    color::Color,
     input::PlayerInput,
     lobby::LobbyPlayer,
 };

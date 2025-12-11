@@ -1,13 +1,11 @@
-use ggez::{
-    graphics::Color,
-    input::keyboard::KeyCode,
-};
+use ggez::input::keyboard::KeyCode;
 use std::collections::HashSet;
 use crate::{
     attack::{
         Attack,
         AttackKind,
     },
+    color::Color,
     constants::{
         ACCELERATION,
         GRAVITY,
@@ -181,7 +179,7 @@ impl Player {
             self.trail_squares.push(
                 TrailSquare::new(
                     self.pos,
-                    self.color,
+                    self.color.clone(),
                 )
             );
         }
@@ -643,7 +641,7 @@ impl Player {
     }
 
     #[must_use]
-    pub fn get_color_default(&self) -> Color { self.color }
+    pub fn get_color_default(&self) -> Color { self.color.clone() }
 
     #[must_use]
     pub fn parrying(&self) -> bool { self.parry > 0.0 }
