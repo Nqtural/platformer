@@ -3,25 +3,27 @@ use std::net::SocketAddr;
 use std::collections::HashSet;
 use tokio::net::UdpSocket;
 use tokio::sync::{Mutex, RwLock};
-use platform::{
-    constants::{
-        ENABLE_VSYNC,
-        TEAM_SIZE,
-        TICK_RATE,
-        VIRTUAL_HEIGHT,
-        VIRTUAL_WIDTH,
-    },
-    game_state::GameState,
+use protocol::{
+    constants::TEAM_SIZE,
+    net_client::ClientMessage,
+    net_server::ServerMessage,
     lobby::Lobby,
-    network::{
-        ClientMessage,
-        ServerMessage,
-    },
-    read_config::Config,
     utils::{
         broadcast,
         send_to,
     },
+};
+use simulation::{
+    constants::{
+        ENABLE_VSYNC,
+        TICK_RATE,
+        VIRTUAL_HEIGHT,
+        VIRTUAL_WIDTH,
+    },
+};
+use platform::{
+    game_state::GameState,
+    read_config::Config,
 };
 use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
 use ggez::{

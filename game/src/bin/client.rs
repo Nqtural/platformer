@@ -10,21 +10,25 @@ use tokio::sync::Mutex;
 use std::sync::Arc;
 use std::collections::HashSet;
 use std::net::SocketAddr;
-use platform::{
+use protocol::{
     constants::{
-        ENABLE_VSYNC,
         TEAM_ONE_START_POS,
         TEAM_SIZE,
         TEAM_TWO_START_POS,
+    },
+    net_client::ClientMessage,
+    net_server::ServerMessage,
+    net_team::InitTeamData,
+};
+use simulation::{
+    constants::{
+        ENABLE_VSYNC,
         VIRTUAL_HEIGHT,
         VIRTUAL_WIDTH,
     },
+};
+use platform::{
     game_state::GameState,
-    network::{
-        ClientMessage,
-        ServerMessage,
-        InitTeamData,
-    },
     read_config::Config,
 };
 use bincode::{serde::{encode_to_vec, decode_from_slice}, config};

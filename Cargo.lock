@@ -1872,8 +1872,10 @@ dependencies = [
  "ggez",
  "glam 0.30.9",
  "mint",
+ "protocol",
  "rand",
  "serde",
+ "simulation",
  "tokio",
  "toml 0.9.8",
 ]
@@ -1943,6 +1945,13 @@ checksum = "3eb8486b569e12e2c32ad3e204dbaba5e4b5b216e9367044f25f1dba42341773"
 [[package]]
 name = "protocol"
 version = "0.1.0"
+dependencies = [
+ "bincode",
+ "foundation",
+ "serde",
+ "simulation",
+ "tokio",
+]
 
 [[package]]
 name = "pulldown-cmark"
@@ -2275,6 +2284,11 @@ checksum = "e320a6c5ad31d271ad523dcf3ad13e2767ad8b1cb8f047f75a8aeaf8da139da2"
 [[package]]
 name = "simulation"
 version = "0.1.0"
+dependencies = [
+ "foundation",
+ "ggez",
+ "serde",
+]
 
 [[package]]
 name = "skeptic"

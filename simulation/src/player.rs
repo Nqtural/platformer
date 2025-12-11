@@ -17,7 +17,6 @@ use crate::{
         WALL_SLIDE_SPEED,
     },
     input::PlayerInput,
-    network::NetPlayer,
     team::Team,
     trail::TrailSquare,
     utils::get_combo_multiplier,
@@ -28,32 +27,32 @@ use foundation::math_helpers::approach_zero;
 
 #[derive(Clone)]
 pub struct Player {
-    pos: [f32; 2],
-    vel: [f32; 2],
-    lives: u8,
-    name: String,
-    stunned: f32,
-    invulnerable_timer: f32,
-    parry: f32,
-    double_jumps: u8,
-    combo: u32,
-    combo_timer: f32,
-    knockback_multiplier: f32,
-    attacks: Vec<Attack>,
-    trail_squares: Vec<TrailSquare>,
-    can_slam: bool,
-    dash_cooldown: f32,
-    normal_cooldown: f32,
-    light_cooldown: f32,
-    parry_cooldown: f32,
-    respawn_timer: f32,
-    trail_timer: f32,
-    team_idx: usize,
-    facing: [f32; 2],
-    input: PlayerInput,
-    has_jumped: bool,
-    start_pos: [f32; 2],
-    color: Color,
+    pub pos: [f32; 2],
+    pub vel: [f32; 2],
+    pub lives: u8,
+    pub name: String,
+    pub stunned: f32,
+    pub invulnerable_timer: f32,
+    pub parry: f32,
+    pub double_jumps: u8,
+    pub combo: u32,
+    pub combo_timer: f32,
+    pub knockback_multiplier: f32,
+    pub attacks: Vec<Attack>,
+    pub trail_squares: Vec<TrailSquare>,
+    pub can_slam: bool,
+    pub dash_cooldown: f32,
+    pub normal_cooldown: f32,
+    pub light_cooldown: f32,
+    pub parry_cooldown: f32,
+    pub respawn_timer: f32,
+    pub trail_timer: f32,
+    pub team_idx: usize,
+    pub facing: [f32; 2],
+    pub input: PlayerInput,
+    pub has_jumped: bool,
+    pub start_pos: [f32; 2],
+    pub color: Color,
 }
 
 impl Player {
@@ -92,41 +91,6 @@ impl Player {
             start_pos,
             color,
         }
-    }
-
-    #[must_use]
-    pub fn to_net(&self, player_idx: usize) -> NetPlayer {
-        NetPlayer {
-            team_idx: self.team_idx,
-            player_idx,
-            pos: self.pos,
-            vel: self.vel,
-            combo: self.combo,
-            knockback_multiplier: self.knockback_multiplier,
-            attacks: self.attacks
-                .iter()
-                .map(Attack::to_net)
-                .collect(),
-            stunned: self.stunned,
-            invulnerable: self.invulnerable_timer,
-            parry: self.parry,
-            lives: self.lives,
-        }
-    }
-
-    pub fn from_net(&mut self, net_player: NetPlayer) {
-        self.pos = net_player.pos;
-        self.vel = net_player.vel;
-        self.lives = net_player.lives;
-        self.combo = net_player.combo;
-        self.knockback_multiplier = net_player.knockback_multiplier;
-        self.attacks = net_player.attacks
-            .iter()
-            .map(|na| Attack::from_net(na.clone()))
-            .collect();
-        self.stunned = net_player.stunned;
-        self.invulnerable_timer = net_player.invulnerable;
-        self.parry = net_player.parry;
     }
 
     pub fn update(

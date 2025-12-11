@@ -2,10 +2,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use crate::{
-    constants::PLAYER_SIZE,
-    network::NetAttack,
-};
+use crate::constants::PLAYER_SIZE;
 use foundation::rect::Rect;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
@@ -17,16 +14,16 @@ pub enum AttackKind {
 }
 
 pub struct AttackProperties {
-    offset: f32,
-    size: f32,
-    duration: f32,
-    frame_count: usize,
-    stun: f32,
-    knockback_increase: f32,
+    pub offset: f32,
+    pub size: f32,
+    pub duration: f32,
+    pub frame_count: usize,
+    pub stun: f32,
+    pub knockback_increase: f32,
 }
 
 impl AttackKind {
-    fn properties(&self) -> AttackProperties {
+    pub fn properties(&self) -> AttackProperties {
         match self {
             AttackKind::Dash => AttackProperties {
                 offset: 0.0,
@@ -66,20 +63,20 @@ impl AttackKind {
 
 #[derive(Clone)]
 pub struct Attack {
-    offset: f32,
-    size: f32,
-    kind: AttackKind,
-    duration: f32,
-    timer: f32,
-    owner_team: usize,
-    owner_player: usize,
-    facing: [f32; 2],
-    stun: f32,
-    knockback_increase: f32,
+    pub offset: f32,
+    pub size: f32,
+    pub kind: AttackKind,
+    pub duration: f32,
+    pub timer: f32,
+    pub owner_team: usize,
+    pub owner_player: usize,
+    pub facing: [f32; 2],
+    pub stun: f32,
+    pub knockback_increase: f32,
 
     // animation
-    frame: usize,
-    frame_count: usize,
+    pub frame: usize,
+    pub frame_count: usize,
 }
 
 impl Attack {
@@ -104,38 +101,6 @@ impl Attack {
             knockback_increase: properties.knockback_increase,
             frame: 0,
             frame_count: properties.frame_count,
-        }
-    }
-
-    #[must_use]
-    pub fn from_net(net: NetAttack) -> Self {
-        let properties = net.kind.properties();
-
-        Attack {
-            offset: properties.offset,
-            size: properties.size,
-            kind: net.kind,
-            duration: properties.duration,
-            timer: net.timer,
-            owner_team: net.owner_team,
-            owner_player: net.owner_player,
-            facing: net.facing,
-            stun: properties.stun,
-            knockback_increase: properties.knockback_increase,
-            frame: net.frame,
-            frame_count: properties.frame_count,
-        }
-    }
-
-    #[must_use]
-    pub fn to_net(&self) -> NetAttack {
-        NetAttack {
-            timer: self.timer,
-            owner_team: self.owner_team,
-            owner_player: self.owner_player,
-            kind: self.kind.clone(),
-            facing: self.facing,
-            frame: self.frame,
         }
     }
 

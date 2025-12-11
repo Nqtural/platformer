@@ -3,15 +3,13 @@ use serde::{
     Deserialize,
 };
 use std::net::SocketAddr;
-use crate::{
-    constants::{
-        TEAM_ONE_START_POS,
-        TEAM_SIZE,
-        TEAM_TWO_START_POS,
-    },
-    network::InitTeamData,
-};
 use foundation::color::Color;
+use crate::net_team::InitTeamData;
+use crate::constants::{
+    TEAM_ONE_START_POS,
+    TEAM_SIZE,
+    TEAM_TWO_START_POS,
+};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct LobbyPlayer {
@@ -86,18 +84,8 @@ impl Lobby {
     ) -> Vec<InitTeamData> {
         // Prepare output vec of length 2
         let mut teams = vec![
-            InitTeamData {
-                color: team_one_color,
-                player_names: vec![String::new(); TEAM_SIZE],
-                start_position: TEAM_ONE_START_POS,
-                index: 0,
-            },
-            InitTeamData {
-                color: team_two_color,
-                player_names: vec![String::new(); TEAM_SIZE],
-                start_position: TEAM_TWO_START_POS,
-                index: 1,
-            },
+            InitTeamData::new(team_one_color, TEAM_ONE_START_POS, 0),
+            InitTeamData::new(team_two_color, TEAM_TWO_START_POS, 1),
         ];
 
         // Fill players into correct team + slot

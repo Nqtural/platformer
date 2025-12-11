@@ -1,7 +1,4 @@
-use crate::{
-    network::InitTeamData,
-    player::Player,
-};
+use crate::player::Player;
 use foundation::rect::Rect;
 
 #[derive(Clone)]
@@ -11,21 +8,10 @@ pub struct Team {
 
 impl Team {
     #[must_use]
-    fn new(players: Vec<Player>) -> Team {
+    pub fn new(players: Vec<Player>) -> Team {
         Team {
             players,
         }
-    }
-
-    #[must_use]
-    pub fn from_init(init: InitTeamData) -> Team {
-        let mut players = Vec::new();
-
-        for name in init.player_names.iter() {
-            players.push(Player::new(init.start_position, name.clone(), init.color.clone(), init.index));
-        }
-
-        Team::new(players)
     }
 
     pub fn update_players(

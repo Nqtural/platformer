@@ -1,27 +1,7 @@
 use crate::{
-    attack::{
-        Attack,
-        AttackKind,
-    },
-    constants::{
-        ATTACK_IMAGE,
-        BACKGROUND_IMAGE,
-        PARRY_IMAGE,
-        NAME_COLOR,
-        PLAYER_SIZE,
-        VIRTUAL_HEIGHT,
-        VIRTUAL_WIDTH,
-    },
-    map::Map,
-    network::{
-        InitTeamData,
-        NetSnapshot,
-    },
     read_config::Config,
-    team::Team,
     traits::IntoMint,
     utils::{
-        current_and_enemy,
         color_to_ggez,
         rect_to_ggez,
     },
@@ -50,6 +30,29 @@ use ggez::{
 use glam::Vec2;
 use std::collections::HashSet;
 use foundation::color::Color;
+use simulation::{
+    attack::{
+        Attack,
+        AttackKind,
+    },
+    constants::{
+        ATTACK_IMAGE,
+        BACKGROUND_IMAGE,
+        PARRY_IMAGE,
+        NAME_COLOR,
+        PLAYER_SIZE,
+        VIRTUAL_HEIGHT,
+        VIRTUAL_WIDTH,
+    },
+    map::Map,
+    team::Team,
+    utils::current_and_enemy,
+};
+use protocol::{
+    net_player,
+    net_server::NetSnapshot,
+    net_team,
+};
 
 #[derive(Clone)]
 pub struct GameState {
@@ -100,14 +103,14 @@ impl GameState {
     pub fn new_from_initial(
         c_team: usize,
         c_player: usize,
-        init: Vec<InitTeamData>,
+        init: Vec<net_team::InitTeamData>,
         ctx: &mut Context,
     ) -> GameResult<Self> {
 
         // convert init teams to runtime Teams
         let teams: [Team; 2] = init
             .into_iter()
-            .map(Team::from_init)
+            .map(|i| net_team::from_init(i))
             .collect::<Vec<_>>()
             .try_into()
             .map_err(|_| GameError::ResourceLoadError("Exactly 2 teams required".to_string()))?;
@@ -156,7 +159,7 @@ impl GameState {
             winner: self.winner,
             players: self.teams.iter().flat_map(|team| {
                 team.players.iter().enumerate().map(move |(player_idx, player)| {
-                    player.to_net(player_idx)
+                    net_player::to_net(player, player_idx)
                 })
             }).collect(),
         }
@@ -168,7 +171,7 @@ impl GameState {
         for net_player in snapshot.players {
             if let Some(team) = self.teams.get_mut(net_player.team_idx)
             && let Some(player) = team.players.get_mut(net_player.player_idx) {
-                player.from_net(net_player);
+                net_player::from_net(player, net_player);
             }
         }
     }
@@ -179,7 +182,7 @@ impl GameState {
 
         for team in &self.teams {
             for (player_idx, player) in team.players.iter().enumerate() {
-                net_players.push(player.to_net(player_idx));
+                net_players.push(net_player::to_net(player, player_idx));
             }
         }
 
