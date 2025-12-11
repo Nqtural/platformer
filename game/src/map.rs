@@ -1,12 +1,12 @@
 use crate::{
-    color::Color,
     constants::{
         MAP_COLOR,
         VIRTUAL_HEIGHT,
         VIRTUAL_WIDTH,
     },
-    rect::Rect,
 };
+use foundation::color::Color;
+use foundation::rect::Rect;
 
 #[derive(Clone)]
 pub struct Map {

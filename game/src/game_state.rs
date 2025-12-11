@@ -3,7 +3,6 @@ use crate::{
         Attack,
         AttackKind,
     },
-    color::Color,
     constants::{
         ATTACK_IMAGE,
         BACKGROUND_IMAGE,
@@ -50,6 +49,7 @@ use ggez::{
 };
 use glam::Vec2;
 use std::collections::HashSet;
+use foundation::color::Color;
 
 #[derive(Clone)]
 pub struct GameState {

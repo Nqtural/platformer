@@ -1,8 +1,8 @@
 use crate::{
     network::InitTeamData,
     player::Player,
-    rect::Rect,
 };
+use foundation::rect::Rect;
 
 #[derive(Clone)]
 pub struct Team {

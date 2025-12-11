@@ -5,8 +5,8 @@ use serde::{
 use crate::{
     constants::PLAYER_SIZE,
     network::NetAttack,
-    rect::Rect,
 };
+use foundation::rect::Rect;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub enum AttackKind {

@@ -788,6 +788,9 @@ checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
 [[package]]
 name = "foundation"
 version = "0.1.0"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "getrandom"
@@ -1865,6 +1868,7 @@ name = "platform"
 version = "0.2.0"
 dependencies = [
  "bincode",
+ "foundation",
  "ggez",
  "glam 0.30.9",
  "mint",

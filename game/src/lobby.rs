@@ -4,7 +4,6 @@ use serde::{
 };
 use std::net::SocketAddr;
 use crate::{
-    color::Color,
     constants::{
         TEAM_ONE_START_POS,
         TEAM_SIZE,
@@ -12,6 +11,7 @@ use crate::{
     },
     network::InitTeamData,
 };
+use foundation::color::Color;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct LobbyPlayer {

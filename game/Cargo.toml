@@ -4,6 +4,7 @@ version = "0.2.0"
 edition = "2024"
 
 [dependencies]
+foundation = { path = "../foundation" }
 bincode = { version = "2.0.1", features = ["serde"] }
 ggez = "0.9.3"
 glam = { version = "0.30.9", features = ["mint", "serde"] }

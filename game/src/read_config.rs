@@ -4,7 +4,7 @@ use ggez::{
 };
 use serde::Deserialize;
 use toml;
-use crate::color::Color;
+use foundation::color::Color;
 
 #[derive(Deserialize)]
 pub struct Config {

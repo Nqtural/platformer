@@ -5,7 +5,6 @@ use crate::{
         Attack,
         AttackKind,
     },
-    color::Color,
     constants::{
         ACCELERATION,
         GRAVITY,
@@ -19,14 +18,13 @@ use crate::{
     },
     input::PlayerInput,
     network::NetPlayer,
-    rect::Rect,
     team::Team,
     trail::TrailSquare,
-    utils::{
-        approach_zero,
-        get_combo_multiplier,
-    },
+    utils::get_combo_multiplier,
 };
+use foundation::color::Color;
+use foundation::rect::Rect;
+use foundation::math_helpers::approach_zero;
 
 #[derive(Clone)]
 pub struct Player {

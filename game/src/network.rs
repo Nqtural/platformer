@@ -4,10 +4,10 @@ use serde::{
 };
 use crate::{
     attack::AttackKind,
-    color::Color,
     input::PlayerInput,
     lobby::LobbyPlayer,
 };
+use foundation::color::Color;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct InitTeamData {

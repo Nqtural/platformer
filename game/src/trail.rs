@@ -1,11 +1,11 @@
 use crate::{
-    color::Color,
     constants::{
         PLAYER_SIZE,
         TRAIL_OPACITY,
     },
-    rect::Rect,
 };
+use foundation::color::Color;
+use foundation::rect::Rect;
 
 #[derive(Clone)]
 pub struct TrailSquare {

@@ -1,4 +1,4 @@
-use crate::color::Color;
+use foundation::color::Color;
 
 pub const ENABLE_VSYNC: bool = true;
 
