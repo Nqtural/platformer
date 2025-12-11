@@ -335,7 +335,7 @@ impl GameState {
             gfx,
             DrawMode::fill(),
             rect_to_ggez(self.map.get_rect()),
-            self.map.get_color(),
+            color_to_ggez(&self.map.get_color()),
         )?;
         game_canvas.draw(&map_mesh, *camera_transform);
 
@@ -502,7 +502,7 @@ impl GameState {
                     text: player.name(),
                     font: None,
                     scale: Some(PxScale::from(14.0)),
-                    color: Some(NAME_COLOR),
+                    color: Some(color_to_ggez(&NAME_COLOR)),
                 });
 
                 let text_dims = text.dimensions(ctx).unwrap();

@@ -1,7 +1,5 @@
-use ggez::graphics::{
-    Color,
-};
 use crate::{
+    color::Color,
     constants::{
         MAP_COLOR,
         VIRTUAL_HEIGHT,
@@ -41,5 +39,5 @@ impl Map {
     pub fn get_rect(&self) -> &Rect { &self.rect }
 
     #[must_use]
-    pub fn get_color(&self) -> Color { self.color }
+    pub fn get_color(&self) -> Color { self.color.clone() }
 }
