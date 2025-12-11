@@ -66,7 +66,10 @@ impl Lobby {
         if TEAM_SIZE == 1 {
             self.next_team = (self.next_team + 1) % 2;
         } else if TEAM_SIZE == 2 {
-            self.next_player = (self.next_player + 1) % TEAM_SIZE;
+            #[allow(clippy::modulo_one)]
+            {
+                self.next_player = (self.next_player + 1) % TEAM_SIZE;
+            }
             if self.next_player == 0 {
                 self.next_team = (self.next_team + 1) % 2;
             }
