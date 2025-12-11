@@ -1,5 +1,5 @@
 [workspace]
-members = ["client_logic", "config", "display","foundation",
+members = ["client_logic", "game_config", "display","foundation",
     "game", "protocol", "server_logic", "simulation",
 ]
 resolver = "3"

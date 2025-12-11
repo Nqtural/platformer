@@ -1,5 +1,4 @@
 use crate::{
-    read_config::Config,
     traits::IntoMint,
     utils::{
         color_to_ggez,
@@ -29,6 +28,7 @@ use ggez::{
 };
 use glam::Vec2;
 use std::collections::HashSet;
+use game_config::read::Config;
 use foundation::color::Color;
 use simulation::{
     attack::{

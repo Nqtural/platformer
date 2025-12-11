@@ -10,6 +10,7 @@ use tokio::sync::Mutex;
 use std::sync::Arc;
 use std::collections::HashSet;
 use std::net::SocketAddr;
+use game_config::read::Config;
 use protocol::{
     constants::{
         TEAM_ONE_START_POS,
@@ -29,7 +30,6 @@ use simulation::{
 };
 use platform::{
     game_state::GameState,
-    read_config::Config,
 };
 use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
 

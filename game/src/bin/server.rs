@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 use std::collections::HashSet;
 use tokio::net::UdpSocket;
 use tokio::sync::{Mutex, RwLock};
+use game_config::read::Config;
 use protocol::{
     constants::TEAM_SIZE,
     net_client::ClientMessage,
@@ -23,7 +24,6 @@ use simulation::{
 };
 use platform::{
     game_state::GameState,
-    read_config::Config,
 };
 use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
 use ggez::{
