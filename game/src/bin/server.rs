@@ -4,9 +4,11 @@ use std::collections::HashSet;
 use tokio::net::UdpSocket;
 use tokio::sync::{Mutex, RwLock};
 use game_config::read::Config;
+use display::render::RenderState;
 use protocol::{
     constants::TEAM_SIZE,
     net_client::ClientMessage,
+    net_game_state,
     net_server::ServerMessage,
     lobby::Lobby,
     utils::{
@@ -21,8 +23,6 @@ use simulation::{
         VIRTUAL_HEIGHT,
         VIRTUAL_WIDTH,
     },
-};
-use platform::{
     game_state::GameState,
 };
 use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
@@ -89,7 +89,7 @@ async fn main() -> GameResult {
     println!("Starting game...");
 
     // setup the ggez window and run event loop
-    let (mut ctx, event_loop) = ContextBuilder::new("server", "platform")
+    let (ctx, event_loop) = ContextBuilder::new("server", "platform")
         .window_setup(
             ggez::conf::WindowSetup::default()
                 .vsync(ENABLE_VSYNC)
@@ -110,7 +110,7 @@ async fn main() -> GameResult {
     );
 
     // create actual GameState from InitTeamData
-    let gs = GameState::new_from_initial(0, 0, init_teams.clone(), &mut ctx)?;
+    let gs = net_game_state::new_from_initial(0, 0, init_teams.clone())?;
 
     // store game state inside Arc<Mutex<_>>
     let game_state = Arc::new(Mutex::new(gs));
@@ -188,7 +188,7 @@ async fn main() -> GameResult {
             tokio::time::sleep(std::time::Duration::from_millis(8)).await;
 
             let gs = game_state_send.lock().await;
-            let snapshot_msg = ServerMessage::Snapshot(gs.to_net());
+            let snapshot_msg = ServerMessage::Snapshot(net_game_state::to_net(&gs));
             drop(gs);
 
             let data = match encode_to_vec(&snapshot_msg, bincode_config) {
@@ -211,10 +211,21 @@ async fn main() -> GameResult {
         }
     });
 
-    ggez::event::run(ctx, event_loop, SharedGameState(game_state))
+    let render_state = RenderState::new(&ctx);
+    ggez::event::run(
+        ctx,
+        event_loop,
+        SharedGameState {
+            game_state,
+            render_state,
+        }
+    )
 }
 
-struct SharedGameState(Arc<Mutex<GameState>>);
+struct SharedGameState{
+    game_state: Arc<Mutex<GameState>>,
+    render_state: RenderState,
+}
 
 impl EventHandler for SharedGameState {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
@@ -224,8 +235,8 @@ impl EventHandler for SharedGameState {
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        if let Ok(mut gs) = self.0.try_lock() {
-            gs.draw(ctx)
+        if let Ok(gs) = self.game_state.try_lock() {
+            self.render_state.render(ctx, &gs)
         } else {
             Ok(())
         }

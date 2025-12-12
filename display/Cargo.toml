@@ -4,3 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+foundation = { path = "../foundation" }
+game_config = { path = "../game_config" }
+simulation = { path = "../simulation" }
+ggez = "0.9.3"
+glam = { version = "0.30.9", features = ["mint", "serde"] }
+mint = "0.5.9"

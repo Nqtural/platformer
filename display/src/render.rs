@@ -1,13 +1,17 @@
 use crate::{
-    traits::IntoMint,
+    constants::{
+        ATTACK_IMAGE,
+        BACKGROUND_IMAGE,
+        PARRY_IMAGE,
+    },
     utils::{
         color_to_ggez,
+        IntoMint,
         rect_to_ggez,
     },
 };
 use ggez::{
     Context,
-    GameError,
     GameResult,
     graphics::{
         Canvas,
@@ -24,10 +28,8 @@ use ggez::{
         Text,
         TextFragment,
     },
-    input::keyboard::KeyCode,
 };
 use glam::Vec2;
-use std::collections::HashSet;
 use game_config::read::Config;
 use foundation::color::Color;
 use simulation::{
@@ -36,224 +38,48 @@ use simulation::{
         AttackKind,
     },
     constants::{
-        ATTACK_IMAGE,
-        BACKGROUND_IMAGE,
-        PARRY_IMAGE,
         NAME_COLOR,
         PLAYER_SIZE,
         VIRTUAL_HEIGHT,
         VIRTUAL_WIDTH,
     },
-    map::Map,
-    team::Team,
+    game_state::GameState,
     utils::current_and_enemy,
 };
-use protocol::{
-    net_player,
-    net_server::NetSnapshot,
-    net_team,
-};
 
-#[derive(Clone)]
-pub struct GameState {
-    c_team: usize,
-    c_player: usize,
-    pub teams: [Team; 2],
-    pub map: Map,
-    pub camera_pos: Vec2,
-    bias_strength: f32,
-    pub winner: usize,
+pub struct RenderState {
     team_one_color: Color,
     team_two_color: Color,
     zoom: f32,
+    camera_pos: Vec2,
+    bias_strength: f32,
     background_image: Option<Image>,
     attack_image: Option<Image>,
     parry_image: Option<Image>,
 }
 
-impl GameState {
-    fn new(
-        c_team: usize,
-        c_player: usize,
-        teams: [Team; 2],
-        ctx: &mut Context
-    ) -> GameResult<Self> {
-        let bg_img = Image::from_path(&ctx.gfx, BACKGROUND_IMAGE)?;
-        let attack_img = Image::from_path(&ctx.gfx, ATTACK_IMAGE)?;
-        let parry_img = Image::from_path(&ctx.gfx, PARRY_IMAGE)?;
-        let config = Config::get()?;
+impl RenderState {
+    pub fn new(ctx: &Context) -> Self {
+        let bg_img = Image::from_path(&ctx.gfx, BACKGROUND_IMAGE).unwrap_or_else(|_| panic!("Unable to load {BACKGROUND_IMAGE}"));
+        let attack_img = Image::from_path(&ctx.gfx, ATTACK_IMAGE).unwrap_or_else(|_| panic!("Unable to load {ATTACK_IMAGE}"));
+        let parry_img = Image::from_path(&ctx.gfx, PARRY_IMAGE).unwrap_or_else(|_| panic!("Unable to load {PARRY_IMAGE}"));
+        let config = Config::get().expect("Unable to get config file");
 
-        Ok(Self {
-            c_team,
-            c_player,
-            teams,
-            map: Map::new(),
+        Self {
             camera_pos: Vec2::new(0.0, 0.0),
             bias_strength: config.camera_bias(),
-            winner: 0,
             team_one_color: config.team_one_color(),
             team_two_color: config.team_two_color(),
             zoom: config.camera_zoom(),
             background_image: Some(bg_img),
             attack_image: Some(attack_img),
             parry_image: Some(parry_img),
-        })
-    }
-
-    pub fn new_from_initial(
-        c_team: usize,
-        c_player: usize,
-        init: Vec<net_team::InitTeamData>,
-        ctx: &mut Context,
-    ) -> GameResult<Self> {
-
-        // convert init teams to runtime Teams
-        let teams: [Team; 2] = init
-            .into_iter()
-            .map(net_team::from_init)
-            .collect::<Vec<_>>()
-            .try_into()
-            .map_err(|_| GameError::ResourceLoadError("Exactly 2 teams required".to_string()))?;
-
-        GameState::new(c_team, c_player, teams, ctx)
-    }
-
-    pub fn render_update(&mut self, ctx: &mut Context) -> GameResult {
-        let dt = ctx.time.delta().as_secs_f32();
-
-        self.check_for_win();
-
-        for i in 0..2 {
-            let (current, enemy) = current_and_enemy(&mut self.teams, i);
-            current.update_players(
-                enemy,
-                self.map.get_rect(),
-                self.winner,
-                dt,
-            );
-        }
-
-        self.update_camera();
-
-        Ok(())
-    }
-
-    pub fn fixed_update(&mut self, dt: f32) {
-        self.check_for_win();
-
-        for i in 0..2 {
-            let (current, enemy) = current_and_enemy(&mut self.teams, i);
-            current.update_players(
-                enemy,
-                self.map.get_rect(),
-                self.winner,
-                dt,
-            );
         }
     }
 
-    #[must_use]
-    pub fn to_net(&self) -> NetSnapshot {
-        NetSnapshot {
-            tick: 0,
-            winner: self.winner,
-            players: self.teams.iter().flat_map(|team| {
-                team.players.iter().enumerate().map(move |(player_idx, player)| {
-                    net_player::to_net(player, player_idx)
-                })
-            }).collect(),
-        }
-    }
+    pub fn render(&mut self, ctx: &mut Context, gs: &GameState) -> GameResult {
+        self.update_camera(gs);
 
-    pub fn apply_snapshot(&mut self, snapshot: NetSnapshot) {
-        self.winner = snapshot.winner;
-
-        for net_player in snapshot.players {
-            if let Some(team) = self.teams.get_mut(net_player.team_idx)
-            && let Some(player) = team.players.get_mut(net_player.player_idx) {
-                net_player::from_net(player, net_player);
-            }
-        }
-    }
-
-    #[must_use]
-    pub fn to_snapshot(&self) -> NetSnapshot {
-        let mut net_players = Vec::new();
-
-        for team in &self.teams {
-            for (player_idx, player) in team.players.iter().enumerate() {
-                net_players.push(net_player::to_net(player, player_idx));
-            }
-        }
-
-        NetSnapshot {
-            tick: 0,
-            winner: self.winner,
-            players: net_players,
-        }
-    }
-
-    fn check_for_win(&mut self) {
-        if self.winner > 0 {
-            return;
-        }
-
-        for (team_idx, team) in self.teams.iter_mut().enumerate() {
-            if team.players.iter().all(|p| p.is_dead()) {
-                self.winner = if team_idx == 0 { 2 } else { 1 };
-                break;
-            }
-        }
-    }
-
-    fn drawparam_constructor(&self, x: f32, y: f32) -> DrawParam {
-        let screen_center = Vec2::new(VIRTUAL_WIDTH / 2.0, VIRTUAL_HEIGHT / 2.0);
-
-        DrawParam::default()
-            .dest(
-                screen_center 
-                + Vec2::new(x, y) * self.zoom 
-                - self.camera_pos * self.zoom
-            )
-            .scale(Vec2::new(self.zoom, self.zoom).to_mint_vec())
-    }
-
-    pub fn update_input(&mut self, pressed: &HashSet<KeyCode>) {
-        self.teams[self.c_team].players[self.c_player].update_input(pressed);
-    }
-
-    fn update_camera(&mut self) {
-        let mut sum = Vec2::ZERO;
-        let mut count: usize = 0;
-
-        for team in &self.teams {
-            for player in &team.players {
-                if player.is_dead() { continue; }
-                sum += Vec2::new(
-                    player.position()[0] + PLAYER_SIZE / 2.0,
-                    player.position()[1] + PLAYER_SIZE / 2.0,
-                );
-                count += 1;
-            }
-        }
-
-        if count == 0 { return; }
-
-        let player_center = sum / count as f32;
-
-        let map_rect = self.map.get_rect();
-        let map_center = Vec2::new(
-            map_rect.x + map_rect.w / 2.0,
-            map_rect.y + map_rect.h / 2.0,
-        );
-
-        let biased_target = player_center.lerp(map_center, self.bias_strength);
-
-        let lerp_factor = 0.1;
-        self.camera_pos = self.camera_pos.lerp(biased_target, lerp_factor);
-    }
-
-    pub fn draw(&mut self, ctx: &mut Context) -> GameResult {
         let target_image = Image::new_canvas_image(
             &ctx.gfx,
             ImageFormat::Rgba8UnormSrgb,
@@ -303,13 +129,13 @@ impl GameState {
             .dest(camera_translation)
             .scale(Vec2::new(self.zoom, self.zoom).to_mint_vec());
 
-        self.draw_map(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
-        self.draw_trails(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
-        self.draw_players(&mut game_canvas, ctx, &camera_translation)?;
-        self.draw_hud(&mut game_canvas, ctx);
+        self.draw_map(&mut game_canvas, &mut ctx.gfx, &camera_transform, gs)?;
+        self.draw_trails(&mut game_canvas, &mut ctx.gfx, &camera_transform, gs)?;
+        self.draw_players(&mut game_canvas, ctx, &camera_translation, gs)?;
+        self.draw_hud(&mut game_canvas, ctx, gs);
 
         // DEBUG
-        //let _ = self.draw_attack_hurtbox(&mut game_canvas, &ctx.gfx, camera_transform);
+        //let _ = gs.draw_attack_hurtbox(&mut game_canvas, &ctx.gfx, camera_transform);
 
         game_canvas.finish(&mut ctx.gfx)?;
 
@@ -333,12 +159,76 @@ impl GameState {
         final_canvas.finish(&mut ctx.gfx)
     }
 
-    fn draw_map(&self, game_canvas: &mut Canvas, gfx: &mut GraphicsContext, camera_transform: &DrawParam) -> GameResult {
+    pub fn render_update(gs: &mut GameState, dt: f32) {
+        gs.check_for_win();
+
+        for i in 0..2 {
+            let (current, enemy) = current_and_enemy(&mut gs.teams, i);
+            current.update_players(
+                enemy,
+                gs.map.get_rect(),
+                gs.winner,
+                dt,
+            );
+        }
+    }
+
+    fn update_camera(&mut self, gs: &GameState) {
+        let mut sum = Vec2::ZERO;
+        let mut count: usize = 0;
+
+        for team in &gs.teams {
+            for player in &team.players {
+                if player.is_dead() { continue; }
+                sum += Vec2::new(
+                    player.position()[0] + PLAYER_SIZE / 2.0,
+                    player.position()[1] + PLAYER_SIZE / 2.0,
+                );
+                count += 1;
+            }
+        }
+
+        if count == 0 { return; }
+
+        let player_center = sum / count as f32;
+
+        let map_rect = gs.map.get_rect();
+        let map_center = Vec2::new(
+            map_rect.x + map_rect.w / 2.0,
+            map_rect.y + map_rect.h / 2.0,
+        );
+
+        let biased_target = player_center.lerp(map_center, self.bias_strength);
+
+        let lerp_factor = 0.1;
+        self.camera_pos = self.camera_pos.lerp(biased_target, lerp_factor);
+    }
+
+
+    fn drawparam_constructor(&self, x: f32, y: f32) -> DrawParam {
+        let screen_center = Vec2::new(VIRTUAL_WIDTH / 2.0, VIRTUAL_HEIGHT / 2.0);
+
+        DrawParam::default()
+            .dest(
+                screen_center 
+                + Vec2::new(x, y) * self.zoom 
+                - self.camera_pos * self.zoom
+            )
+            .scale(Vec2::new(self.zoom, self.zoom).to_mint_vec())
+    }
+
+    fn draw_map(
+        &self,
+        game_canvas: &mut Canvas,
+        gfx: &mut GraphicsContext,
+        camera_transform: &DrawParam,
+        gs: &GameState,
+    ) -> GameResult {
         let map_mesh = Mesh::new_rectangle(
             gfx,
             DrawMode::fill(),
-            rect_to_ggez(self.map.get_rect()),
-            color_to_ggez(&self.map.get_color()),
+            rect_to_ggez(gs.map.get_rect()),
+            color_to_ggez(&gs.map.get_color()),
         )?;
         game_canvas.draw(&map_mesh, *camera_transform);
 
@@ -365,7 +255,7 @@ impl GameState {
         &self,
         game_canvas: &mut Canvas,
         player_pos: [f32; 2],
-        attacks: &Vec<Attack>,
+        attacks: &[Attack],
     ) {
         for atk in attacks {
             if *atk.kind() == AttackKind::Dash
@@ -426,8 +316,9 @@ impl GameState {
         game_canvas: &mut Canvas,
         gfx: &GraphicsContext,
         camera_transform: DrawParam,
+        gs: &GameState,
     ) -> GameResult<()> {
-        for team in &self.teams {
+        for team in &gs.teams {
             for player in &team.players {
                 for attack in player.attacks() {
                     let mesh = Mesh::new_rectangle(
@@ -449,8 +340,9 @@ impl GameState {
         game_canvas: &mut Canvas,
         gfx: &mut GraphicsContext,
         camera_transform: &DrawParam,
+        gs: &GameState,
     ) -> GameResult {
-        for team in &self.teams {
+        for team in &gs.teams {
             for player in &team.players {
                 for square in player.trail_squares() {
                     let mesh = Mesh::new_rectangle(
@@ -473,11 +365,12 @@ impl GameState {
         game_canvas: &mut Canvas,
         ctx: &mut Context,
         camera_translation: &Vec2,
+        gs: &GameState,
     ) -> GameResult {
         let camera_transform = DrawParam::default()
             .dest(*camera_translation)
             .scale(Vec2::new(self.zoom, self.zoom).to_mint_vec());
-        for (ti, team) in self.teams.iter().enumerate() {
+        for (ti, team) in gs.teams.iter().enumerate() {
             for (pi, player) in team.players.iter().enumerate() {
                 if player.is_dead() { continue; }
 
@@ -493,7 +386,7 @@ impl GameState {
                     &ctx.gfx,
                     DrawMode::stroke(2.0),
                     rect_to_ggez(&rect),
-                    if ti == self.c_team && pi == self.c_player {
+                    if ti == gs.c_team && pi == gs.c_player {
                         GgezColor::new(0.75, 0.75, 0.75, 1.0)
                     } else {
                         GgezColor::new(0.0, 0.0, 0.0, 1.0)
@@ -545,6 +438,7 @@ impl GameState {
         &self,
         game_canvas: &mut Canvas,
         ctx: &Context,
+        gs: &GameState,
     ) {
         const MARGIN: f32 = 40.0;
         const START_X_LEFT: f32 = MARGIN;
@@ -552,7 +446,7 @@ impl GameState {
         const START_Y: f32 = MARGIN;
         const LINE_HEIGHT: f32 = MARGIN;
 
-        for (team_idx, team) in self.teams.iter().enumerate() {
+        for (team_idx, team) in gs.teams.iter().enumerate() {
             let is_right_team = team_idx == 1;
 
             for (player_idx, player) in team.players.iter().enumerate() {
@@ -598,13 +492,13 @@ impl GameState {
             )
         );
 
-        if self.winner > 0 {
+        if gs.winner > 0 {
             let winner_text = Text::new(TextFragment {
-                text: format!("TEAM {} WINS!", self.winner),
+                text: format!("TEAM {} WINS!", gs.winner),
                 font: None,
                 scale: Some(PxScale::from(200.0)),
                 color: Some(
-                    if self.winner == 1 {
+                    if gs.winner == 1 {
                         color_to_ggez(&self.team_one_color)
                     } else {
                         color_to_ggez(&self.team_two_color)

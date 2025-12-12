@@ -11,6 +11,7 @@ use std::sync::Arc;
 use std::collections::HashSet;
 use std::net::SocketAddr;
 use game_config::read::Config;
+use display::render::RenderState;
 use protocol::{
     constants::{
         TEAM_ONE_START_POS,
@@ -18,6 +19,7 @@ use protocol::{
         TEAM_TWO_START_POS,
     },
     net_client::ClientMessage,
+    net_game_state,
     net_server::ServerMessage,
     net_team::InitTeamData,
 };
@@ -27,8 +29,6 @@ use simulation::{
         VIRTUAL_HEIGHT,
         VIRTUAL_WIDTH,
     },
-};
-use platform::{
     game_state::GameState,
 };
 use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
@@ -43,9 +43,8 @@ impl ClientState {
     pub fn apply_initial_data(
         &mut self,
         teams: Vec<InitTeamData>,
-        ctx: &mut Context,
     ) -> GameResult<()> {
-        let gs = GameState::new_from_initial(self.team_id, self.player_id, teams, ctx)?;
+        let gs = net_game_state::new_from_initial(self.team_id, self.player_id, teams)?;
         self.game_state = Some(Arc::new(Mutex::new(gs)));
         Ok(())
     }
@@ -62,7 +61,7 @@ async fn main() -> GameResult {
     let config = Config::get()?;
 
     // setup game window
-    let (mut ctx, event_loop) = ContextBuilder::new("client", "platform")
+    let (ctx, event_loop) = ContextBuilder::new("client", "platform")
         .window_setup(
             ggez::conf::WindowSetup::default()
                 .vsync(ENABLE_VSYNC)
@@ -121,7 +120,7 @@ async fn main() -> GameResult {
             }
         };
 
-        client.apply_initial_data(init_teams, &mut ctx)?;
+        client.apply_initial_data(init_teams)?;
 
         // spawn receive task
         let socket_recv = Arc::clone(&socket);
@@ -154,7 +153,7 @@ async fn main() -> GameResult {
                                 .collect();
 
                             // apply server snapshot
-                            gs.apply_snapshot(server_state);
+                            net_game_state::apply_snapshot(&mut gs, server_state);
 
                             // restore local inputs to prevent input lag
                             for (team_idx, team) in gs.teams.iter_mut().enumerate() {
@@ -217,16 +216,17 @@ async fn main() -> GameResult {
                     index: 1,
                 },
             ],
-            &mut ctx
         )?;
     }
 
+    let render_state = RenderState::new(&ctx);
     ggez::event::run(
         ctx,
         event_loop,
         SharedGameState {
             input: InputState::default(),
             game_state: client.game_state.unwrap(),
+            render_state,
         }
     )
 }
@@ -239,21 +239,25 @@ struct InputState {
 struct SharedGameState{
     input: InputState,
     game_state: Arc<Mutex<GameState>>,
+    render_state: RenderState,
 }
 
 impl EventHandler for SharedGameState {
-    fn update(&mut self, ctx: &mut Context) -> GameResult {
+    fn update(&mut self, _ctx: &mut Context) -> GameResult {
         if let Ok(mut gs) = self.game_state.try_lock() {
             gs.update_input(&self.input.pressed.clone());
-            return gs.render_update(ctx);
+            /*
+            let dt = ctx.time.delta().as_secs_f32();
+            return render::render_update(gs, dt);
+            */
         }
 
         Ok(())
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        if let Ok(mut gs) = self.game_state.try_lock() {
-            return gs.draw(ctx);
+        if let Ok(gs) = self.game_state.try_lock() {
+            return self.render_state.render(ctx, &gs);
         }
 
         Ok(())

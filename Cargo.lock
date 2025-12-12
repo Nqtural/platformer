@@ -658,6 +658,14 @@ checksum = "bd0c93bb4b0c6d9b77f4435b0ae98c24d17f1c45b2ff844c6151a07256ca923b"
 [[package]]
 name = "display"
 version = "0.1.0"
+dependencies = [
+ "foundation",
+ "game_config",
+ "ggez",
+ "glam 0.30.9",
+ "mint",
+ "simulation",
+]
 
 [[package]]
 name = "dlib"
@@ -1874,6 +1882,7 @@ name = "platform"
 version = "0.2.0"
 dependencies = [
  "bincode",
+ "display",
  "foundation",
  "game_config",
  "ggez",
@@ -1955,6 +1964,7 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "foundation",
+ "ggez",
  "serde",
  "simulation",
  "tokio",
