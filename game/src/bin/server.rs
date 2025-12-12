@@ -159,17 +159,10 @@ async fn main() -> GameResult {
     let game_state_tick = Arc::clone(server.game_state.as_ref().unwrap());
     tokio::spawn(async move {
         let tick_duration = std::time::Duration::from_millis(1000 / TICK_RATE as u64);
-        let mut last = std::time::Instant::now();
-
         loop {
-            let now = std::time::Instant::now();
-            let dt = (now - last).as_secs_f32();
-            last = now;
-
-            {
-                let mut gs = game_state_tick.lock().await;
-                gs.fixed_update(dt);
-            }
+            let mut gs = game_state_tick.lock().await;
+            gs.fixed_update(tick_duration.as_secs_f32());
+            drop(gs);
 
             tokio::time::sleep(tick_duration).await;
         }
