@@ -162,11 +162,17 @@ async fn main() -> GameResult {
     tokio::spawn(async move {
         let tick_duration = std::time::Duration::from_millis(1000 / TICK_RATE as u64);
         loop {
-            let mut gs = game_state_tick.lock().await;
-            gs.fixed_update(FIXED_DT);
-            drop(gs);
+            let start = std::time::Instant::now();
 
-            tokio::time::sleep(tick_duration).await;
+            {
+                let mut gs = game_state_tick.lock().await;
+                gs.fixed_update(FIXED_DT);
+            }
+
+            let elapsed = start.elapsed();
+            if elapsed < tick_duration {
+                tokio::time::sleep(tick_duration - elapsed).await;
+            }
         }
     });
 
