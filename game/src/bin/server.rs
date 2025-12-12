@@ -27,6 +27,8 @@ use ggez::{
     input::keyboard::KeyCode,
 };
 
+const FIXED_DT: f32 = 1.0 / TICK_RATE as f32;
+
 struct ServerState {
     pub game_state: Option<Arc<Mutex<GameState>>>,
 }
@@ -161,7 +163,7 @@ async fn main() -> GameResult {
         let tick_duration = std::time::Duration::from_millis(1000 / TICK_RATE as u64);
         loop {
             let mut gs = game_state_tick.lock().await;
-            gs.fixed_update(tick_duration.as_secs_f32());
+            gs.fixed_update(FIXED_DT);
             drop(gs);
 
             tokio::time::sleep(tick_duration).await;
