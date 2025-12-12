@@ -19,6 +19,7 @@ use simulation::{
     constants::{
         TICK_RATE,
     },
+    game_state::GameState,
 };
 use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
 use ggez::{
@@ -26,8 +27,16 @@ use ggez::{
     input::keyboard::KeyCode,
 };
 
+struct ServerState {
+    pub game_state: Option<Arc<Mutex<GameState>>>,
+}
+
 #[tokio::main]
 async fn main() -> GameResult {
+    let mut server = ServerState {
+        game_state: None,
+    };
+
     let config = Config::get()?;
 
     println!("Initializing lobby state (team size: {TEAM_SIZE})...");
@@ -98,10 +107,7 @@ async fn main() -> GameResult {
     );
 
     // create actual GameState from InitTeamData
-    let gs = net_game_state::new_from_initial(0, 0, init_teams.clone())?;
-
-    // store game state inside Arc<Mutex<_>>
-    let game_state = Arc::new(Mutex::new(gs));
+    server.game_state = Some(Arc::new(Mutex::new(net_game_state::new_from_initial(0, 0, init_teams.clone())?)));
 
     // broadcast to clients
     broadcast(
@@ -114,8 +120,8 @@ async fn main() -> GameResult {
     ).await;
 
     // task to receive client messages, update GameState, and track clients
-    let game_state_recv = Arc::clone(&game_state);
-    let game_state_send = Arc::clone(&game_state);
+    let game_state_recv = Arc::clone(server.game_state.as_ref().unwrap());
+    let game_state_send = Arc::clone(server.game_state.as_ref().unwrap());
     let socket_recv = Arc::clone(&socket);
     let config_recv = bincode_config;
     tokio::spawn(async move {
@@ -150,7 +156,7 @@ async fn main() -> GameResult {
     });
 
     // simulation loop
-    let game_state_tick = Arc::clone(&game_state);
+    let game_state_tick = Arc::clone(server.game_state.as_ref().unwrap());
     tokio::spawn(async move {
         let tick_duration = std::time::Duration::from_millis(1000 / TICK_RATE as u64);
         let mut last = std::time::Instant::now();
@@ -173,7 +179,7 @@ async fn main() -> GameResult {
     let socket_send = Arc::clone(&socket);
     tokio::spawn(async move {
         loop {
-            tokio::time::sleep(std::time::Duration::from_millis(8)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(1000 / TICK_RATE as u64)).await;
 
             let gs = game_state_send.lock().await;
             let snapshot_msg = ServerMessage::Snapshot(net_game_state::to_net(&gs));
@@ -206,7 +212,7 @@ async fn main() -> GameResult {
         let (input_tx, _) = tokio::sync::mpsc::unbounded_channel::<HashSet<KeyCode>>();
 
         // setup game window
-        let gs_clone_window = Arc::clone(&game_state);
+        let gs_clone_window = Arc::clone(server.game_state.as_ref().unwrap());
         let _ = display::game_window::run(input_tx, gs_clone_window, "server");
     }
 
