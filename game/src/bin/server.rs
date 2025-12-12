@@ -4,7 +4,6 @@ use std::collections::HashSet;
 use tokio::net::UdpSocket;
 use tokio::sync::{Mutex, RwLock};
 use game_config::read::Config;
-use display::render::Renderer;
 use protocol::{
     constants::TEAM_SIZE,
     net_client::ClientMessage,
@@ -18,15 +17,11 @@ use protocol::{
 };
 use simulation::{
     constants::{
-        ENABLE_VSYNC,
         TICK_RATE,
-        VIRTUAL_HEIGHT,
-        VIRTUAL_WIDTH,
     },
 };
 use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
 use ggez::{
-    ContextBuilder,
     GameResult,
     input::keyboard::KeyCode,
 };
@@ -35,6 +30,7 @@ use ggez::{
 async fn main() -> GameResult {
     let config = Config::get()?;
 
+    println!("Initializing lobby state (team size: {TEAM_SIZE})...");
     // initialize lobby state
     let lobby_state = Arc::new(RwLock::new(Lobby::new()));
 
@@ -49,7 +45,9 @@ async fn main() -> GameResult {
     let ip = config.serverip();
     let port = config.serverport();
     let socket = Arc::new(UdpSocket::bind(format!("{ip}:{port}")).await.unwrap());
+
     println!("Server listening on {ip}:{port}");
+    println!("Waiting for players...");
 
     // handshake with clients
     let mut lobby = lobby_state.write().await;
@@ -63,8 +61,6 @@ async fn main() -> GameResult {
         ).map_err(|e| ggez::GameError::CustomError(e.to_string()))?;
 
         if let ClientMessage::Hello { ref name } = msg {
-            println!("{addr} connected as {name}");
-
             clients.write().await.insert(addr);
 
             let (team_id, player_id) = lobby.assign_slot(addr, name.clone());
@@ -82,24 +78,18 @@ async fn main() -> GameResult {
                 required: TEAM_SIZE * 2,
             };
             broadcast(status, &clients, &socket, &bincode_config).await;
+
+            println!(
+                "({}/{}): {} connected as {}",
+                lobby.connected_count(),
+                TEAM_SIZE * 2,
+                addr,
+                name,
+            );
         }
     }
-    println!("Starting game...");
 
-    // setup the ggez window and run event loop
-    let (ctx, event_loop) = ContextBuilder::new("server", "platform")
-        .window_setup(
-            ggez::conf::WindowSetup::default()
-                .vsync(ENABLE_VSYNC)
-                .title("Server")
-        )
-        .window_mode(
-            ggez::conf::WindowMode::default()
-                .dimensions(VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
-                .resizable(true)
-                .visible(config.render_server())
-        )
-        .build()?;
+    println!("Starting game...");
 
     // generate InitTeamData from lobby
     let init_teams = lobby.initial_teams(
@@ -209,13 +199,21 @@ async fn main() -> GameResult {
         }
     });
 
-    // needed parameter for client input, unused here
-    let (input_tx, _) = tokio::sync::mpsc::unbounded_channel::<HashSet<KeyCode>>();
+    println!("Game started");
 
-    let renderer = Renderer::new(&ctx, game_state, input_tx);
-    ggez::event::run(
-        ctx,
-        event_loop,
-        renderer,
-    )
+    if config.render_server() {
+        // needed parameter for client input, unused here
+        let (input_tx, _) = tokio::sync::mpsc::unbounded_channel::<HashSet<KeyCode>>();
+
+        // setup game window
+        let gs_clone_window = Arc::clone(&game_state);
+        let _ = display::game_window::run(input_tx, gs_clone_window, "server");
+    }
+
+    tokio::signal::ctrl_c().await
+        .map_err(|e| ggez::GameError::CustomError(e.to_string()))?;
+
+    println!("\nStopping server...");
+
+    Ok(())
 }

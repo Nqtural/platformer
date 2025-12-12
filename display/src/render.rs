@@ -90,7 +90,7 @@ impl Renderer {
 
 impl EventHandler for Renderer {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
-        // display crate does not handle updates
+        // render does not handle updates
         Ok(())
     }
 
@@ -156,22 +156,6 @@ impl RenderState {
             parry_image: Some(parry_img),
         }
     }
-
-    /*
-    pub fn update_render_state(gs: &mut GameState, dt: f32) {
-        gs.check_for_win();
-
-        for i in 0..2 {
-            let (current, enemy) = current_and_enemy(&mut gs.teams, i);
-            current.update_players(
-                enemy,
-                gs.map.get_rect(),
-                gs.winner,
-                dt,
-            );
-        }
-    }
-    */
 
     pub fn render(&mut self, ctx: &mut Context, gs: &GameState) -> GameResult {
         self.update_camera(gs);

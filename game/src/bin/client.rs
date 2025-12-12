@@ -1,5 +1,4 @@
 use ggez::{
-    ContextBuilder,
     GameResult,
     input::keyboard::KeyCode,
 };
@@ -9,7 +8,6 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::net::SocketAddr;
 use game_config::read::Config;
-use display::render::Renderer;
 use protocol::{
     constants::{
         TEAM_ONE_START_POS,
@@ -21,14 +19,7 @@ use protocol::{
     net_server::ServerMessage,
     net_team::InitTeamData,
 };
-use simulation::{
-    constants::{
-        ENABLE_VSYNC,
-        VIRTUAL_HEIGHT,
-        VIRTUAL_WIDTH,
-    },
-    game_state::GameState,
-};
+use simulation::game_state::GameState;
 use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
 
 pub struct ClientState {
@@ -56,21 +47,26 @@ async fn main() -> GameResult {
         game_state: None,
     };
 
+    // get configuration
     let config = Config::get()?;
 
-    // setup game window
-    let (ctx, event_loop) = ContextBuilder::new("client", "platform")
-        .window_setup(
-            ggez::conf::WindowSetup::default()
-                .vsync(ENABLE_VSYNC)
-                .title("Game")
-        )
-        .window_mode(
-            ggez::conf::WindowMode::default()
-                .dimensions(VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
-                .resizable(true)
-        )
-        .build()?;
+    // spawn dummy team
+    client.apply_initial_data(
+        vec![
+            InitTeamData {
+                color: config.team_one_color(),
+                player_names: vec![config.playername().to_string(); TEAM_SIZE],
+                start_position: TEAM_ONE_START_POS,
+                index: 0,
+            },
+            InitTeamData {
+                color: config.team_two_color(),
+                player_names: vec![String::from("Dummy"); TEAM_SIZE],
+                start_position: TEAM_TWO_START_POS,
+                index: 1,
+            },
+        ],
+    )?;
 
     if !config.practice_mode() {
         let bincode_config = config::standard();
@@ -198,40 +194,21 @@ async fn main() -> GameResult {
                 tokio::time::sleep(std::time::Duration::from_millis(16)).await;
             }
         });
-    } else {
-        client.apply_initial_data(
-            vec![
-                InitTeamData {
-                    color: config.team_one_color(),
-                    player_names: vec![config.playername().to_string(); TEAM_SIZE],
-                    start_position: TEAM_ONE_START_POS,
-                    index: 0,
-                },
-                InitTeamData {
-                    color: config.team_two_color(),
-                    player_names: vec![String::from("Dummy"); TEAM_SIZE],
-                    start_position: TEAM_TWO_START_POS,
-                    index: 1,
-                },
-            ],
-        )?;
     }
 
     // input
+    let gs_clone_input = Arc::clone(client.game_state.as_ref().unwrap());
     let (input_tx, mut input_rx) = tokio::sync::mpsc::unbounded_channel::<HashSet<KeyCode>>();
-    let gs_clone = Arc::clone(client.game_state.as_ref().unwrap());
     tokio::spawn(async move {
         while let Some(input) = input_rx.recv().await {
-            let mut gs = gs_clone.lock().await;
+            let mut gs = gs_clone_input.lock().await;
             gs.teams[client.team_id].players[client.player_id].input.update(&input);
         }
     });
 
-    let renderer = Renderer::new(&ctx, client.game_state.unwrap(), input_tx);
-    ggez::event::run(
-        ctx,
-        event_loop,
-        renderer,
-    )
+    // setup game window
+    let gs_clone_window = Arc::clone(client.game_state.as_ref().unwrap());
+    let _ = display::game_window::run(input_tx, gs_clone_window, "client");
+    
+    Ok(())
 }
-
