@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::net::SocketAddr;
 use std::collections::HashSet;
 use tokio::net::UdpSocket;
@@ -31,12 +32,14 @@ const FIXED_DT: f32 = 1.0 / TICK_RATE as f32;
 
 struct ServerState {
     pub game_state: Option<Arc<Mutex<GameState>>>,
+    pub tick: Arc<AtomicU64>,
 }
 
 #[tokio::main]
 async fn main() -> GameResult {
     let mut server = ServerState {
         game_state: None,
+        tick: Arc::new(AtomicU64::new(0)),
     };
 
     let config = Config::get()?;
@@ -159,6 +162,7 @@ async fn main() -> GameResult {
 
     // simulation loop
     let game_state_tick = Arc::clone(server.game_state.as_ref().unwrap());
+    let tick = Arc::clone(&server.tick);
     tokio::spawn(async move {
         let tick_duration = std::time::Duration::from_millis(1000 / TICK_RATE as u64);
         loop {
@@ -169,6 +173,8 @@ async fn main() -> GameResult {
                 gs.fixed_update(FIXED_DT);
             }
 
+            tick.fetch_add(1, Ordering::Relaxed);
+
             let elapsed = start.elapsed();
             if elapsed < tick_duration {
                 tokio::time::sleep(tick_duration - elapsed).await;
@@ -178,15 +184,25 @@ async fn main() -> GameResult {
 
     // task to periodically send ServerMessage snapshots to all connected clients
     let socket_send = Arc::clone(&socket);
+    let tick_send = Arc::clone(&server.tick);
     tokio::spawn(async move {
+        let interval = std::time::Duration::from_secs_f32(FIXED_DT);
+
         loop {
-            tokio::time::sleep(std::time::Duration::from_millis(1000 / TICK_RATE as u64)).await;
+            tokio::time::sleep(interval).await;
+
+            let tick = tick_send.load(Ordering::Relaxed);
 
             let gs = game_state_send.lock().await;
-            let snapshot_msg = ServerMessage::Snapshot(net_game_state::to_net(&gs));
+            let snapshot = net_game_state::to_net(&gs);
             drop(gs);
 
-            let data = match encode_to_vec(&snapshot_msg, bincode_config) {
+            let msg = ServerMessage::Snapshot {
+                server_tick: tick,
+                server_state: snapshot,
+            };
+
+            let data = match encode_to_vec(&msg, bincode_config) {
                 Ok(d) => d,
                 Err(e) => {
                     eprintln!("Encoding error: {e}");

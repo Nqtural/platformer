@@ -129,7 +129,7 @@ async fn main() -> GameResult {
                 match socket_recv.recv_from(&mut buf).await {
                     Ok((len, _)) => {
                         // decode snapshot from server
-                        if let Ok((ServerMessage::Snapshot(server_state), _)) =
+                        if let Ok((ServerMessage::Snapshot{ server_tick: _, server_state }, _)) =
                         decode_from_slice::<ServerMessage, _>(&buf[..len], config_recv) {
                             // lock game state
                             let mut gs = gs_clone_recv.lock().await;
