@@ -1,3 +1,7 @@
+use ggez::input::keyboard::KeyCode;
+use std::collections::HashSet;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use crate::{
     constants::{
         ATTACK_IMAGE,
@@ -12,6 +16,7 @@ use crate::{
 };
 use ggez::{
     Context,
+    event::EventHandler,
     GameResult,
     graphics::{
         Canvas,
@@ -28,6 +33,7 @@ use ggez::{
         Text,
         TextFragment,
     },
+    input::keyboard::KeyInput,
 };
 use glam::Vec2;
 use game_config::read::Config;
@@ -44,10 +50,84 @@ use simulation::{
         VIRTUAL_WIDTH,
     },
     game_state::GameState,
-    utils::current_and_enemy,
 };
+use crate::input::InputState;
 
-pub struct RenderState {
+pub struct Renderer {
+    render_state: RenderState,
+    game_state: Arc<Mutex<GameState>>,
+
+    // INPUT
+    input_state: InputState,
+    input_tx: tokio::sync::mpsc::UnboundedSender<HashSet<KeyCode>>,
+}
+
+impl Renderer {
+    pub fn new(
+        ctx: &Context,
+        game_state: Arc<Mutex<GameState>>,
+        input_tx: tokio::sync::mpsc::UnboundedSender<HashSet<KeyCode>>,
+    ) -> Self {
+        Self {
+            render_state: RenderState::new(ctx),
+            input_state: InputState::new(),
+            game_state,
+            input_tx,
+        }
+    }
+
+    pub fn render(&mut self, ctx: &mut Context) -> GameResult {
+        let gs = match self.game_state.try_lock() {
+            Ok(gs) => gs,
+            Err(_) => return Ok(()), // skip this frame
+        };
+
+        self.render_state.render(ctx, &gs)?;
+
+        Ok(())
+    }
+}
+
+impl EventHandler for Renderer {
+    fn update(&mut self, _ctx: &mut Context) -> GameResult {
+        // display crate does not handle updates
+        Ok(())
+    }
+
+    fn draw(&mut self, ctx: &mut Context) -> GameResult {
+        self.render(ctx)
+    }
+
+    // INPUT
+    fn key_down_event(
+        &mut self,
+        _ctx: &mut Context,
+        key: KeyInput,
+        _: bool,
+    ) -> GameResult {
+        if let Some(keycode) = key.keycode {
+            self.input_state.press(keycode);
+            let _ = self.input_tx.send(self.input_state.pressed.clone()); // send to async task
+        }
+
+        Ok(())
+    }
+
+    fn key_up_event(
+        &mut self,
+        _ctx: &mut Context,
+        key: KeyInput,
+    ) -> GameResult {
+        if let Some(keycode) = key.keycode {
+            self.input_state.release(keycode);
+            let _ = self.input_tx.send(self.input_state.pressed.clone()); // send to async task
+        }
+
+        Ok(())
+    }
+}
+
+struct RenderState {
     team_one_color: Color,
     team_two_color: Color,
     zoom: f32,
@@ -76,6 +156,22 @@ impl RenderState {
             parry_image: Some(parry_img),
         }
     }
+
+    /*
+    pub fn update_render_state(gs: &mut GameState, dt: f32) {
+        gs.check_for_win();
+
+        for i in 0..2 {
+            let (current, enemy) = current_and_enemy(&mut gs.teams, i);
+            current.update_players(
+                enemy,
+                gs.map.get_rect(),
+                gs.winner,
+                dt,
+            );
+        }
+    }
+    */
 
     pub fn render(&mut self, ctx: &mut Context, gs: &GameState) -> GameResult {
         self.update_camera(gs);
@@ -157,20 +253,6 @@ impl RenderState {
 
         final_canvas.draw(&target_image, scale);
         final_canvas.finish(&mut ctx.gfx)
-    }
-
-    pub fn render_update(gs: &mut GameState, dt: f32) {
-        gs.check_for_win();
-
-        for i in 0..2 {
-            let (current, enemy) = current_and_enemy(&mut gs.teams, i);
-            current.update_players(
-                enemy,
-                gs.map.get_rect(),
-                gs.winner,
-                dt,
-            );
-        }
     }
 
     fn update_camera(&mut self, gs: &GameState) {

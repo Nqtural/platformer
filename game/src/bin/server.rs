@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use tokio::net::UdpSocket;
 use tokio::sync::{Mutex, RwLock};
 use game_config::read::Config;
-use display::render::RenderState;
+use display::render::Renderer;
 use protocol::{
     constants::TEAM_SIZE,
     net_client::ClientMessage,
@@ -23,14 +23,12 @@ use simulation::{
         VIRTUAL_HEIGHT,
         VIRTUAL_WIDTH,
     },
-    game_state::GameState,
 };
 use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
 use ggez::{
-    Context,
     ContextBuilder,
-    event::EventHandler,
     GameResult,
+    input::keyboard::KeyCode,
 };
 
 #[tokio::main]
@@ -132,7 +130,7 @@ async fn main() -> GameResult {
     let config_recv = bincode_config;
     tokio::spawn(async move {
         let mut buf = [0u8; 2048];
-    loop {
+        loop {
             match socket_recv.recv_from(&mut buf).await {
                 Ok((len, addr)) => {
                     // remember the client to send snapshots
@@ -211,34 +209,13 @@ async fn main() -> GameResult {
         }
     });
 
-    let render_state = RenderState::new(&ctx);
+    // needed parameter for client input, unused here
+    let (input_tx, _) = tokio::sync::mpsc::unbounded_channel::<HashSet<KeyCode>>();
+
+    let renderer = Renderer::new(&ctx, game_state, input_tx);
     ggez::event::run(
         ctx,
         event_loop,
-        SharedGameState {
-            game_state,
-            render_state,
-        }
+        renderer,
     )
-}
-
-struct SharedGameState{
-    game_state: Arc<Mutex<GameState>>,
-    render_state: RenderState,
-}
-
-impl EventHandler for SharedGameState {
-    fn update(&mut self, _ctx: &mut Context) -> GameResult {
-        // this must stay empty in order
-        // to sepparate logic from rendering
-        Ok(())
-    }
-
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        if let Ok(gs) = self.game_state.try_lock() {
-            self.render_state.render(ctx, &gs)
-        } else {
-            Ok(())
-        }
-    }
 }

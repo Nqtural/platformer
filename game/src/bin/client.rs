@@ -1,17 +1,15 @@
 use ggez::{
-    Context,
     ContextBuilder,
-    event::EventHandler,
     GameResult,
-    input::keyboard::{KeyCode, KeyInput},
+    input::keyboard::KeyCode,
 };
 use tokio::net::UdpSocket;
 use tokio::sync::Mutex;
-use std::sync::Arc;
 use std::collections::HashSet;
+use std::sync::Arc;
 use std::net::SocketAddr;
 use game_config::read::Config;
-use display::render::RenderState;
+use display::render::Renderer;
 use protocol::{
     constants::{
         TEAM_ONE_START_POS,
@@ -219,72 +217,21 @@ async fn main() -> GameResult {
         )?;
     }
 
-    let render_state = RenderState::new(&ctx);
+    // input
+    let (input_tx, mut input_rx) = tokio::sync::mpsc::unbounded_channel::<HashSet<KeyCode>>();
+    let gs_clone = Arc::clone(client.game_state.as_ref().unwrap());
+    tokio::spawn(async move {
+        while let Some(input) = input_rx.recv().await {
+            let mut gs = gs_clone.lock().await;
+            gs.teams[client.team_id].players[client.player_id].input.update(&input);
+        }
+    });
+
+    let renderer = Renderer::new(&ctx, client.game_state.unwrap(), input_tx);
     ggez::event::run(
         ctx,
         event_loop,
-        SharedGameState {
-            input: InputState::default(),
-            game_state: client.game_state.unwrap(),
-            render_state,
-        }
+        renderer,
     )
 }
 
-#[derive(Default)]
-struct InputState {
-    pressed: HashSet<KeyCode>,
-}
-
-struct SharedGameState{
-    input: InputState,
-    game_state: Arc<Mutex<GameState>>,
-    render_state: RenderState,
-}
-
-impl EventHandler for SharedGameState {
-    fn update(&mut self, _ctx: &mut Context) -> GameResult {
-        if let Ok(mut gs) = self.game_state.try_lock() {
-            gs.update_input(&self.input.pressed.clone());
-            /*
-            let dt = ctx.time.delta().as_secs_f32();
-            return render::render_update(gs, dt);
-            */
-        }
-
-        Ok(())
-    }
-
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        if let Ok(gs) = self.game_state.try_lock() {
-            return self.render_state.render(ctx, &gs);
-        }
-
-        Ok(())
-    }
-
-    fn key_down_event(
-        &mut self,
-        _ctx: &mut Context,
-        key: KeyInput,
-        _repeated: bool,
-    ) -> GameResult {
-        if let Some(code) = key.keycode {
-            self.input.pressed.insert(code);
-        }
-
-        Ok(())
-    }
-
-    fn key_up_event(
-        &mut self,
-        _ctx: &mut Context,
-        key: KeyInput
-    ) -> GameResult {
-        if let Some(code) = key.keycode {
-            self.input.pressed.remove(&code);
-        }
-
-        Ok(())
-    }
-}

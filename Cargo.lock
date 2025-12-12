@@ -665,6 +665,7 @@ dependencies = [
  "glam 0.30.9",
  "mint",
  "simulation",
+ "tokio",
 ]
 
 [[package]]
