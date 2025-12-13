@@ -41,15 +41,23 @@ impl SnapshotHistory {
     }
 
     pub fn surrounding(&self, tick: f32) -> Option<(&GameState, &GameState, f32)> {
-        // floor and ceil server ticks
-        let floor = tick.floor() as u64;
-        let ceil = tick.ceil() as u64;
-        if let (Some(before), Some(after)) = (self.get(floor), self.get(ceil)) {
-            let alpha = tick.fract();
-            Some((before, after, alpha))
+        if self.buffer.is_empty() { return None; }
+
+        let floor = self.buffer.iter()
+            .rev()
+            .find(|s| s.server_tick as f32 <= tick)?;
+
+        let ceil = self.buffer.iter()
+            .find(|s| s.server_tick as f32 >= tick)
+            .unwrap_or(floor); // use floor if no ceil
+
+        let alpha = if floor.server_tick == ceil.server_tick {
+            0.0
         } else {
-            None
-        }
+            (tick - floor.server_tick as f32) / (ceil.server_tick as f32 - floor.server_tick as f32)
+        };
+
+        Some((&floor.snapshot, &ceil.snapshot, alpha))
     }
 
     pub fn get_interpolated(&self, render_tick: f32) -> GameState {
