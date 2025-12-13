@@ -29,9 +29,48 @@ use simulation::{
 };
 use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
 
+const INPUT_HISTORY_SIZE: usize = 512;
+
+#[derive(Clone)]
+pub struct TimedInput {
+    pub tick: u64,
+    pub input: HashSet<KeyCode>,
+}
+
+pub struct InputHistory {
+    buffer: [Option<TimedInput>; INPUT_HISTORY_SIZE],
+}
+
+impl InputHistory {
+    fn new() -> Self {
+        Self {
+            buffer: std::array::from_fn(|_| None),
+        }
+    }
+
+    fn push(&mut self, tick: u64, input: HashSet<KeyCode>) {
+        let index = (tick as usize) % INPUT_HISTORY_SIZE;
+        self.buffer[index] = Some(TimedInput { tick, input });
+    }
+
+    fn _get(&self, tick: u64) -> Option<&HashSet<KeyCode>> {
+        let index = (tick as usize) % INPUT_HISTORY_SIZE;
+        self.buffer[index]
+            .as_ref()
+            .filter(|entry| entry.tick == tick)
+            .map(|entry| &entry.input)
+    }
+}
+
+struct ClientPrediction {
+    _tick: AtomicU64,
+    input_history: InputHistory,
+}
+
 pub struct ClientState {
     pub team_id: usize,
     pub player_id: usize,
+    pub current_input: Arc<Mutex<HashSet<KeyCode>>>,
     pub game_state: Option<Arc<Mutex<GameState>>>,
     pub tick: Arc<AtomicU64>,
 }
@@ -52,9 +91,15 @@ async fn main() -> GameResult {
     let mut client = ClientState {
         team_id: 0,
         player_id: 0,
+        current_input: Arc::new(Mutex::new(HashSet::new())),
         game_state: None,
         tick: Arc::new(AtomicU64::new(0)),
     };
+
+    let prediction = Arc::new(Mutex::new(ClientPrediction {
+        _tick: AtomicU64::new(0),
+        input_history: InputHistory::new(),
+    }));
 
     // get configuration
     let config = Config::get()?;
@@ -143,32 +188,8 @@ async fn main() -> GameResult {
                             // lock game state
                             let mut gs = gs_clone_recv.lock().await;
 
-                            // preserve local inputs
-                            let local_inputs: Vec<Vec<_>> = gs
-                                .teams
-                                .iter()
-                                .map(|team| {
-                                    team.players
-                                        .iter()
-                                        .map(|p| p.get_input().clone())
-                                        .collect::<Vec<_>>()
-                                })
-                                .collect();
-
                             // apply server snapshot
                             net_game_state::apply_snapshot(&mut gs, server_state);
-
-                            // restore local inputs to prevent input lag
-                            for (team_idx, team) in gs.teams.iter_mut().enumerate() {
-                                for (player_idx, player) in team.players.iter_mut().enumerate() {
-                                    if let Some(input) = local_inputs
-                                        .get(team_idx)
-                                        .and_then(|team_inputs| team_inputs.get(player_idx))
-                                    {
-                                        player.set_input(input.clone());
-                                    }
-                                }
-                            }
                         }
                     }
                     Err(e) => {
@@ -217,15 +238,36 @@ async fn main() -> GameResult {
     // simulation
     let game_state_tick = Arc::clone(client.game_state.as_ref().unwrap());
     let client_tick = Arc::clone(&client.tick);
+    let prediction_clone = Arc::clone(&prediction);
+    let current_input_read = Arc::clone(&client.current_input);
     tokio::spawn(async move {
         let tick_duration = std::time::Duration::from_secs_f32(1.0 / TICK_RATE as f32);
 
         loop {
             let start = std::time::Instant::now();
+            let tick = client_tick.load(Ordering::Relaxed);
+
+            let current_input = current_input_read.lock().await.clone();
 
             {
-                let mut gs = game_state_tick.lock().await;
-                gs.fixed_update(FIXED_DT);
+
+                let mut prediction = prediction_clone.lock().await;
+
+                {
+                    let mut gs = game_state_tick.lock().await;
+
+                    // apply current input to GameState
+                    gs.teams[client.team_id].players[client.player_id].input.update(&current_input);
+
+                    // simulate
+                    gs.fixed_update(FIXED_DT);
+                }
+
+                // store input for current tick
+                prediction.input_history.push(
+                    tick,
+                    current_input,
+                );
             }
 
             client_tick.fetch_add(1, Ordering::Relaxed);
@@ -238,12 +280,12 @@ async fn main() -> GameResult {
     });
 
     // input
-    let gs_clone_input = Arc::clone(client.game_state.as_ref().unwrap());
+    let current_input_write = Arc::clone(&client.current_input);
     let (input_tx, mut input_rx) = tokio::sync::mpsc::unbounded_channel::<HashSet<KeyCode>>();
     tokio::spawn(async move {
         while let Some(input) = input_rx.recv().await {
-            let mut gs = gs_clone_input.lock().await;
-            gs.teams[client.team_id].players[client.player_id].input.update(&input);
+            let mut current = current_input_write.lock().await;
+            *current = input;
         }
     });
 
