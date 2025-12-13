@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+client_logic = { path = "../client_logic" }
 display = { path = "../display" }
 game_config = { path = "../game_config" }
 foundation = { path = "../foundation" }
