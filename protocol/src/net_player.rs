@@ -40,7 +40,7 @@ pub fn to_net(player: &Player, player_idx: usize) -> NetPlayer {
     }
 }
 
-pub fn from_net(player: &mut Player, net_player: NetPlayer) {
+pub fn from_net(player: &mut Player, net_player: &NetPlayer) {
     player.pos = net_player.pos;
     player.vel = net_player.vel;
     player.lives = net_player.lives;

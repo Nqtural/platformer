@@ -8,6 +8,10 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::net::SocketAddr;
+use client_logic::{
+    interpolation::SnapshotHistory,
+    render_clock::RenderClock,
+};
 use game_config::read::Config;
 use protocol::{
     constants::{
@@ -71,6 +75,9 @@ pub struct ClientState {
     pub team_id: usize,
     pub player_id: usize,
     pub current_input: Arc<Mutex<HashSet<KeyCode>>>,
+    pub snapshot_history: Arc<Mutex<SnapshotHistory>>,
+    render_clock: RenderClock,
+    render_tick: Arc<Mutex<f32>>,
     pub game_state: Option<Arc<Mutex<GameState>>>,
     pub tick: Arc<AtomicU64>,
 }
@@ -92,6 +99,9 @@ async fn main() -> GameResult {
         team_id: 0,
         player_id: 0,
         current_input: Arc::new(Mutex::new(HashSet::new())),
+        snapshot_history: Arc::new(Mutex::new(SnapshotHistory::new())),
+        render_clock: RenderClock::default(),
+        render_tick: Arc::new(Mutex::new(0.0)),
         game_state: None,
         tick: Arc::new(AtomicU64::new(0)),
     };
@@ -175,7 +185,8 @@ async fn main() -> GameResult {
         let config_recv = bincode_config;
         let gs_clone_send = Arc::clone(client.game_state.as_ref().unwrap());
         let gs_clone_recv = Arc::clone(client.game_state.as_ref().unwrap());
-
+        let history_clone_recv = Arc::clone(&client.snapshot_history);
+        let render_tick_update = Arc::clone(&client.render_tick);
         tokio::spawn(async move {
             let mut buf = [0u8; 2048];
 
@@ -183,13 +194,21 @@ async fn main() -> GameResult {
                 match socket_recv.recv_from(&mut buf).await {
                     Ok((len, _)) => {
                         // decode snapshot from server
-                        if let Ok((ServerMessage::Snapshot{ server_tick: _, server_state }, _)) =
+                        if let Ok((ServerMessage::Snapshot{ server_tick, server_state }, _)) =
                         decode_from_slice::<ServerMessage, _>(&buf[..len], config_recv) {
-                            // lock game state
-                            let mut gs = gs_clone_recv.lock().await;
+                            let mut snapshot_history = history_clone_recv.lock().await;
+                            {
+                                // update render clock
+                                client.render_clock.update(server_tick);
+                                let mut render_tick = render_tick_update.lock().await;
+                                *render_tick = client.render_clock.render_tick();
+                                drop(render_tick);
 
-                            // apply server snapshot
-                            net_game_state::apply_snapshot(&mut gs, server_state);
+                                // apply server snapshot
+                                let mut gs = gs_clone_recv.lock().await;
+                                net_game_state::apply_snapshot(&mut gs, &server_state);
+                                snapshot_history.push(server_tick, gs.clone());
+                            }
                         }
                     }
                     Err(e) => {
@@ -289,8 +308,9 @@ async fn main() -> GameResult {
     });
 
     // setup game window
-    let gs_clone_window = Arc::clone(client.game_state.as_ref().unwrap());
-    let _ = display::game_window::run(input_tx, gs_clone_window, "client");
+    let history_clone_render = Arc::clone(&client.snapshot_history);
+    let render_tick_clone = Arc::clone(&client.render_tick);
+    let _ = display::game_window::run(input_tx, history_clone_render, render_tick_clone, "client");
     
     Ok(())
 }
