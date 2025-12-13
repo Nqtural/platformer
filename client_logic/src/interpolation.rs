@@ -54,8 +54,17 @@ impl SnapshotHistory {
 
     pub fn get_interpolated(&self, render_tick: f32) -> GameState {
         // normal case: two surrounding snapshots
-        if let Some((a, b, alpha)) = self.surrounding(render_tick) {
-            return interpolate(a, b, alpha);
+        if let Some((a, b, alpha)) = self.surrounding(render_tick)
+        && let Some(last) = self.buffer.back() {
+            let mut gs = interpolate(a, b, alpha);
+
+            // overwrite local player with the latest state
+            let last_gs = &last.snapshot;
+            let c_team = last_gs.c_team;
+            let c_player = last_gs.c_player;
+            gs.teams[c_team].players[c_player] = last_gs.teams[c_team].players[c_player].clone();
+
+            return gs;
         }
 
         // fallback: nearest snapshot before render_tick
@@ -78,7 +87,7 @@ fn lerp(a: f32, b: f32, t: f32) -> f32 {
     a + (b - a) * t
 }
 
-fn interpolate(a: &GameState, b: &GameState, alpha: f32) -> GameState {
+pub fn interpolate(a: &GameState, b: &GameState, alpha: f32) -> GameState {
     GameState {
         c_team: a.c_team,
         c_player: a.c_player,
