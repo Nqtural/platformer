@@ -142,8 +142,7 @@ async fn main() -> GameResult {
                     // decode incoming ClientMessage
                     if let Ok((msg, _)) = decode_from_slice::<ClientMessage, _>(&buf[..len], config_recv) {
                         match msg {
-                            ClientMessage::Input { client_tick, team_id, player_id, input } => {
-                                println!("tick: {}", client_tick);
+                            ClientMessage::Input { client_tick: _, team_id, player_id, input } => {
                                 let mut gs = game_state_recv.lock().await;
                                 // update player input in game state
                                 if let Some(team) = gs.teams.get_mut(team_id)
