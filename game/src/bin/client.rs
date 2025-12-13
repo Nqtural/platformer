@@ -20,8 +20,13 @@ use protocol::{
     net_server::ServerMessage,
     net_team::InitTeamData,
 };
-use simulation::constants::TICK_RATE;
-use simulation::game_state::GameState;
+use simulation::{
+    constants::{
+        TICK_RATE,
+        FIXED_DT,
+    },
+    game_state::GameState,
+};
 use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
 
 pub struct ClientState {
@@ -173,6 +178,29 @@ async fn main() -> GameResult {
             }
         });
 
+        // simulation
+        let game_state_tick = Arc::clone(client.game_state.as_ref().unwrap());
+        let client_tick = Arc::clone(&client.tick);
+        tokio::spawn(async move {
+            let tick_duration = std::time::Duration::from_secs_f32(1.0 / TICK_RATE as f32);
+
+            loop {
+                let start = std::time::Instant::now();
+
+                {
+                    let mut gs = game_state_tick.lock().await;
+                    gs.fixed_update(FIXED_DT);
+                }
+
+                client_tick.fetch_add(1, Ordering::Relaxed);
+
+                let elapsed = start.elapsed();
+                if elapsed < tick_duration {
+                    tokio::time::sleep(tick_duration - elapsed).await;
+                }
+            }
+        });
+
         // spawn send task
         let socket_send = Arc::clone(&socket);
         let tick_send = Arc::clone(&client.tick);
@@ -200,8 +228,6 @@ async fn main() -> GameResult {
                     }
                     Err(e) => eprintln!("Encoding error: {e}"),
                 }
-
-                tick_send.fetch_add(1, Ordering::Relaxed);
 
                 let elapsed = start.elapsed();
                 if elapsed < tick_duration {

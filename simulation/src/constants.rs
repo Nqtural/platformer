@@ -11,6 +11,7 @@ pub const PLAYER_SIZE: f32 = 20.0;
 
 // ticks per second
 pub const TICK_RATE: usize = 60;
+pub const FIXED_DT: f32 = 1.0 / TICK_RATE as f32;
 
 pub const MAX_SPEED: [f32; 2] = [300.0, 600.0];
 pub const ACCELERATION: f32 = 5000.0;

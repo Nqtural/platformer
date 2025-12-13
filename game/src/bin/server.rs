@@ -19,6 +19,7 @@ use protocol::{
 use simulation::{
     constants::{
         TICK_RATE,
+        FIXED_DT,
     },
     game_state::GameState,
 };
@@ -27,8 +28,6 @@ use ggez::{
     GameResult,
     input::keyboard::KeyCode,
 };
-
-const FIXED_DT: f32 = 1.0 / TICK_RATE as f32;
 
 struct ServerState {
     pub game_state: Option<Arc<Mutex<GameState>>>,
@@ -143,7 +142,8 @@ async fn main() -> GameResult {
                     // decode incoming ClientMessage
                     if let Ok((msg, _)) = decode_from_slice::<ClientMessage, _>(&buf[..len], config_recv) {
                         match msg {
-                            ClientMessage::Input { client_tick: _, team_id, player_id, input } => {
+                            ClientMessage::Input { client_tick, team_id, player_id, input } => {
+                                println!("tick: {}", client_tick);
                                 let mut gs = game_state_recv.lock().await;
                                 // update player input in game state
                                 if let Some(team) = gs.teams.get_mut(team_id)
