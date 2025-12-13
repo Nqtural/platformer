@@ -4,10 +4,6 @@ use std::net::SocketAddr;
 use std::collections::HashSet;
 use tokio::net::UdpSocket;
 use tokio::sync::{Mutex, RwLock};
-use client_logic::{
-    interpolation::SnapshotHistory,
-    render_clock::RenderClock,
-};
 use game_config::read::Config;
 use protocol::{
     constants::TEAM_SIZE,
@@ -35,9 +31,6 @@ use ggez::{
 
 struct ServerState {
     pub game_state: Option<Arc<Mutex<GameState>>>,
-    snapshot_history: Arc<Mutex<SnapshotHistory>>,
-    render_clock: RenderClock,
-    render_tick: Arc<Mutex<f32>>,
     pub tick: Arc<AtomicU64>,
 }
 
@@ -45,9 +38,6 @@ struct ServerState {
 async fn main() -> GameResult {
     let mut server = ServerState {
         game_state: None,
-        snapshot_history: Arc::new(Mutex::new(SnapshotHistory::new())),
-        render_clock: RenderClock::default(),
-        render_tick: Arc::new(Mutex::new(0.0)),
         tick: Arc::new(AtomicU64::new(0)),
     };
 
@@ -194,8 +184,6 @@ async fn main() -> GameResult {
     // task to periodically send ServerMessage snapshots to all connected clients
     let socket_send = Arc::clone(&socket);
     let tick_send = Arc::clone(&server.tick);
-    let history_clone = Arc::clone(&server.snapshot_history);
-    let render_tick_update = Arc::clone(&server.render_tick);
     tokio::spawn(async move {
         let interval = std::time::Duration::from_secs_f32(FIXED_DT);
 
@@ -204,18 +192,9 @@ async fn main() -> GameResult {
 
             let tick = tick_send.load(Ordering::Relaxed);
 
-            // update render clock
-            server.render_clock.update(tick);
-            let mut render_tick = render_tick_update.lock().await;
-            *render_tick = server.render_clock.render_tick();
-            drop(render_tick);
-
-            let mut snapshot_history = history_clone.lock().await;
             let gs = game_state_send.lock().await;
-            snapshot_history.push(tick, gs.clone());
             let snapshot = net_game_state::to_net(&gs);
             drop(gs);
-            drop(snapshot_history);
 
             let msg = ServerMessage::Snapshot {
                 server_tick: tick,
@@ -249,9 +228,8 @@ async fn main() -> GameResult {
         let (input_tx, _) = tokio::sync::mpsc::unbounded_channel::<HashSet<KeyCode>>();
 
         // setup game window
-        let snapshot_history_render = Arc::clone(&server.snapshot_history);
-        let render_tick_clone = Arc::clone(&server.render_tick);
-        let _ = display::game_window::run(input_tx, snapshot_history_render, render_tick_clone, "server");
+        let gs_clone_window = Arc::clone(server.game_state.as_ref().unwrap());
+        let _ = display::game_window::run(input_tx, gs_clone_window, "server");
     }
 
     tokio::signal::ctrl_c().await

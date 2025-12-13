@@ -36,7 +36,6 @@ use ggez::{
     input::keyboard::KeyInput,
 };
 use glam::Vec2;
-use client_logic::interpolation::SnapshotHistory;
 use game_config::read::Config;
 use foundation::color::Color;
 use simulation::{
@@ -56,8 +55,7 @@ use crate::input::InputState;
 
 pub struct Renderer {
     render_state: RenderState,
-    snapshot_history: Arc<Mutex<SnapshotHistory>>,
-    render_tick: Arc<Mutex<f32>>,
+    game_state: Arc<Mutex<GameState>>,
 
     // INPUT
     input_state: InputState,
@@ -67,35 +65,24 @@ pub struct Renderer {
 impl Renderer {
     pub fn new(
         ctx: &Context,
-        snapshot_history: Arc<Mutex<SnapshotHistory>>,
-        render_tick: Arc<Mutex<f32>>,
+        game_state: Arc<Mutex<GameState>>,
         input_tx: tokio::sync::mpsc::UnboundedSender<HashSet<KeyCode>>,
     ) -> Self {
         Self {
             render_state: RenderState::new(ctx),
-            snapshot_history,
-            render_tick,
             input_state: InputState::new(),
+            game_state,
             input_tx,
         }
     }
 
     pub fn render(&mut self, ctx: &mut Context) -> GameResult {
-        let history = match self.snapshot_history.try_lock() {
-            Ok(history) => history,
-            Err(_) => {
-                return Ok(())
-            }, // skip this frame
+        let gs = match self.game_state.try_lock() {
+            Ok(gs) => gs,
+            Err(_) => return Ok(()), // skip this frame
         };
 
-        let render_tick = match self.render_tick.try_lock() {
-            Ok(render_tick) => render_tick,
-            Err(_) => {
-                return Ok(())
-            }, // skip this frame
-        };
-
-        self.render_state.render(ctx, &history.get_interpolated(*render_tick))?;
+        self.render_state.render(ctx, &gs)?;
 
         Ok(())
     }
@@ -170,11 +157,7 @@ impl RenderState {
         }
     }
 
-    pub fn render(
-        &mut self,
-        ctx: &mut Context,
-        gs: &GameState,
-    ) -> GameResult {
+    pub fn render(&mut self, ctx: &mut Context, gs: &GameState) -> GameResult {
         self.update_camera(gs);
 
         let target_image = Image::new_canvas_image(
