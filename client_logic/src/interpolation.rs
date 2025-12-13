@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use simulation::{
     attack::Attack,
     game_state::GameState,
@@ -14,27 +15,29 @@ pub struct TimedSnapshot {
 const SNAPSHOT_HISTORY_SIZE: usize = 128;
 
 pub struct SnapshotHistory {
-    buffer: [Option<TimedSnapshot>; SNAPSHOT_HISTORY_SIZE],
+    buffer: VecDeque<TimedSnapshot>,
+    capacity: usize,
 }
 
 impl SnapshotHistory {
     pub fn new() -> Self {
         Self {
-            buffer: std::array::from_fn(|_| None),
+            buffer: VecDeque::new(),
+            capacity: SNAPSHOT_HISTORY_SIZE,
         }
     }
 
     pub fn push(&mut self, server_tick: u64, snapshot: GameState) {
-        let index = (server_tick as usize) % SNAPSHOT_HISTORY_SIZE;
-        self.buffer[index] = Some(TimedSnapshot { server_tick, snapshot });
+        if self.buffer.len() == self.capacity {
+            self.buffer.pop_front();
+        }
+        self.buffer.push_back(TimedSnapshot { server_tick, snapshot });
     }
 
     pub fn get(&self, server_tick: u64) -> Option<&GameState> {
-        let index = (server_tick as usize) % SNAPSHOT_HISTORY_SIZE;
-        self.buffer[index]
-            .as_ref()
-            .filter(|entry| entry.server_tick == server_tick)
-            .map(|entry| &entry.snapshot)
+        self.buffer.iter()
+            .find(|s| s.server_tick == server_tick)
+            .map(|s| &s.snapshot)
     }
 
     pub fn surrounding(&self, tick: f32) -> Option<(&GameState, &GameState, f32)> {
@@ -55,18 +58,18 @@ impl SnapshotHistory {
             return interpolate(a, b, alpha);
         }
 
-        // fallback: use the latest snapshot at or before render_tick
+        // fallback: nearest snapshot before render_tick
         let tick = render_tick.floor() as u64;
         if let Some(gs) = self.get(tick) {
             return gs.clone();
         }
 
-        // last resort: find any snapshot (startup case)
-        if let Some(entity) = self.buffer.iter().flatten().next() {
-            return entity.snapshot.clone();
+        // last resort: use the latest snapshot in the deque
+        if let Some(last) = self.buffer.back() {
+            return last.snapshot.clone();
         }
 
-        // should never happen
+        // nothing at all (very early startup)
         panic!("no snapshots available");
     }
 }
