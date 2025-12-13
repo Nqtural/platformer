@@ -39,10 +39,10 @@ pub fn to_net(gs: &GameState) -> NetSnapshot {
     }
 }
 
-pub fn apply_snapshot(gs: &mut GameState, snapshot: NetSnapshot) {
+pub fn apply_snapshot(gs: &mut GameState, snapshot: &NetSnapshot) {
     gs.winner = snapshot.winner;
 
-    for net_player in snapshot.players {
+    for net_player in &snapshot.players {
         if let Some(team) = gs.teams.get_mut(net_player.team_idx)
         && let Some(player) = team.players.get_mut(net_player.player_idx) {
             net_player::from_net(player, net_player);
