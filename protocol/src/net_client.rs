@@ -8,7 +8,7 @@ use simulation::input::PlayerInput;
 pub enum ClientMessage {
     Hello { name: String },
     Input {
-        tick: u64,
+        client_tick: u64,
         team_id: usize,
         player_id: usize,
         input: PlayerInput,

@@ -6,6 +6,7 @@ use tokio::net::UdpSocket;
 use tokio::sync::Mutex;
 use std::collections::HashSet;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::net::SocketAddr;
 use game_config::read::Config;
 use protocol::{
@@ -19,6 +20,7 @@ use protocol::{
     net_server::ServerMessage,
     net_team::InitTeamData,
 };
+use simulation::constants::TICK_RATE;
 use simulation::game_state::GameState;
 use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
 
@@ -26,6 +28,7 @@ pub struct ClientState {
     pub team_id: usize,
     pub player_id: usize,
     pub game_state: Option<Arc<Mutex<GameState>>>,
+    pub tick: Arc<AtomicU64>,
 }
 
 impl ClientState {
@@ -45,6 +48,7 @@ async fn main() -> GameResult {
         team_id: 0,
         player_id: 0,
         game_state: None,
+        tick: Arc::new(AtomicU64::new(0)),
     };
 
     // get configuration
@@ -171,15 +175,21 @@ async fn main() -> GameResult {
 
         // spawn send task
         let socket_send = Arc::clone(&socket);
+        let tick_send = Arc::clone(&client.tick);
         tokio::spawn(async move {
+            let tick_duration = std::time::Duration::from_millis(1000 / TICK_RATE as u64);
             loop {
+                let start = std::time::Instant::now();
+
                 let input = {
                     let gs = gs_clone_send.lock().await;
                     gs.teams[client.team_id].players[client.player_id].get_input().clone()
                 };
 
+                let tick = tick_send.load(Ordering::Relaxed);
+
                 let msg = ClientMessage::Input {
-                    tick: 0,
+                    client_tick: tick,
                     team_id: client.team_id,
                     player_id: client.player_id,
                     input: input.clone(),
@@ -191,7 +201,12 @@ async fn main() -> GameResult {
                     Err(e) => eprintln!("Encoding error: {e}"),
                 }
 
-                tokio::time::sleep(std::time::Duration::from_millis(16)).await;
+                tick_send.fetch_add(1, Ordering::Relaxed);
+
+                let elapsed = start.elapsed();
+                if elapsed < tick_duration {
+                    tokio::time::sleep(tick_duration - elapsed).await;
+                }
             }
         });
     }
