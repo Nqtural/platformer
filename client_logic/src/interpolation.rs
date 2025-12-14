@@ -40,16 +40,19 @@ impl SnapshotHistory {
             .map(|s| &s.snapshot)
     }
 
-    pub fn surrounding(&self, tick: f32) -> Option<(&GameState, &GameState, f32)> {
-        if self.buffer.is_empty() { return None; }
+    pub fn surrounding(&self, tick: f32) -> (&GameState, &GameState, f32) {
+        if self.buffer.is_empty() {
+            panic!("no snapshots available");
+        }
 
         let floor = self.buffer.iter()
             .rev()
-            .find(|s| s.server_tick as f32 <= tick)?;
+            .find(|s| s.server_tick as f32 <= tick)
+            .unwrap();
 
         let ceil = self.buffer.iter()
             .find(|s| s.server_tick as f32 >= tick)
-            .unwrap_or(floor); // use floor if no ceil
+            .unwrap_or(floor);
 
         let alpha = if floor.server_tick == ceil.server_tick {
             0.0
@@ -57,37 +60,20 @@ impl SnapshotHistory {
             (tick - floor.server_tick as f32) / (ceil.server_tick as f32 - floor.server_tick as f32)
         };
 
-        Some((&floor.snapshot, &ceil.snapshot, alpha))
+        (&floor.snapshot, &ceil.snapshot, alpha)
     }
 
     pub fn get_interpolated(&self, render_tick: f32) -> GameState {
-        // normal case: two surrounding snapshots
-        if let Some((a, b, alpha)) = self.surrounding(render_tick)
-        && let Some(last) = self.buffer.back() {
-            let mut gs = interpolate(a, b, alpha);
+        let (a, b, alpha) = self.surrounding(render_tick);
+        let mut gs = interpolate(a, b, alpha);
 
-            // overwrite local player with the latest state
-            let last_gs = &last.snapshot;
-            let c_team = last_gs.c_team;
-            let c_player = last_gs.c_player;
-            gs.teams[c_team].players[c_player] = last_gs.teams[c_team].players[c_player].clone();
+        // overwrite local player with the latest state
+        let last = &self.buffer.back().unwrap().snapshot;
+        let c_team = last.c_team;
+        let c_player = last.c_player;
+        gs.teams[c_team].players[c_player] = last.teams[c_team].players[c_player].clone();
 
-            return gs;
-        }
-
-        // fallback: nearest snapshot before render_tick
-        let tick = render_tick.floor() as u64;
-        if let Some(gs) = self.get(tick) {
-            return gs.clone();
-        }
-
-        // last resort: use the latest snapshot in the deque
-        if let Some(last) = self.buffer.back() {
-            return last.snapshot.clone();
-        }
-
-        // nothing at all (very early startup)
-        panic!("no snapshots available");
+        gs
     }
 }
 
