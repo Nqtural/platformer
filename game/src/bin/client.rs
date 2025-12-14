@@ -269,7 +269,6 @@ async fn main() -> GameResult {
             let current_input = current_input_read.lock().await.clone();
 
             {
-
                 let mut prediction = prediction_clone.lock().await;
 
                 {
