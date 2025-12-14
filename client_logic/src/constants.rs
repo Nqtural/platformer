@@ -1,1 +1,1 @@
-pub const INTERPOLATION_DELAY: f32 = 10.0;
+pub const INTERPOLATION_DELAY: f32 = 1.0;
