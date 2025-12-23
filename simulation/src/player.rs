@@ -416,6 +416,7 @@ impl Player {
             self.dash_cooldown = 3.0;
         }
         if self.input.parry()
+        && self.is_on_platform(&map)
         && self.parry_cooldown <= 0.0
         && !self.is_doing_attack(&AttackKind::Dash)
         && !self.is_doing_attack(&AttackKind::Slam) {
