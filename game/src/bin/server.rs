@@ -1,3 +1,4 @@
+use anyhow::Result;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::net::SocketAddr;
@@ -28,10 +29,7 @@ use simulation::{
     game_state::GameState,
 };
 use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
-use ggez::{
-    GameResult,
-    input::keyboard::KeyCode,
-};
+use ggez::input::keyboard::KeyCode;
 
 struct ServerState {
     pub game_state: Option<Arc<Mutex<GameState>>>,
@@ -42,7 +40,7 @@ struct ServerState {
 }
 
 #[tokio::main]
-async fn main() -> GameResult {
+async fn main() -> Result<()> {
     let mut server = ServerState {
         game_state: None,
         snapshot_history: Arc::new(Mutex::new(SnapshotHistory::new())),
