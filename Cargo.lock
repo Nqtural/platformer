@@ -116,6 +116,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.100"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61"
+
+[[package]]
 name = "approx"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -806,8 +812,8 @@ dependencies = [
 name = "game_config"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "foundation",
- "ggez",
  "serde",
  "toml 0.9.8",
 ]
@@ -1887,6 +1893,7 @@ checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
 name = "platform"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bincode",
  "client_logic",
  "display",
@@ -1969,9 +1976,9 @@ checksum = "3eb8486b569e12e2c32ad3e204dbaba5e4b5b216e9367044f25f1dba42341773"
 name = "protocol"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bincode",
  "foundation",
- "ggez",
  "serde",
  "simulation",
  "tokio",
