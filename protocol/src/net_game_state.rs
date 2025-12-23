@@ -1,4 +1,4 @@
-use ggez::{GameError, GameResult};
+use anyhow::{anyhow, Result};
 use simulation::{
     game_state::GameState,
     team::Team,
@@ -13,15 +13,17 @@ pub fn new_from_initial(
     c_team: usize,
     c_player: usize,
     init: Vec<net_team::InitTeamData>,
-) -> GameResult<GameState> {
-
-    // convert init teams to runtime Teams
-    let teams: [Team; 2] = init
+) -> Result<GameState> {
+    let teams_vec: Vec<Team> = init
         .into_iter()
         .map(net_team::from_init)
-        .collect::<Vec<_>>()
+        .collect();
+
+    let teams: [Team; 2] = teams_vec
         .try_into()
-        .map_err(|_| GameError::ResourceLoadError("Exactly 2 teams required".to_string()))?;
+        .map_err(|v: Vec<Team>| {
+            anyhow!("Expected exactly 2 teams, got {}", v.len())
+        })?;
 
     Ok(GameState::new(c_team, c_player, teams))
 }

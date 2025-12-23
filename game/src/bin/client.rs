@@ -1,7 +1,5 @@
-use ggez::{
-    GameResult,
-    input::keyboard::KeyCode,
-};
+use anyhow::Result;
+use ggez::input::keyboard::KeyCode;
 use tokio::net::UdpSocket;
 use tokio::sync::Mutex;
 use std::collections::HashSet;
@@ -86,7 +84,7 @@ impl ClientState {
     pub fn apply_initial_data(
         &mut self,
         teams: Vec<InitTeamData>,
-    ) -> GameResult<()> {
+    ) -> Result<()> {
         let gs = net_game_state::new_from_initial(self.team_id, self.player_id, teams)?;
         self.game_state = Some(Arc::new(Mutex::new(gs)));
         Ok(())
@@ -94,7 +92,7 @@ impl ClientState {
 }
 
 #[tokio::main]
-async fn main() -> GameResult {
+async fn main() -> Result<()> {
     let mut client = ClientState {
         team_id: 0,
         player_id: 0,
@@ -153,15 +151,14 @@ async fn main() -> GameResult {
                 name: config.playername().to_string(),
             },
             bincode_config,
-        ).map_err(|e| ggez::GameError::CustomError(e.to_string()))?;
+        )?;
         socket.send(&packet).await?;
 
         let mut buf = [0u8; 1500];
         let init_teams = loop {
             let (len, _addr) = socket.recv_from(&mut buf).await?;
             let (msg, _): (ServerMessage, usize) =
-            decode_from_slice(&buf[..len], bincode_config)
-                .map_err(|e| ggez::GameError::CustomError(e.to_string()))?;
+            decode_from_slice(&buf[..len], bincode_config)?;
 
             match msg {
                 ServerMessage::Welcome { team_id, player_id } => {
