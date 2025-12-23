@@ -6,8 +6,7 @@ edition = "2024"
 [dependencies]
 foundation = { path = "../foundation" }
 simulation = { path = "../simulation" }
+anyhow = "1.0.100"
 bincode = { version = "2.0.1", features = ["serde"] }
-# WARNING: SHOULD NOT DEPEND ON GGEZ; ONLY TEMPORARY FOR ERROR HANDELING
-ggez = "0.9.3"
 serde = { version = "1.0.228", features = ["derive"] }
 tokio = { version = "1.48.0", features = ["full"] }

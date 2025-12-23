@@ -1,7 +1,4 @@
-use ggez::{
-    GameError,
-    GameResult,
-};
+use anyhow::Result;
 use serde::Deserialize;
 use toml;
 use foundation::color::Color;
@@ -47,11 +44,9 @@ struct ServerConfig {
 }
 
 impl Config {
-    pub fn get() -> GameResult<Self> {
-        let toml_str = std::fs::read_to_string("config.toml")
-            .map_err(|e| GameError::ResourceLoadError(e.to_string()))?;
-        let config: Config = toml::from_str(&toml_str)
-            .map_err(|e| GameError::ConfigError(e.to_string()))?;
+    pub fn get() -> Result<Self> {
+        let toml_str = std::fs::read_to_string("config.toml")?;
+        let config: Config = toml::from_str(&toml_str)?;
         Ok(config)
     }
 
