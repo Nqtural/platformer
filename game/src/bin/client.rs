@@ -97,7 +97,7 @@ async fn main() -> Result<()> {
         team_id: 0,
         player_id: 0,
         current_input: Arc::new(Mutex::new(HashSet::new())),
-        snapshot_history: Arc::new(Mutex::new(SnapshotHistory::new())),
+        snapshot_history: Arc::new(Mutex::new(SnapshotHistory::default())),
         render_clock: RenderClock::default(),
         render_tick: Arc::new(Mutex::new(0.0)),
         game_state: None,

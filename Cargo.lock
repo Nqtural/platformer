@@ -1905,6 +1905,7 @@ dependencies = [
  "protocol",
  "rand",
  "serde",
+ "server_logic",
  "simulation",
  "tokio",
  "toml 0.9.8",
@@ -2290,6 +2291,11 @@ dependencies = [
 [[package]]
 name = "server_logic"
 version = "0.1.0"
+dependencies = [
+ "client_logic",
+ "simulation",
+ "tokio",
+]
 
 [[package]]
 name = "shlex"

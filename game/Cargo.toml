@@ -11,6 +11,7 @@ game_config = { path = "../game_config" }
 foundation = { path = "../foundation" }
 simulation = { path = "../simulation" }
 protocol = { path = "../protocol" }
+server_logic = { path = "../server_logic" }
 bincode = { version = "2.0.1", features = ["serde"] }
 ggez = "0.9.3"
 glam = { version = "0.30.9", features = ["mint", "serde"] }

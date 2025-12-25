@@ -1,14 +1,10 @@
 use anyhow::Result;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::Ordering;
 use std::net::SocketAddr;
 use std::collections::HashSet;
 use tokio::net::UdpSocket;
 use tokio::sync::{Mutex, RwLock};
-use client_logic::{
-    interpolation::SnapshotHistory,
-    render_clock::RenderClock,
-};
 use game_config::read::Config;
 use protocol::{
     constants::TEAM_SIZE,
@@ -21,33 +17,19 @@ use protocol::{
         send_to,
     },
 };
+use server_logic::ServerState;
 use simulation::{
     constants::{
         TICK_RATE,
         FIXED_DT,
     },
-    game_state::GameState,
 };
 use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
 use ggez::input::keyboard::KeyCode;
 
-struct ServerState {
-    pub game_state: Option<Arc<Mutex<GameState>>>,
-    snapshot_history: Arc<Mutex<SnapshotHistory>>,
-    render_clock: RenderClock,
-    render_tick: Arc<Mutex<f32>>,
-    pub tick: Arc<AtomicU64>,
-}
-
 #[tokio::main]
 async fn main() -> Result<()> {
-    let mut server = ServerState {
-        game_state: None,
-        snapshot_history: Arc::new(Mutex::new(SnapshotHistory::new())),
-        render_clock: RenderClock::default(),
-        render_tick: Arc::new(Mutex::new(0.0)),
-        tick: Arc::new(AtomicU64::new(0)),
-    };
+    let mut server = ServerState::default();
 
     let config = Config::get()?;
 

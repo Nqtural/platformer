@@ -19,14 +19,16 @@ pub struct SnapshotHistory {
     capacity: usize,
 }
 
-impl SnapshotHistory {
-    pub fn new() -> Self {
+impl Default for SnapshotHistory {
+    fn default() -> Self {
         Self {
             buffer: VecDeque::new(),
             capacity: SNAPSHOT_HISTORY_SIZE,
         }
     }
+}
 
+impl SnapshotHistory {
     pub fn push(&mut self, server_tick: u64, snapshot: GameState) {
         if self.buffer.len() == self.capacity {
             self.buffer.pop_front();
