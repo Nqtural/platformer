@@ -4,4 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+protocol = { path = "../protocol" }
 simulation = { path = "../simulation" }
+anyhow = "1.0.100"
+ggez = "0.9.3"
+tokio = "1.48.0"

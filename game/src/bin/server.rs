@@ -18,11 +18,9 @@ use protocol::{
     },
 };
 use server_logic::ServerState;
-use simulation::{
-    constants::{
-        TICK_RATE,
-        FIXED_DT,
-    },
+use simulation::constants::{
+    TICK_RATE,
+    FIXED_DT,
 };
 use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
 use ggez::input::keyboard::KeyCode;

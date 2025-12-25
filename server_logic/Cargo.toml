@@ -6,4 +6,4 @@ edition = "2024"
 [dependencies]
 client_logic = { path = "../client_logic" }
 simulation = { path = "../simulation" }
-tokio = { version = "1.48.0" }
+tokio = "1.48.0"

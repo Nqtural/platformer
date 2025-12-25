@@ -11,6 +11,7 @@ use client_logic::{
     render_clock::RenderClock,
 };
 use game_config::read::Config;
+use client_logic::ClientState;
 use protocol::{
     constants::{
         TEAM_ONE_START_POS,
@@ -22,12 +23,9 @@ use protocol::{
     net_server::ServerMessage,
     net_team::InitTeamData,
 };
-use simulation::{
-    constants::{
-        TICK_RATE,
-        FIXED_DT,
-    },
-    game_state::GameState,
+use simulation::constants::{
+    TICK_RATE,
+    FIXED_DT,
 };
 use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
 
@@ -67,28 +65,6 @@ impl InputHistory {
 struct ClientPrediction {
     _tick: AtomicU64,
     input_history: InputHistory,
-}
-
-pub struct ClientState {
-    pub team_id: usize,
-    pub player_id: usize,
-    pub current_input: Arc<Mutex<HashSet<KeyCode>>>,
-    pub snapshot_history: Arc<Mutex<SnapshotHistory>>,
-    render_clock: RenderClock,
-    render_tick: Arc<Mutex<f32>>,
-    pub game_state: Option<Arc<Mutex<GameState>>>,
-    pub tick: Arc<AtomicU64>,
-}
-
-impl ClientState {
-    pub fn apply_initial_data(
-        &mut self,
-        teams: Vec<InitTeamData>,
-    ) -> Result<()> {
-        let gs = net_game_state::new_from_initial(self.team_id, self.player_id, teams)?;
-        self.game_state = Some(Arc::new(Mutex::new(gs)));
-        Ok(())
-    }
 }
 
 #[tokio::main]

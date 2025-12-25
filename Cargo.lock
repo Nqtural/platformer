@@ -437,7 +437,11 @@ checksum = "4bfbf56724aa9eca8afa4fcfadeb479e722935bb2a0900c2d37e0cc477af0688"
 name = "client_logic"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "ggez",
+ "protocol",
  "simulation",
+ "tokio",
 ]
 
 [[package]]
