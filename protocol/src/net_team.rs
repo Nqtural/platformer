@@ -5,7 +5,6 @@ use serde::{
 use foundation::color::Color;
 use simulation::player::Player;
 use simulation::team::Team;
-use crate::constants::TEAM_SIZE;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct InitTeamData {
@@ -16,10 +15,15 @@ pub struct InitTeamData {
 }
 
 impl InitTeamData {
-    pub fn new(color: Color, start_position: [f32; 2], index: usize) -> Self {
+    pub fn new(
+        color: Color,
+        start_position: [f32; 2],
+        index: usize,
+        team_size: usize
+    ) -> Self {
         Self {
             color,
-            player_names: vec![String::new(); TEAM_SIZE],
+            player_names: vec![String::new(); team_size],
             start_position,
             index,
         }
