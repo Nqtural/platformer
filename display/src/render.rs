@@ -1,3 +1,4 @@
+use anyhow::Result;
 use ggez::input::keyboard::KeyCode;
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -53,6 +54,7 @@ use simulation::{
     game_state::GameState,
 };
 use crate::input::InputState;
+use crate::utils::load_resource_bytes;
 
 pub struct Renderer {
     render_state: RenderState,
@@ -70,14 +72,14 @@ impl Renderer {
         snapshot_history: Arc<Mutex<SnapshotHistory>>,
         render_tick: Arc<Mutex<f32>>,
         input_tx: tokio::sync::mpsc::UnboundedSender<HashSet<KeyCode>>,
-    ) -> Self {
-        Self {
-            render_state: RenderState::new(ctx),
+    ) -> Result<Self> {
+        Ok(Self {
+            render_state: RenderState::new(ctx)?,
             snapshot_history,
             render_tick,
             input_state: InputState::new(),
             input_tx,
-        }
+        })
     }
 
     pub fn render(&mut self, ctx: &mut Context) -> GameResult {
@@ -153,13 +155,13 @@ struct RenderState {
 }
 
 impl RenderState {
-    pub fn new(ctx: &Context) -> Self {
-        let bg_img = Image::from_path(&ctx.gfx, BACKGROUND_IMAGE).unwrap_or_else(|_| panic!("Unable to load {BACKGROUND_IMAGE}"));
-        let attack_img = Image::from_path(&ctx.gfx, ATTACK_IMAGE).unwrap_or_else(|_| panic!("Unable to load {ATTACK_IMAGE}"));
-        let parry_img = Image::from_path(&ctx.gfx, PARRY_IMAGE).unwrap_or_else(|_| panic!("Unable to load {PARRY_IMAGE}"));
+    pub fn new(ctx: &Context) -> Result<Self> {
+        let bg_img = Image::from_bytes(&ctx.gfx, &load_resource_bytes(BACKGROUND_IMAGE)?)?;
+        let attack_img = Image::from_bytes(&ctx.gfx, &load_resource_bytes(ATTACK_IMAGE)?)?;
+        let parry_img = Image::from_bytes(&ctx.gfx, &load_resource_bytes(PARRY_IMAGE)?)?;
         let config = Config::get().expect("Unable to get config file");
 
-        Self {
+        Ok(Self {
             camera_pos: Vec2::new(0.0, 0.0),
             bias_strength: config.camera_bias(),
             team_one_color: config.team_one_color(),
@@ -169,7 +171,7 @@ impl RenderState {
             background_image: Some(bg_img),
             attack_image: Some(attack_img),
             parry_image: Some(parry_img),
-        }
+        })
     }
 
     pub fn render(
