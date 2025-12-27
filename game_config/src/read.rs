@@ -33,7 +33,6 @@ struct Camera {
 struct ClientConfig {
     ip: String,
     port: String,
-    practice_mode: bool,
 }
 
 #[derive(Deserialize)]
@@ -78,9 +77,6 @@ impl Config {
 
     #[must_use]
     pub fn clientport(&self) -> &str { &self.client.port }
-
-    #[must_use]
-    pub fn practice_mode(&self) -> bool { self.client.practice_mode }
 
     #[must_use]
     pub fn camera_bias(&self) -> f32 { self.camera.bias }

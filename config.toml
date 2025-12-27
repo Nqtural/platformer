@@ -34,6 +34,7 @@ bias = 0.7
 zoom = 1.1
 
 
+
 [client]
 # IP address to host client on (should usually not be changed)
 #
@@ -46,11 +47,6 @@ ip = "0.0.0.0"
 #
 # default: "0"
 port = "0"
-
-# Join a game with a dummy player to practice on
-#
-# default: false
-practice_mode = false
 
 
 
