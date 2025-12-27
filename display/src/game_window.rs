@@ -34,7 +34,12 @@ pub fn run(
         )
         .build()?;
 
-    let renderer = Renderer::new(&ctx, snapshot_history, render_tick_clone, input_tx);
+    let renderer = Renderer::new(
+        &ctx,
+        snapshot_history,
+        render_tick_clone,
+        input_tx,
+    );
     ggez::event::run(
         ctx,
         event_loop,
