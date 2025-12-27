@@ -64,4 +64,4 @@ port = "4000"
 # Render game on server
 #
 # default: false
-render_server = false
+render_server = true

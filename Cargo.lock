@@ -2297,7 +2297,11 @@ dependencies = [
 name = "server_logic"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "bincode",
  "client_logic",
+ "ggez",
+ "protocol",
  "simulation",
  "tokio",
 ]
