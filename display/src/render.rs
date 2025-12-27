@@ -143,6 +143,7 @@ impl EventHandler for Renderer {
 struct RenderState {
     team_one_color: Color,
     team_two_color: Color,
+    player_name_above: bool,
     zoom: f32,
     camera_pos: Vec2,
     bias_strength: f32,
@@ -163,6 +164,7 @@ impl RenderState {
             bias_strength: config.camera_bias(),
             team_one_color: config.team_one_color(),
             team_two_color: config.team_two_color(),
+            player_name_above: config.player_name_above(),
             zoom: config.camera_zoom(),
             background_image: Some(bg_img),
             attack_image: Some(attack_img),
@@ -488,7 +490,11 @@ impl RenderState {
 
                 let draw_param = self.drawparam_constructor(
                     player.position()[0] + (PLAYER_SIZE / 2.0) - (text_dims.w / 2.0),
-                    player.position()[1] + PLAYER_SIZE + (text_dims.h / 2.0),
+                    if self.player_name_above {
+                        player.position()[1] - (text_dims.h * 1.5)
+                    } else {
+                        player.position()[1] + PLAYER_SIZE + (text_dims.h / 2.0)
+                    },
                 );
                 game_canvas.draw(&text, draw_param);
 
