@@ -33,14 +33,12 @@ struct Camera {
 struct ClientConfig {
     ip: String,
     port: String,
-    practice_mode: bool,
 }
 
 #[derive(Deserialize)]
 struct ServerConfig {
     ip: String,
     port: String,
-    render_server: bool,
 }
 
 impl Config {
@@ -71,16 +69,10 @@ impl Config {
     pub fn serverport(&self) -> &str { &self.server.port }
 
     #[must_use]
-    pub fn render_server(&self) -> bool { self.server.render_server }
-
-    #[must_use]
     pub fn clientip(&self) -> &str { &self.client.ip }
 
     #[must_use]
     pub fn clientport(&self) -> &str { &self.client.port }
-
-    #[must_use]
-    pub fn practice_mode(&self) -> bool { self.client.practice_mode }
 
     #[must_use]
     pub fn camera_bias(&self) -> f32 { self.camera.bias }
