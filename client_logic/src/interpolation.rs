@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 use simulation::{
     attack::Attack,
     game_state::GameState,
-    player::Player,
+    Player,
     team::Team,
 };
 

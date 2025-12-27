@@ -1,4 +1,4 @@
-use crate::player::Player;
+use crate::Player;
 use foundation::rect::Rect;
 
 #[derive(Clone)]

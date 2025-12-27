@@ -14,6 +14,7 @@ use std::{
     },
 };
 use tokio::net::UdpSocket;
+use simulation::PlayerInput;
 use crate::ClientState;
 
 pub struct NetworkClient {
@@ -126,7 +127,7 @@ impl NetworkClient {
 
                 // collect input
                 let pressed = client.current_input.lock().await.clone();
-                let mut input = simulation::input::PlayerInput::default();
+                let mut input = PlayerInput::default();
                 input.update(&pressed);
 
                 let msg = ClientMessage::Input {

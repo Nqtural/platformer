@@ -2,7 +2,7 @@ use serde::{
     Serialize,
     Deserialize,
 };
-use simulation::player::Player;
+use simulation::Player;
 use crate::net_attack;
 
 #[derive(Serialize, Deserialize, Clone)]
