@@ -1,29 +1,19 @@
-use ggez::input::keyboard::KeyCode;
-use std::collections::HashSet;
+use super::PlayerInput;
 use crate::{
-    attack::{
-        Attack,
-        AttackKind,
-    },
+    attack::{Attack, AttackKind},
     constants::{
-        ACCELERATION,
-        GRAVITY,
-        MAX_SPEED,
-        PLAYER_SIZE,
-        RESISTANCE,
-        RESPAWN_TIME,
-        VIRTUAL_HEIGHT,
-        VIRTUAL_WIDTH,
-        WALL_SLIDE_SPEED,
+        ACCELERATION, GRAVITY, MAX_SPEED, PLAYER_SIZE, RESISTANCE, RESPAWN_TIME, VIRTUAL_HEIGHT,
+        VIRTUAL_WIDTH, WALL_SLIDE_SPEED,
     },
-    input::PlayerInput,
     team::Team,
     trail::TrailSquare,
     utils::get_combo_multiplier,
 };
 use foundation::color::Color;
-use foundation::rect::Rect;
 use foundation::math_helpers::approach_zero;
+use foundation::rect::Rect;
+use ggez::input::keyboard::KeyCode;
+use std::collections::HashSet;
 
 #[derive(Clone)]
 pub struct Player {
@@ -57,12 +47,7 @@ pub struct Player {
 
 impl Player {
     #[must_use]
-    pub fn new(
-        start_pos: [f32; 2],
-        name: String,
-        color: Color,
-        team_idx: usize,
-    ) -> Self {
+    pub fn new(start_pos: [f32; 2], name: String, color: Color, team_idx: usize) -> Self {
         Self {
             pos: start_pos,
             vel: [0.0, 0.0],
@@ -93,24 +78,20 @@ impl Player {
         }
     }
 
-    pub fn update(
-        &mut self,
-        map: &Rect,
-        enemy_team: &Team,
-        dt: f32,
-    ) {
+    pub fn update(&mut self, map: &Rect, enemy_team: &Team, dt: f32) {
         self.facing = [0.0, 0.0];
 
         self.update_cooldowns(dt);
 
-        if self.respawn_timer > 0.0 { return; }
+        if self.respawn_timer > 0.0 {
+            return;
+        }
 
         if self.combo > 0 && self.combo_timer == 0.0 {
             self.combo = 0;
         }
 
-        if self.is_doing_attack(&AttackKind::Slam)
-        || self.is_doing_attack(&AttackKind::Dash) {
+        if self.is_doing_attack(&AttackKind::Slam) || self.is_doing_attack(&AttackKind::Dash) {
             self.trail_timer += dt;
         }
 
@@ -132,18 +113,11 @@ impl Player {
         self.trail_squares.retain(|s| s.lifetime > 0.0);
 
         if self.trail_timer >= 0.01
-        && (
-            self.is_doing_attack(&AttackKind::Slam)
-            || self.is_doing_attack(&AttackKind::Dash)
-            )
+            && (self.is_doing_attack(&AttackKind::Slam) || self.is_doing_attack(&AttackKind::Dash))
         {
             self.trail_timer = 0.0;
-            self.trail_squares.push(
-                TrailSquare::new(
-                    self.pos,
-                    self.color.clone(),
-                )
-            );
+            self.trail_squares
+                .push(TrailSquare::new(self.pos, self.color.clone()));
         }
     }
 
@@ -169,23 +143,14 @@ impl Player {
         self.update_attacks(dt);
     }
 
-    fn update_position(
-        &mut self,
-        map: &Rect,
-        enemy_team: &Team,
-        dt: f32,
-    ) {
+    fn update_position(&mut self, map: &Rect, enemy_team: &Team, dt: f32) {
         let old_pos = self.pos;
 
         self.pos[0] += self.vel[0] * dt;
         self.pos[1] += self.vel[1] * dt;
 
         // sweep test to prevent downward tunneling through platform
-        if let Some(corrected_y) = self.sweep_down(
-            old_pos[1],
-            self.pos[1],
-            map
-        ) {
+        if let Some(corrected_y) = self.sweep_down(old_pos[1], self.pos[1], map) {
             // snap onto platform
             self.pos[1] = corrected_y;
             self.vel[1] = 0.0;
@@ -195,11 +160,9 @@ impl Player {
         if self.is_doing_attack(&AttackKind::Slam) {
             for opponent in &enemy_team.players {
                 if opponent.invulnerable_timer == 0.0
-                && let Some(corrected_y) = self.sweep_down(
-                    old_pos[1],
-                    self.pos[1],
-                    &opponent.get_rect()
-                ) {
+                    && let Some(corrected_y) =
+                        self.sweep_down(old_pos[1], self.pos[1], &opponent.get_rect())
+                {
                     // snap onto opponent
                     self.pos[1] = corrected_y;
                     self.vel[1] = 0.0;
@@ -211,14 +174,8 @@ impl Player {
         self.vel[0] = approach_zero(self.vel[0], RESISTANCE * dt);
     }
 
-    fn sweep_down(
-        &self,
-        old_y: f32,
-        new_y: f32,
-        object: &Rect,
-    ) -> Option<f32> {
-        if self.get_rect().x + PLAYER_SIZE > object.x
-        && self.get_rect().x < object.x + object.w {
+    fn sweep_down(&self, old_y: f32, new_y: f32, object: &Rect) -> Option<f32> {
+        if self.get_rect().x + PLAYER_SIZE > object.x && self.get_rect().x < object.x + object.w {
             // only downward motion matters for slam
             if new_y > old_y {
                 let old_bottom = old_y + PLAYER_SIZE;
@@ -235,11 +192,7 @@ impl Player {
         None
     }
 
-    fn check_platform_collision(
-        &mut self,
-        map: &Rect,
-        dt: f32,
-    ) {
+    fn check_platform_collision(&mut self, map: &Rect, dt: f32) {
         let mut rect = self.get_rect();
         let mut on_wall_right = false;
         let mut on_wall_left = false;
@@ -290,9 +243,7 @@ impl Player {
     }
 
     pub fn check_for_death(&mut self) {
-        if self.pos[1] > VIRTUAL_HEIGHT
-        || self.pos[0] > VIRTUAL_WIDTH
-        || self.pos[0] < 0.0 {
+        if self.pos[1] > VIRTUAL_HEIGHT || self.pos[0] > VIRTUAL_WIDTH || self.pos[0] < 0.0 {
             self.die();
         }
     }
@@ -310,13 +261,10 @@ impl Player {
         self.pos = self.start_pos;
     }
 
-    pub fn apply_input(
-        &mut self,
-        map: &Rect,
-        player_idx: usize,
-        dt: f32,
-    ) {
-        if self.stunned > 0.0 || self.lives == 0 { return; }
+    pub fn apply_input(&mut self, map: &Rect, player_idx: usize, dt: f32) {
+        if self.stunned > 0.0 || self.lives == 0 {
+            return;
+        }
 
         if self.input.up() {
             self.facing[1] = -1.0;
@@ -324,8 +272,7 @@ impl Player {
         if self.input.jump() && !self.has_jumped {
             if self.is_on_platform(map) {
                 self.vel[1] = -500.0;
-            } 
-            else if self.double_jumps > 0 {
+            } else if self.double_jumps > 0 {
                 self.vel[1] = -500.0;
                 self.double_jumps -= 1;
             }
@@ -336,14 +283,12 @@ impl Player {
         if self.input.slam() {
             self.facing[1] = 1.0;
             if self.can_slam {
-                self.attacks.push(
-                    Attack::new(
-                        AttackKind::Slam,
-                        self.team_idx,
-                        player_idx,
-                        self.facing,
-                    )
-                );
+                self.attacks.push(Attack::new(
+                    AttackKind::Slam,
+                    self.team_idx,
+                    player_idx,
+                    self.facing,
+                ));
                 if self.vel[1] < MAX_SPEED[1] {
                     self.vel[1] += ACCELERATION * dt;
                 }
@@ -365,30 +310,24 @@ impl Player {
             }
         }
         if self.input.light() && self.light_cooldown <= 0.0 {
-            self.attacks.push(
-                Attack::new(
-                    AttackKind::Light,
-                    self.team_idx,
-                    player_idx,
-                    self.facing,
-                )
-            );
+            self.attacks.push(Attack::new(
+                AttackKind::Light,
+                self.team_idx,
+                player_idx,
+                self.facing,
+            ));
             self.light_cooldown = 2.0;
         }
         if self.input.normal() && self.normal_cooldown <= 0.0 {
-            self.attacks.push(
-                Attack::new(
-                    AttackKind::Normal,
-                    self.team_idx,
-                    player_idx,
-                    self.facing,
-                )
-            );
+            self.attacks.push(Attack::new(
+                AttackKind::Normal,
+                self.team_idx,
+                player_idx,
+                self.facing,
+            ));
             self.normal_cooldown = 0.75;
         }
-        if self.input.dash()
-        && self.dash_cooldown <= 0.0
-        && !self.parrying() {
+        if self.input.dash() && self.dash_cooldown <= 0.0 && !self.parrying() {
             let x = self.facing[0];
             let y = self.facing[1];
             let mag = (x * x + y * y).sqrt();
@@ -404,21 +343,20 @@ impl Player {
             self.vel[0] = nx * dash_speed;
             self.vel[1] = ny * dash_speed;
 
-            self.attacks.push(
-                Attack::new(
-                    AttackKind::Dash,
-                    self.team_idx,
-                    player_idx,
-                    self.facing,
-                )
-            );
+            self.attacks.push(Attack::new(
+                AttackKind::Dash,
+                self.team_idx,
+                player_idx,
+                self.facing,
+            ));
 
             self.dash_cooldown = 3.0;
         }
         if self.input.parry()
-        && self.parry_cooldown <= 0.0
-        && !self.is_doing_attack(&AttackKind::Dash)
-        && !self.is_doing_attack(&AttackKind::Slam) {
+            && self.parry_cooldown <= 0.0
+            && !self.is_doing_attack(&AttackKind::Dash)
+            && !self.is_doing_attack(&AttackKind::Slam)
+        {
             self.parry_cooldown = 4.0;
             self.parry = 0.5;
         }
@@ -440,7 +378,9 @@ impl Player {
     }
 
     pub fn attack(&mut self, atk: &Attack, attacker: &mut Player) {
-        if self.invulnerable_timer > 0.0 { return; }
+        if self.invulnerable_timer > 0.0 {
+            return;
+        }
 
         if self.parry > 0.0 {
             // get dash ability back when successfully parrying
@@ -464,21 +404,17 @@ impl Player {
             AttackKind::Dash => {
                 if self.is_doing_attack(atk.kind()) {
                     for player in [&mut *self, attacker] {
-                        player.vel[0] = player.vel[0].signum()
-                            * -50.0
-                            * player.knockback_multiplier;
-                        player.vel[1] = player.vel[1].signum()
-                            * -200.0
-                            * player.knockback_multiplier;
+                        player.vel[0] =
+                            player.vel[0].signum() * -50.0 * player.knockback_multiplier;
+                        player.vel[1] =
+                            player.vel[1].signum() * -200.0 * player.knockback_multiplier;
                         player.stunned = atk.stun();
                         player.knockback_multiplier += atk.knockback_increase();
                         player.remove_dashes();
                     }
                 } else {
-                    self.vel[0] = attacker.vel[0]
-                        * self.knockback_multiplier;
-                    self.vel[1] = attacker.vel[1]
-                        * self.knockback_multiplier;
+                    self.vel[0] = attacker.vel[0] * self.knockback_multiplier;
+                    self.vel[1] = attacker.vel[1] * self.knockback_multiplier;
                 }
                 attacker.vel[0] *= -0.5;
                 attacker.vel[1] *= -0.5;
@@ -512,12 +448,11 @@ impl Player {
             }
             AttackKind::Slam => {
                 // must be above player and moving downwards
-                if attacker.pos[1] + PLAYER_SIZE > self.pos[1]
-                || attacker.vel[1] <= 0.0 { return; }
+                if attacker.pos[1] + PLAYER_SIZE > self.pos[1] || attacker.vel[1] <= 0.0 {
+                    return;
+                }
 
-                self.vel[1] = attacker.vel[1]
-                    * 1.5
-                    * self.knockback_multiplier;
+                self.vel[1] = attacker.vel[1] * 1.5 * self.knockback_multiplier;
 
                 attacker.vel[1] = -50.0;
                 attacker.can_slam = false;
@@ -554,10 +489,14 @@ impl Player {
 
     // GETTERS
     #[must_use]
-    pub fn attacks(&self) -> &Vec<Attack> { &self.attacks }
+    pub fn attacks(&self) -> &Vec<Attack> {
+        &self.attacks
+    }
 
     #[must_use]
-    pub fn trail_squares(&self) -> &Vec<TrailSquare> { &self.trail_squares }
+    pub fn trail_squares(&self) -> &Vec<TrailSquare> {
+        &self.trail_squares
+    }
 
     #[must_use]
     pub fn is_doing_attack(&self, kind: &AttackKind) -> bool {
@@ -577,13 +516,11 @@ impl Player {
 
         // Check horizontal overlap (X)
         let horizontal_overlap =
-        player.x < platform.x + platform.w &&
-        player.x + player.w > platform.x;
+            player.x < platform.x + platform.w && player.x + player.w > platform.x;
 
         // Check if player is on top (Y)
-        let on_top =
-        player_bottom <= platform_top + 5.0 &&  // within tolerance above top
-        player_bottom >= platform_top - 5.0;    // avoid floating-point misses
+        let on_top = player_bottom <= platform_top + 5.0 &&  // within tolerance above top
+        player_bottom >= platform_top - 5.0; // avoid floating-point misses
 
         horizontal_overlap && on_top
     }
@@ -603,28 +540,44 @@ impl Player {
     }
 
     #[must_use]
-    pub fn get_color_default(&self) -> Color { self.color.clone() }
+    pub fn get_color_default(&self) -> Color {
+        self.color.clone()
+    }
 
     #[must_use]
-    pub fn parrying(&self) -> bool { self.parry > 0.0 }
+    pub fn parrying(&self) -> bool {
+        self.parry > 0.0
+    }
 
     #[must_use]
-    pub fn lives(&self) -> u8 { self.lives }
+    pub fn lives(&self) -> u8 {
+        self.lives
+    }
 
     #[must_use]
-    pub fn is_dead(&self) -> bool { self.lives == 0 }
+    pub fn is_dead(&self) -> bool {
+        self.lives == 0
+    }
 
     #[must_use]
-    pub fn name(&self) -> String { self.name.clone() }
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
 
     #[must_use]
-    pub fn position(&self) -> [f32; 2] { self.pos }
+    pub fn position(&self) -> [f32; 2] {
+        self.pos
+    }
 
     #[must_use]
-    pub fn combo(&self) -> u32 { self.combo }
+    pub fn combo(&self) -> u32 {
+        self.combo
+    }
 
     #[must_use]
-    pub fn get_input(&self) -> &PlayerInput { &self.input }
+    pub fn get_input(&self) -> &PlayerInput {
+        &self.input
+    }
 }
 
 fn get_facing_from_team(team_idx: usize) -> [f32; 2] {
