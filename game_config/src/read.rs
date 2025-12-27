@@ -39,7 +39,6 @@ struct ClientConfig {
 struct ServerConfig {
     ip: String,
     port: String,
-    render_server: bool,
 }
 
 impl Config {
@@ -68,9 +67,6 @@ impl Config {
 
     #[must_use]
     pub fn serverport(&self) -> &str { &self.server.port }
-
-    #[must_use]
-    pub fn render_server(&self) -> bool { self.server.render_server }
 
     #[must_use]
     pub fn clientip(&self) -> &str { &self.client.ip }

@@ -1899,21 +1899,14 @@ name = "platform"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bincode",
  "client_logic",
  "display",
- "foundation",
  "game_config",
  "ggez",
- "glam 0.30.9",
- "mint",
  "protocol",
- "rand",
- "serde",
  "server_logic",
  "simulation",
  "tokio",
- "toml 0.9.8",
 ]
 
 [[package]]
