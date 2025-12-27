@@ -6,10 +6,6 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::net::SocketAddr;
-use client_logic::{
-    interpolation::SnapshotHistory,
-    render_clock::RenderClock,
-};
 use game_config::read::Config;
 use client_logic::ClientState;
 use protocol::{
@@ -23,9 +19,12 @@ use protocol::{
     net_server::ServerMessage,
     net_team::InitTeamData,
 };
-use simulation::constants::{
-    TICK_RATE,
-    FIXED_DT,
+use simulation::{
+    constants::{
+        TICK_RATE,
+        FIXED_DT,
+    },
+    input::PlayerInput,
 };
 use bincode::{serde::{encode_to_vec, decode_from_slice}, config};
 
@@ -69,17 +68,6 @@ struct ClientPrediction {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let mut client = ClientState {
-        team_id: 0,
-        player_id: 0,
-        current_input: Arc::new(Mutex::new(HashSet::new())),
-        snapshot_history: Arc::new(Mutex::new(SnapshotHistory::default())),
-        render_clock: RenderClock::default(),
-        render_tick: Arc::new(Mutex::new(0.0)),
-        game_state: None,
-        tick: Arc::new(AtomicU64::new(0)),
-    };
-
     let prediction = Arc::new(Mutex::new(ClientPrediction {
         _tick: AtomicU64::new(0),
         input_history: InputHistory::new(),
@@ -88,25 +76,28 @@ async fn main() -> Result<()> {
     // get configuration
     let config = Config::get()?;
 
-    // spawn dummy team
-    client.apply_initial_data(
-        vec![
-            InitTeamData {
-                color: config.team_one_color(),
-                player_names: vec![config.playername().to_string(); TEAM_SIZE],
-                start_position: TEAM_ONE_START_POS,
-                index: 0,
-            },
-            InitTeamData {
-                color: config.team_two_color(),
-                player_names: vec![String::from("Dummy"); TEAM_SIZE],
-                start_position: TEAM_TWO_START_POS,
-                index: 1,
-            },
-        ],
-    )?;
-
-    if !config.practice_mode() {
+    let client: ClientState;
+    if config.practice_mode() {
+        // spawn dummy team
+        client = ClientState::new(
+            0,
+            0,
+            vec![
+                InitTeamData {
+                    color: config.team_one_color(),
+                    player_names: vec![config.playername().to_string(); TEAM_SIZE],
+                    start_position: TEAM_ONE_START_POS,
+                    index: 0,
+                },
+                InitTeamData {
+                    color: config.team_two_color(),
+                    player_names: vec![String::from("Dummy"); TEAM_SIZE],
+                    start_position: TEAM_TWO_START_POS,
+                    index: 1,
+                },
+            ],
+        )?;
+    } else {
         let bincode_config = config::standard();
 
         let server_addr: SocketAddr = format!(
@@ -130,36 +121,54 @@ async fn main() -> Result<()> {
         )?;
         socket.send(&packet).await?;
 
+        // handle server responses until StartGame signal
         let mut buf = [0u8; 1500];
+
+        let mut team_id: Option<usize> = None;
+        let mut player_id: Option<usize> = None;
+
         let init_teams = loop {
             let (len, _addr) = socket.recv_from(&mut buf).await?;
             let (msg, _): (ServerMessage, usize) =
             decode_from_slice(&buf[..len], bincode_config)?;
 
             match msg {
-                ServerMessage::Welcome { team_id, player_id } => {
-                    client.team_id = team_id;
-                    client.player_id = player_id;
+                ServerMessage::Welcome {
+                    team_id: t,
+                    player_id: p,
+                } => {
+                    team_id = Some(t);
+                    player_id = Some(p);
                 }
+
                 ServerMessage::StartGame { teams } => {
                     break teams;
                 }
+
                 ServerMessage::LobbyStatus { .. } => {
                     // TODO: show in UI
                 }
+
                 _ => {}
             }
         };
 
-        client.apply_initial_data(init_teams)?;
+        let team_id = team_id.expect("StartGame received before Welcome");
+        let player_id = player_id.expect("StartGame received before Welcome");
+
+        client = ClientState::new(
+            team_id,
+            player_id,
+            init_teams,
+        )?;
 
         // spawn receive task
         let socket_recv = Arc::clone(&socket);
         let config_recv = bincode_config;
-        let gs_clone_send = Arc::clone(client.game_state.as_ref().unwrap());
-        let gs_clone_recv = Arc::clone(client.game_state.as_ref().unwrap());
         let history_clone_recv = Arc::clone(&client.snapshot_history);
         let render_tick_update = Arc::clone(&client.render_tick);
+        let render_clock = Arc::clone(&client.render_clock);
+        let core = Arc::clone(&client.core);
         tokio::spawn(async move {
             let mut buf = [0u8; 2048];
 
@@ -172,15 +181,16 @@ async fn main() -> Result<()> {
                             let mut snapshot_history = history_clone_recv.lock().await;
                             {
                                 // update render clock
-                                client.render_clock.update(server_tick);
+                                let mut render_clock_locked = render_clock.lock().await;
+                                render_clock_locked.update(server_tick);
                                 let mut render_tick = render_tick_update.lock().await;
-                                *render_tick = client.render_clock.render_tick();
+                                *render_tick = render_clock_locked.render_tick();
                                 drop(render_tick);
 
                                 // apply server snapshot
-                                let mut gs = gs_clone_recv.lock().await;
-                                net_game_state::apply_snapshot(&mut gs, &server_state);
-                                snapshot_history.push(server_tick, gs.clone());
+                                let mut core = core.lock().await;
+                                net_game_state::apply_snapshot(core.game_state_mut(), &server_state);
+                                snapshot_history.push(server_tick, core.game_state().clone());
                             }
                         }
                     }
@@ -194,23 +204,22 @@ async fn main() -> Result<()> {
         // spawn send task
         let socket_send = Arc::clone(&socket);
         let tick_send = Arc::clone(&client.tick);
+        let current_input = Arc::clone(&client.current_input);
         tokio::spawn(async move {
             let tick_duration = std::time::Duration::from_millis(1000 / TICK_RATE as u64);
             loop {
                 let start = std::time::Instant::now();
-
-                let input = {
-                    let gs = gs_clone_send.lock().await;
-                    gs.teams[client.team_id].players[client.player_id].get_input().clone()
-                };
-
                 let tick = tick_send.load(Ordering::Relaxed);
+
+                let pressed = current_input.lock().await.clone();
+                let mut input = PlayerInput::default();
+                input.update(&pressed);
 
                 let msg = ClientMessage::Input {
                     client_tick: tick,
                     team_id: client.team_id,
                     player_id: client.player_id,
-                    input: input.clone(),
+                    input,
                 };
                 match encode_to_vec(&msg, bincode_config) {
                     Ok(data) => {
@@ -228,40 +237,34 @@ async fn main() -> Result<()> {
     }
 
     // simulation
-    let game_state_tick = Arc::clone(client.game_state.as_ref().unwrap());
-    let client_tick = Arc::clone(&client.tick);
-    let prediction_clone = Arc::clone(&prediction);
-    let current_input_read = Arc::clone(&client.current_input);
+    let current_input = Arc::clone(&client.current_input);
     tokio::spawn(async move {
         let tick_duration = std::time::Duration::from_secs_f32(1.0 / TICK_RATE as f32);
 
         loop {
             let start = std::time::Instant::now();
-            let tick = client_tick.load(Ordering::Relaxed);
+            let tick = client.tick.load(Ordering::Relaxed);
 
-            let current_input = current_input_read.lock().await.clone();
+            let input = current_input.lock().await.clone();
 
             {
-                let mut prediction = prediction_clone.lock().await;
-
-                {
-                    let mut gs = game_state_tick.lock().await;
-
-                    // apply current input to GameState
-                    gs.teams[client.team_id].players[client.player_id].input.update(&current_input);
-
-                    // simulate
-                    gs.fixed_update(FIXED_DT);
-                }
-
-                // store input for current tick
-                prediction.input_history.push(
-                    tick,
-                    current_input,
-                );
+                let mut prediction = prediction.lock().await;
+                prediction.input_history.push(tick, input.clone());
             }
 
-            client_tick.fetch_add(1, Ordering::Relaxed);
+            {
+                let mut core = client.core.lock().await;
+
+                core.game_state_mut()
+                    .teams[client.team_id]
+                    .players[client.player_id]
+                    .input
+                    .update(&input);
+
+                core.step(FIXED_DT);
+            }
+
+            client.tick.fetch_add(1, Ordering::Relaxed);
 
             let elapsed = start.elapsed();
             if elapsed < tick_duration {
