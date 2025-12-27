@@ -1,18 +1,12 @@
+use anyhow::Result;
 use ggez::input::keyboard::KeyCode;
 use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use crate::{
-    constants::{
-        ATTACK_IMAGE,
-        BACKGROUND_IMAGE,
-        PARRY_IMAGE,
-    },
-    utils::{
-        color_to_ggez,
-        IntoMint,
-        rect_to_ggez,
-    },
+use crate::utils::{
+    color_to_ggez,
+    IntoMint,
+    rect_to_ggez,
 };
 use ggez::{
     Context,
@@ -70,14 +64,14 @@ impl Renderer {
         snapshot_history: Arc<Mutex<SnapshotHistory>>,
         render_tick: Arc<Mutex<f32>>,
         input_tx: tokio::sync::mpsc::UnboundedSender<HashSet<KeyCode>>,
-    ) -> Self {
-        Self {
-            render_state: RenderState::new(ctx),
+    ) -> Result<Self> {
+        Ok(Self {
+            render_state: RenderState::new(ctx)?,
             snapshot_history,
             render_tick,
             input_state: InputState::new(),
             input_tx,
-        }
+        })
     }
 
     pub fn render(&mut self, ctx: &mut Context) -> GameResult {
@@ -153,13 +147,13 @@ struct RenderState {
 }
 
 impl RenderState {
-    pub fn new(ctx: &Context) -> Self {
-        let bg_img = Image::from_path(&ctx.gfx, BACKGROUND_IMAGE).unwrap_or_else(|_| panic!("Unable to load {BACKGROUND_IMAGE}"));
-        let attack_img = Image::from_path(&ctx.gfx, ATTACK_IMAGE).unwrap_or_else(|_| panic!("Unable to load {ATTACK_IMAGE}"));
-        let parry_img = Image::from_path(&ctx.gfx, PARRY_IMAGE).unwrap_or_else(|_| panic!("Unable to load {PARRY_IMAGE}"));
+    pub fn new(ctx: &Context) -> Result<Self> {
         let config = Config::get().expect("Unable to get config file");
+        let bg_img = Image::from_bytes(&ctx.gfx, &config.background_image()?)?;
+        let attack_img = Image::from_bytes(&ctx.gfx, &config.attack_image()?)?;
+        let parry_img = Image::from_bytes(&ctx.gfx, &config.parry_image()?)?;
 
-        Self {
+        Ok(Self {
             camera_pos: Vec2::new(0.0, 0.0),
             bias_strength: config.camera_bias(),
             team_one_color: config.team_one_color(),
@@ -169,7 +163,7 @@ impl RenderState {
             background_image: Some(bg_img),
             attack_image: Some(attack_img),
             parry_image: Some(parry_img),
-        }
+        })
     }
 
     pub fn render(
