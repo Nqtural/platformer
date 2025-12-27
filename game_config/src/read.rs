@@ -28,6 +28,7 @@ struct Camera {
     bias: f32,
     zoom: f32,
     vsync: bool,
+    player_name_above: bool,
 }
 
 #[derive(Deserialize)]
@@ -82,5 +83,8 @@ impl Config {
     pub fn camera_zoom(&self) -> f32 { self.camera.zoom }
 
     #[must_use]
-    pub fn vsync(&self) -> bool {self.camera.vsync }
+    pub fn vsync(&self) -> bool { self.camera.vsync }
+
+    #[must_use]
+    pub fn player_name_above(&self) -> bool { self.camera.player_name_above }
 }

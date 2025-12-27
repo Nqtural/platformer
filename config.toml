@@ -38,6 +38,11 @@ zoom = 1.1
 # default: true
 vsync = false
 
+# Display name above player
+#
+# default: false
+player_name_above = false
+
 
 
 [client]
