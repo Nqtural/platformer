@@ -2,6 +2,10 @@ use anyhow::Result;
 use serde::Deserialize;
 use toml;
 use foundation::color::Color;
+use crate::utils::{
+    find_resource_path,
+    load_resource_bytes,
+};
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -45,7 +49,7 @@ struct ServerConfig {
 
 impl Config {
     pub fn get() -> Result<Self> {
-        let toml_str = std::fs::read_to_string("config.toml")?;
+        let toml_str = std::fs::read_to_string(find_resource_path("config.toml")?)?;
         let config: Config = toml::from_str(&toml_str)?;
         Ok(config)
     }
@@ -62,6 +66,18 @@ impl Config {
     #[must_use]
     pub fn team_two_color(&self) -> Color {
         self.teams.team_two_color.clone()
+    }
+
+    pub fn background_image(&self) -> Result<Vec<u8>> {
+        load_resource_bytes("assets/background.png")
+    }
+
+    pub fn attack_image(&self) -> Result<Vec<u8>> {
+        load_resource_bytes("assets/normal.png")
+    }
+
+    pub fn parry_image(&self) -> Result<Vec<u8>> {
+        load_resource_bytes("assets/parry.png")
     }
 
     #[must_use]

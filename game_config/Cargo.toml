@@ -8,3 +8,4 @@ foundation = { path = "../foundation" }
 anyhow = "1.0.100"
 serde = { version = "1.0.228", features = ["derive"] }
 toml = "0.9.8"
+dirs = "6.0.0"

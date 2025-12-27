@@ -696,7 +696,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "client_logic",
- "dirs",
  "foundation",
  "game_config",
  "ggez",
@@ -841,6 +840,7 @@ name = "game_config"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "dirs",
  "foundation",
  "serde",
  "toml 0.9.8",
