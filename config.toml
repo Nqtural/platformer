@@ -33,6 +33,11 @@ bias = 0.7
 # default: 1.1
 zoom = 1.1
 
+# Sync frame rate to display refresh rate
+# 
+# default: true
+vsync = false
+
 
 
 [client]

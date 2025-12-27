@@ -12,21 +12,19 @@ use simulation::constants::{
     VIRTUAL_HEIGHT,
     VIRTUAL_WIDTH,
 };
-use crate::{
-    constants::ENABLE_VSYNC,
-    render::Renderer,
-};
+use crate::render::Renderer;
 
 pub fn run(
     input_tx: UnboundedSender<HashSet<KeyCode>>,
     snapshot_history: Arc<Mutex<SnapshotHistory>>,
     render_tick_clone: Arc<Mutex<f32>>,
     context_name: &str,
+    vsync: bool,
 ) -> GameResult {
     let (ctx, event_loop) = ContextBuilder::new(context_name, "platform")
         .window_setup(
             ggez::conf::WindowSetup::default()
-                .vsync(ENABLE_VSYNC)
+                .vsync(vsync)
                 .title("Game")
         )
         .window_mode(
