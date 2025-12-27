@@ -1,7 +1,6 @@
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
-use std::collections::HashSet;
 use tokio::sync::Mutex;
 use game_config::read::Config;
 use protocol::{
@@ -19,7 +18,6 @@ use simulation::constants::{
     TICK_RATE,
     FIXED_DT,
 };
-use ggez::input::keyboard::KeyCode;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -72,16 +70,6 @@ async fn main() -> Result<()> {
             }
         }
     });
-
-    if config.render_server() {
-        // needed parameter for client input, unused here
-        let (input_tx, _) = tokio::sync::mpsc::unbounded_channel::<HashSet<KeyCode>>();
-
-        // setup game window
-        let snapshot_history_render = Arc::clone(&server.snapshot_history);
-        let render_tick_clone = Arc::clone(&server.render_tick);
-        display::game_window::run(input_tx, snapshot_history_render, render_tick_clone, "server")?;
-    }
 
     let server_shared = Arc::new(Mutex::new(server));
     network.spawn_receive_task(Arc::clone(&server_shared)).await;
