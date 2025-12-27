@@ -43,7 +43,7 @@ async fn main() -> Result<()> {
     // setup game window
     let history_clone_render = Arc::clone(&client.snapshot_history);
     let render_tick_clone = Arc::clone(&client.render_tick);
-    display::game_window::run(input_tx, history_clone_render, render_tick_clone, "client")?;
+    display::game_window::run(input_tx, history_clone_render, render_tick_clone, "client", config.vsync())?;
     
     Ok(())
 }
