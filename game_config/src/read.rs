@@ -45,6 +45,7 @@ struct ClientConfig {
 struct ServerConfig {
     ip: String,
     port: String,
+    team_size: usize,
 }
 
 impl Config {
@@ -85,6 +86,9 @@ impl Config {
 
     #[must_use]
     pub fn serverport(&self) -> &str { &self.server.port }
+
+    #[must_use]
+    pub fn team_size(&self) -> usize { self.server.team_size }
 
     #[must_use]
     pub fn clientip(&self) -> &str { &self.client.ip }

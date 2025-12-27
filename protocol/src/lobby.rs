@@ -7,7 +7,6 @@ use foundation::color::Color;
 use crate::net_team::InitTeamData;
 use crate::constants::{
     TEAM_ONE_START_POS,
-    TEAM_SIZE,
     TEAM_TWO_START_POS,
 };
 use crate::utils::condense_name;
@@ -23,24 +22,19 @@ pub struct LobbyPlayer {
 
 pub struct Lobby {
     pub players: Vec<LobbyPlayer>,
-
     next_team: usize,
     next_player: usize,
-}
-
-impl Default for Lobby {
-    fn default() -> Self {
-        Self::new()
-    }
+    team_size: usize,
 }
 
 impl Lobby {
     #[must_use]
-    pub fn new() -> Self {
+    pub fn new(team_size: usize) -> Self {
         Self {
             players: Vec::new(),
             next_team: 0,
             next_player: 0,
+            team_size,
         }
     }
 
@@ -62,12 +56,12 @@ impl Lobby {
         });
 
         // rotate slots
-        if TEAM_SIZE == 1 {
+        if self.team_size == 1 {
             self.next_team = (self.next_team + 1) % 2;
-        } else if TEAM_SIZE == 2 {
+        } else if self.team_size == 2 {
             #[allow(clippy::modulo_one)]
             {
-                self.next_player = (self.next_player + 1) % TEAM_SIZE;
+                self.next_player = (self.next_player + 1) % self.team_size;
             }
             if self.next_player == 0 {
                 self.next_team = (self.next_team + 1) % 2;
@@ -85,13 +79,13 @@ impl Lobby {
     ) -> Vec<InitTeamData> {
         // Prepare output vec of length 2
         let mut teams = vec![
-            InitTeamData::new(team_one_color, TEAM_ONE_START_POS, 0),
-            InitTeamData::new(team_two_color, TEAM_TWO_START_POS, 1),
+            InitTeamData::new(team_one_color, TEAM_ONE_START_POS, 0, self.team_size),
+            InitTeamData::new(team_two_color, TEAM_TWO_START_POS, 1, self.team_size),
         ];
 
         // Fill players into correct team + slot
         for p in &self.players {
-            if p.team_id < 2 && p.player_id < TEAM_SIZE {
+            if p.team_id < 2 && p.player_id < self.team_size {
                 teams[p.team_id].player_names[p.player_id] = condense_name(&p.name);
             }
         }
@@ -110,4 +104,11 @@ impl Lobby {
 
     #[must_use]
     pub fn connected_count(&self) -> usize { self.players.len() }
+
+    #[must_use]
+    pub fn required(&self) -> usize { self.team_size * 2 }
+
+
+    #[must_use]
+    pub fn is_full(&self) -> bool { self.connected_count() >= self.required() }
 }

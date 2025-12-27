@@ -6,7 +6,6 @@ use std::sync::Arc;
 use tokio::net::UdpSocket;
 use tokio::sync::{Mutex, RwLock};
 use protocol::{
-    constants::TEAM_SIZE,
     lobby::Lobby,
     net_client::ClientMessage,
     net_game_state,
@@ -44,13 +43,14 @@ impl NetworkServer {
 
             if let ClientMessage::Hello { name } = msg {
                 self.clients.write().await.insert(addr);
-                let (team_id, player_id) = lobby.lock().await.assign_slot(addr, name.clone());
+                let mut lobby_locked = lobby.lock().await;
+                let (team_id, player_id) = lobby_locked.assign_slot(addr, name.clone());
                 println!(
                     "{} joined as {} ({}/{})",
                     addr,
                     name,
-                    lobby.lock().await.connected_count(),
-                    TEAM_SIZE * 2,
+                    lobby_locked.connected_count(),
+                    lobby_locked.required(),
                 );
 
                 // send welcome
@@ -59,14 +59,14 @@ impl NetworkServer {
 
                 // broadcast lobby status
                 let status = ServerMessage::LobbyStatus {
-                    players: lobby.lock().await.players.clone(),
-                    required: TEAM_SIZE * 2,
+                    players: lobby_locked.players.clone(),
+                    required: lobby_locked.required(),
                 };
                 broadcast(status, &self.clients, &self.socket, &self.bincode_config).await;
             }
 
             // exit when lobby is full
-            if lobby.lock().await.connected_count() >= TEAM_SIZE * 2 {
+            if lobby.lock().await.is_full() {
                 break;
             }
         }
