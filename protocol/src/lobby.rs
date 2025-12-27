@@ -10,6 +10,7 @@ use crate::constants::{
     TEAM_SIZE,
     TEAM_TWO_START_POS,
 };
+use crate::utils::condense_name;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct LobbyPlayer {
@@ -91,7 +92,7 @@ impl Lobby {
         // Fill players into correct team + slot
         for p in &self.players {
             if p.team_id < 2 && p.player_id < TEAM_SIZE {
-                teams[p.team_id].player_names[p.player_id] = p.name.clone();
+                teams[p.team_id].player_names[p.player_id] = condense_name(&p.name);
             }
         }
 
