@@ -3,17 +3,10 @@ use ggez::input::keyboard::KeyCode;
 use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use crate::{
-    constants::{
-        ATTACK_IMAGE,
-        BACKGROUND_IMAGE,
-        PARRY_IMAGE,
-    },
-    utils::{
-        color_to_ggez,
-        IntoMint,
-        rect_to_ggez,
-    },
+use crate::utils::{
+    color_to_ggez,
+    IntoMint,
+    rect_to_ggez,
 };
 use ggez::{
     Context,
@@ -54,7 +47,6 @@ use simulation::{
     game_state::GameState,
 };
 use crate::input::InputState;
-use crate::utils::load_resource_bytes;
 
 pub struct Renderer {
     render_state: RenderState,
@@ -156,10 +148,10 @@ struct RenderState {
 
 impl RenderState {
     pub fn new(ctx: &Context) -> Result<Self> {
-        let bg_img = Image::from_bytes(&ctx.gfx, &load_resource_bytes(BACKGROUND_IMAGE)?)?;
-        let attack_img = Image::from_bytes(&ctx.gfx, &load_resource_bytes(ATTACK_IMAGE)?)?;
-        let parry_img = Image::from_bytes(&ctx.gfx, &load_resource_bytes(PARRY_IMAGE)?)?;
         let config = Config::get().expect("Unable to get config file");
+        let bg_img = Image::from_bytes(&ctx.gfx, &config.background_image()?)?;
+        let attack_img = Image::from_bytes(&ctx.gfx, &config.attack_image()?)?;
+        let parry_img = Image::from_bytes(&ctx.gfx, &config.parry_image()?)?;
 
         Ok(Self {
             camera_pos: Vec2::new(0.0, 0.0),
