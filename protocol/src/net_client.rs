@@ -2,7 +2,7 @@ use serde::{
     Serialize,
     Deserialize,
 };
-use simulation::input::PlayerInput;
+use simulation::PlayerInput;
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientMessage {

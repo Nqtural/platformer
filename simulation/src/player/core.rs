@@ -16,7 +16,6 @@ use crate::{
         VIRTUAL_WIDTH,
         WALL_SLIDE_SPEED,
     },
-    input::PlayerInput,
     team::Team,
     trail::TrailSquare,
     utils::get_combo_multiplier,
@@ -24,6 +23,9 @@ use crate::{
 use foundation::color::Color;
 use foundation::rect::Rect;
 use foundation::math_helpers::approach_zero;
+use super::{
+    PlayerInput,
+};
 
 #[derive(Clone)]
 pub struct Player {
@@ -416,7 +418,7 @@ impl Player {
             self.dash_cooldown = 3.0;
         }
         if self.input.parry()
-        && self.is_on_platform(&map)
+        && self.is_on_platform(map)
         && self.parry_cooldown <= 0.0
         && !self.is_doing_attack(&AttackKind::Dash)
         && !self.is_doing_attack(&AttackKind::Slam) {
