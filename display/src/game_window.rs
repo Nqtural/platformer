@@ -1,6 +1,6 @@
+use anyhow::Result;
 use ggez::{
     ContextBuilder,
-    GameResult,
     input::keyboard::KeyCode,
 };
 use std::collections::HashSet;
@@ -20,7 +20,7 @@ pub fn run(
     render_tick_clone: Arc<Mutex<f32>>,
     context_name: &str,
     vsync: bool,
-) -> GameResult {
+) -> Result<()> {
     let (ctx, event_loop) = ContextBuilder::new(context_name, "platform")
         .window_setup(
             ggez::conf::WindowSetup::default()
@@ -39,7 +39,7 @@ pub fn run(
         snapshot_history,
         render_tick_clone,
         input_tx,
-    );
+    )?;
     ggez::event::run(
         ctx,
         event_loop,
