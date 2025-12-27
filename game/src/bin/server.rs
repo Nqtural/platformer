@@ -4,7 +4,6 @@ use std::sync::atomic::Ordering;
 use tokio::sync::Mutex;
 use game_config::read::Config;
 use protocol::{
-    constants::TEAM_SIZE,
     net_game_state,
     net_server::ServerMessage,
     lobby::Lobby,
@@ -25,8 +24,11 @@ async fn main() -> Result<()> {
     let config = Config::get()?;
 
     // initialize lobby state
-    println!("Initializing lobby state (team size: {TEAM_SIZE})...");
-    let lobby_state = Arc::new(Mutex::new(Lobby::new()));
+    println!(
+        "Initializing lobby state (team size: {})...",
+        config.team_size(),
+    );
+    let lobby_state = Arc::new(Mutex::new(Lobby::new(config.team_size())));
     let network = NetworkServer::new(config.serverip(), config.serverport()).await?;
 
     network.handshake(Arc::clone(&lobby_state)).await?;
