@@ -27,6 +27,7 @@ struct Teams {
 struct Camera {
     bias: f32,
     zoom: f32,
+    vsync: bool,
 }
 
 #[derive(Deserialize)]
@@ -79,4 +80,7 @@ impl Config {
 
     #[must_use]
     pub fn camera_zoom(&self) -> f32 { self.camera.zoom }
+
+    #[must_use]
+    pub fn vsync(&self) -> bool {self.camera.vsync }
 }
