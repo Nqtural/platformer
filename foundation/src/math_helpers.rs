@@ -1,11 +1,11 @@
 #[must_use]
-pub fn approach_zero(value: f32, step: f32) -> f32 {
-    if value > 0.0 {
-        (value - step).max(0.0)
+pub fn approach(value: f32, target: f32, step: f32) -> f32 {
+    if value > target {
+        (value - step).max(target)
     } else if value < 0.0 {
-        (value + step).min(0.0)
+        (value + step).min(target)
     } else {
-        0.0
+        target
     }
 }
 
