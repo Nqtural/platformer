@@ -258,11 +258,8 @@ impl RenderState {
 
         for team in &gs.teams {
             for player in &team.players {
-                if player.is_dead() { continue; }
-                sum += Vec2::new(
-                    player.position()[0] + PLAYER_SIZE / 2.0,
-                    player.position()[1] + PLAYER_SIZE / 2.0,
-                );
+                if !player.combat.is_alive() { continue; }
+                sum += player.physics.pos + PLAYER_SIZE / 2.0;
                 count += 1;
             }
         }
@@ -284,13 +281,13 @@ impl RenderState {
     }
 
 
-    fn drawparam_constructor(&self, x: f32, y: f32) -> DrawParam {
+    fn drawparam_constructor(&self, pos: Vec2) -> DrawParam {
         let screen_center = Vec2::new(VIRTUAL_WIDTH / 2.0, VIRTUAL_HEIGHT / 2.0);
 
         DrawParam::default()
             .dest(
                 screen_center 
-                + Vec2::new(x, y) * self.zoom 
+                + pos * self.zoom 
                 - self.camera_pos * self.zoom
             )
             .scale(Vec2::new(self.zoom, self.zoom).to_mint_vec())
@@ -317,13 +314,12 @@ impl RenderState {
     fn draw_parry(
         &self,
         game_canvas: &mut Canvas,
-        player_pos: [f32; 2],
+        player_pos: Vec2,
     ) {
         if let Some(img) = self.parry_image.as_ref() {
             // draw frame
             let draw_param = self.drawparam_constructor(
-                (player_pos[0] + PLAYER_SIZE / 2.0) - (img.width() as f32 / 2.0),
-                (player_pos[1] + PLAYER_SIZE / 2.0) - (img.width() as f32 / 2.0),
+                (player_pos + PLAYER_SIZE / 2.0) - (img.width() as f32 / 2.0),
             );
 
             game_canvas.draw(img, draw_param);
@@ -333,7 +329,7 @@ impl RenderState {
     fn draw_attacks(
         &self,
         game_canvas: &mut Canvas,
-        player_pos: [f32; 2],
+        player_pos: Vec2,
         attacks: &[Attack],
     ) {
         for atk in attacks {
@@ -345,17 +341,9 @@ impl RenderState {
             let rect = atk.get_rect(player_pos);
 
             // get attack image rotation
-            let rotation_degrees: f32 = match atk.facing() {
-                [0.0, 1.0] => 90.0,
-                [0.0, -1.0] => -90.0,
-                [1.0, 0.0] => 0.0,
-                [-1.0, 0.0] => 180.0,
-                [1.0, 1.0] => 45.0,
-                [1.0, -1.0] => -45.0,
-                [-1.0, 1.0] => 125.0,
-                [-1.0, -1.0] => -125.0,
-                _ => 0.0
-            };
+            let facing: Vec2 = atk.facing();
+            let rotation_radians = facing.y.atan2(facing.x);
+            let rotation_degrees = rotation_radians.to_degrees();
 
             // DrawParam.rotation needs radians
             let rotation = rotation_degrees.to_radians();
@@ -377,8 +365,10 @@ impl RenderState {
                 // draw frame
                 let draw_param = self.drawparam_constructor(
                     // add half the width to balance offset
-                    rect.x + rect.w * 0.5,
-                    rect.y + rect.h * 0.5,
+                    Vec2::new(
+                        rect.x + rect.w * 0.5,
+                        rect.y + rect.h * 0.5,
+                    ),
                 )
                     // offset to be able to rotate around centre
                     .offset([0.5, 0.5])
@@ -399,11 +389,11 @@ impl RenderState {
     ) -> GameResult<()> {
         for team in &gs.teams {
             for player in &team.players {
-                for attack in player.attacks() {
+                for attack in &player.combat.attacks {
                     let mesh = Mesh::new_rectangle(
                         gfx,
                         DrawMode::stroke(1.0),
-                        rect_to_ggez(&attack.get_rect(player.position())),
+                        rect_to_ggez(&attack.get_rect(player.physics.pos)),
                         GgezColor::new(1.0, 1.0, 1.0, 0.4),
                     )?;
                     game_canvas.draw(&mesh, camera_transform);
@@ -423,7 +413,7 @@ impl RenderState {
     ) -> GameResult {
         for team in &gs.teams {
             for player in &team.players {
-                for square in player.trail_squares() {
+                for square in &player.visuals.trail_squares {
                     let mesh = Mesh::new_rectangle(
                         gfx,
                         DrawMode::fill(),
@@ -451,9 +441,9 @@ impl RenderState {
             .scale(Vec2::new(self.zoom, self.zoom).to_mint_vec());
         for (ti, team) in gs.teams.iter().enumerate() {
             for (pi, player) in team.players.iter().enumerate() {
-                if player.is_dead() { continue; }
+                if !player.combat.is_alive() { continue; }
 
-                let rect = player.get_rect();
+                let rect = player.physics.get_rect();
                 let mesh = Mesh::new_rectangle(
                     &ctx.gfx,
                     DrawMode::fill(),
@@ -483,33 +473,37 @@ impl RenderState {
                 let text_dims = text.dimensions(ctx).unwrap();
 
                 let draw_param = self.drawparam_constructor(
-                    player.position()[0] + (PLAYER_SIZE / 2.0) - (text_dims.w / 2.0),
-                    if self.player_name_above {
-                        player.position()[1] - (text_dims.h * 1.5)
-                    } else {
-                        player.position()[1] + PLAYER_SIZE + (text_dims.h / 2.0)
-                    },
+                    Vec2::new(
+                        player.physics.pos.x + (PLAYER_SIZE / 2.0) - (text_dims.w / 2.0),
+                        if self.player_name_above {
+                            player.physics.pos.y - (text_dims.h * 1.5)
+                        } else {
+                            player.physics.pos.y + PLAYER_SIZE + (text_dims.h / 2.0)
+                        },
+                    ),
                 );
                 game_canvas.draw(&text, draw_param);
 
-                if player.combo() > 0 {
+                if player.combat.combo > 0 {
                     let combo_number = Text::new(TextFragment {
-                        text: format!("{}", player.combo()),
+                        text: format!("{}", player.combat.combo),
                         font: None,
                         scale: Some(PxScale::from(20.0)),
                         color: Some(GgezColor::new(1.0, 1.0, 1.0, 1.0)),
                     });
                     let draw_param_number = self.drawparam_constructor(
-                        player.position()[0] + PLAYER_SIZE + 5.0,
-                        player.position()[1] - 10.0,
+                        Vec2::new(
+                            player.physics.pos.x + PLAYER_SIZE + 5.0,
+                            player.physics.pos.y - 10.0,
+                        ),
                     );
                     game_canvas.draw(&combo_number, draw_param_number);
                 }
 
-                self.draw_attacks(game_canvas, player.position(), player.attacks());
+                self.draw_attacks(game_canvas, player.physics.pos, &player.combat.attacks);
 
-                if player.parrying() {
-                    self.draw_parry(game_canvas, player.position())
+                if player.status.parrying() {
+                    self.draw_parry(game_canvas, player.physics.pos)
                 }
             }
         }
@@ -538,7 +532,7 @@ impl RenderState {
                     text: format!(
                         "{}: {}",
                         player.name(),
-                        player.lives(),
+                        player.combat.lives,
                     ),
                     font: None,
                     scale: Some(PxScale::from(36.0)),

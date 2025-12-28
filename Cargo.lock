@@ -2001,6 +2001,7 @@ dependencies = [
  "anyhow",
  "bincode",
  "foundation",
+ "glam 0.30.9",
  "serde",
  "simulation",
  "tokio",
@@ -2360,6 +2361,7 @@ version = "0.1.0"
 dependencies = [
  "foundation",
  "ggez",
+ "glam 0.30.9",
  "serde",
 ]
 

@@ -7,4 +7,5 @@ edition = "2024"
 foundation = { path = "../foundation" }
 # WARNING: SHOULD NOT DEPEND ON GGEZ; ONLY TEMPORARY FOR INPUT HANDELING
 ggez = "0.9.3"
+glam = "0.30.9"
 serde = { version = "1.0.228", features = ["derive"] }
