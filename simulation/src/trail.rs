@@ -1,9 +1,4 @@
-use crate::{
-    constants::{
-        PLAYER_SIZE,
-        TRAIL_OPACITY,
-    },
-};
+use crate::constants::TRAIL_OPACITY;
 use foundation::color::Color;
 use foundation::rect::Rect;
 
@@ -16,9 +11,9 @@ pub struct TrailSquare {
 
 impl TrailSquare {
     #[must_use]
-    pub fn new(pos: [f32; 2], color: Color) -> TrailSquare {
+    pub fn new(rect: Rect, color: Color) -> TrailSquare {
         TrailSquare {
-            rect: Rect::new(pos[0], pos[1], PLAYER_SIZE, PLAYER_SIZE),
+            rect,
             color: Color::new(color.r, color.g, color.b, TRAIL_OPACITY),
             lifetime: 0.15,
         }

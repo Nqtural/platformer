@@ -21,8 +21,6 @@ pub struct PlayerPhysics {
     pub vel: Vec2,
     pub facing: Vec2,
     pub team_idx: usize,
-    pub double_jumps: u8,
-    pub has_jumped: bool,
 }
 
 impl PlayerPhysics {
@@ -33,8 +31,6 @@ impl PlayerPhysics {
             vel: Vec2::new(0.0, 0.0),
             facing: get_facing_from_team(team_idx),
             team_idx,
-            double_jumps: 2,
-            has_jumped: false,
         }
     }
 
@@ -133,6 +129,7 @@ impl PlayerPhysics {
         &mut self,
         map: &Rect,
         input: &PlayerInput,
+        double_jumps: &mut u8,
         stunned: bool,
         dt: f32,
     ) {
@@ -157,11 +154,11 @@ impl PlayerPhysics {
                     rect.x = map.x + map.w;
                     on_wall_left = true;
                 }
-                self.double_jumps = 2;
+                *double_jumps = 2;
             } else if rect.y < map.y {
                 rect.y = map.y - rect.h;
                 self.vel.y = 0.0;
-                self.double_jumps = 2;
+                *double_jumps = 2;
             } else {
                 rect.y = map.y + map.h;
                 if self.vel.y < 0.0 {
@@ -174,10 +171,6 @@ impl PlayerPhysics {
         let holding_toward_wall_left = on_wall_left && input.left();
         let holding_wall = holding_toward_wall_right || holding_toward_wall_left;
         let on_platform = self.is_on_platform(map);
-
-        if on_platform {
-            self.double_jumps = 2;
-        }
 
         if holding_wall && !on_platform && !stunned {
             self.vel.y = WALL_SLIDE_SPEED;
@@ -201,22 +194,20 @@ impl PlayerPhysics {
         &mut self,
         map: &Rect,
         input: &PlayerInput,
+        double_jumps: &mut u8,
+        has_jumped: bool,
         dt: f32,
     ) {
         if self.facing.x != 0.0 && self.vel.x.abs() < MAX_SPEED[0] {
             self.vel.x += ACCELERATION * dt * self.facing.x;
         }
 
-        if input.jump() && !self.has_jumped {
-            self.has_jumped = true;
-            if self.is_on_platform(map) || self.double_jumps > 0 {
-                self.vel.y = -500.0;
-                if !self.is_on_platform(map) {
-                    self.double_jumps -= 1;
-                }
+        if input.jump() && !has_jumped
+        && (self.is_on_platform(map) || *double_jumps > 0) {
+            self.vel.y = -500.0;
+            if !self.is_on_platform(map) {
+                *double_jumps -= 1;
             }
-        } else if !input.jump() {
-            self.has_jumped = false;
         }
     }
 
@@ -251,7 +242,6 @@ impl PlayerPhysics {
         self.pos = self.start_pos;
         self.vel = Vec2::new(0.0, 0.0);
         self.facing = get_facing_from_team(self.team_idx);
-        self.double_jumps = 2;
     }
 
     // GETTERS
