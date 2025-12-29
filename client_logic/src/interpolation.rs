@@ -2,7 +2,12 @@ use std::collections::VecDeque;
 use simulation::{
     attack::Attack,
     game_state::GameState,
-    player::Player,
+    Player,
+    PlayerCombat,
+    PlayerCooldowns,
+    PlayerPhysics,
+    PlayerStatus,
+    PlayerVisuals,
     team::Team,
 };
 
@@ -106,35 +111,61 @@ fn interpolate_team(a: &Team, b: &Team, alpha: f32) -> Team {
 
 fn interpolate_player(a: &Player, b: &Player, alpha: f32) -> Player {
     Player {
-        pos: [
-            lerp(a.pos[0], b.pos[0], alpha),
-            lerp(a.pos[1], b.pos[1], alpha),
-        ],
-        vel: a.vel,
+        combat: interpolate_combat(&a.combat, &b.combat, alpha),
+        cooldowns: interpolate_cooldowns(&a.cooldowns, &b.cooldowns, alpha),
+        identity: a.identity.clone(),
+        physics: interpolate_physics(&a.physics, &b.physics, alpha),
+        status: interpolate_status(&a.status, &b.status, alpha),
+        visuals: interpolate_visuals(&a.visuals, &b.visuals, alpha),
+        input: a.input.clone(),
+    }
+}
+
+fn interpolate_combat(a: &PlayerCombat, b: &PlayerCombat, alpha: f32) -> PlayerCombat {
+    PlayerCombat {
         lives: a.lives,
-        name: a.name.clone(),
-        stunned: lerp(a.stunned, b.stunned, alpha),
-        invulnerable_timer: lerp(a.invulnerable_timer, b.invulnerable_timer, alpha),
-        parry: lerp(a.parry, b.parry, alpha),
-        double_jumps: a.double_jumps,
         combo: a.combo,
         combo_timer: lerp(a.combo_timer, b.combo_timer, alpha),
         knockback_multiplier: a.knockback_multiplier,
         attacks: interpolate_attacks(&a.attacks, &b.attacks, alpha),
-        trail_squares: a.trail_squares.clone(),
-        can_slam: a.can_slam,
-        dash_cooldown: lerp(a.dash_cooldown, b.dash_cooldown, alpha),
-        normal_cooldown: lerp(a.normal_cooldown, b.normal_cooldown, alpha),
-        light_cooldown: lerp(a.light_cooldown, b.light_cooldown, alpha),
-        parry_cooldown: lerp(a.parry_cooldown, b.parry_cooldown, alpha),
-        respawn_timer: lerp(a.respawn_timer, b.respawn_timer, alpha),
-        trail_timer: lerp(a.trail_timer, b.trail_timer, alpha),
-        team_idx: a.team_idx,
-        facing: a.facing,
-        input: a.input.clone(),
-        has_jumped: a.has_jumped,
+    }
+}
+
+fn interpolate_cooldowns(a: &PlayerCooldowns, b: &PlayerCooldowns, alpha: f32) -> PlayerCooldowns {
+    PlayerCooldowns {
+        dash: lerp(a.dash, b.dash, alpha),
+        normal: lerp(a.normal, b.normal, alpha),
+        light: lerp(a.light, b.light, alpha),
+        parry: lerp(a.parry, b.parry, alpha),
+    }
+}
+
+fn interpolate_physics(a: &PlayerPhysics, b: &PlayerPhysics, alpha: f32) -> PlayerPhysics {
+    PlayerPhysics {
         start_pos: a.start_pos,
-        color: a.color.clone(),
+        pos: a.pos.lerp(b.pos, alpha),
+        vel: a.vel,
+        facing: a.facing,
+        team_idx: a.team_idx,
+        double_jumps: a.double_jumps,
+        has_jumped: a.has_jumped,
+    }
+}
+
+fn interpolate_status(a: &PlayerStatus, b: &PlayerStatus, alpha: f32) -> PlayerStatus {
+    PlayerStatus {
+        stunned: lerp(a.stunned, b.stunned, alpha),
+        respawn_timer: lerp(a.respawn_timer, b.respawn_timer, alpha),
+        invulnerable_timer: lerp(a.invulnerable_timer, b.invulnerable_timer, alpha),
+        parry: lerp(a.parry, b.parry, alpha),
+        can_slam: a.can_slam,
+    }
+}
+
+fn interpolate_visuals(a: &PlayerVisuals, b: &PlayerVisuals, alpha: f32) -> PlayerVisuals {
+    PlayerVisuals {
+        trail_squares: a.trail_squares.clone(),
+        trail_timer: lerp(a.trail_timer, b.trail_timer, alpha),
     }
 }
 

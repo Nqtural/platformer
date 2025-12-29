@@ -1,4 +1,4 @@
-use crate::player::Player;
+use crate::Player;
 use foundation::rect::Rect;
 
 #[derive(Clone)]
@@ -14,6 +14,10 @@ impl Team {
         }
     }
 
+    pub fn all_players_dead(&self) -> bool {
+        self.players.iter().all(|p| !p.combat.is_alive())
+    }
+
     pub fn update_players(
         &mut self,
         enemy_team: &mut Team,
@@ -27,21 +31,19 @@ impl Team {
 
         for player_idx in 0..self.players.len() {
             let player = &mut self.players[player_idx];
-            if player.lives() == 0 { continue; }
+            if !player.combat.is_alive() { continue; }
 
-            for atk in player.attacks().clone() {
-                let atk_rect = atk.get_rect(player.position());
+            for atk in player.combat.attacks().clone() {
+                let atk_rect = atk.get_rect(player.physics.pos);
 
                 for enemy in &mut enemy_team.players {
-                    if atk_rect.overlaps(&enemy.get_rect()) {
+                    if atk_rect.overlaps(&enemy.physics.get_rect()) {
                         enemy.attack(&atk, player);
                     }
                 }
             }
 
-            player.update(map, enemy_team, dt);
-
-            player.apply_input(map, player_idx, dt);
+            player.update(map, player_idx, enemy_team, dt);
         }
     }
 }

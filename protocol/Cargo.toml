@@ -10,3 +10,4 @@ anyhow = "1.0.100"
 bincode = { version = "2.0.1", features = ["serde"] }
 serde = { version = "1.0.228", features = ["derive"] }
 tokio = { version = "1.48.0", features = ["full"] }
+glam = "0.30.9"

@@ -47,7 +47,6 @@ impl PlayerInput {
             || pressed.contains(&KeyCode::LShift);
     }
 
-    // GETTERS
     #[must_use]
     pub fn jump(&self) -> bool { self.jump }
 

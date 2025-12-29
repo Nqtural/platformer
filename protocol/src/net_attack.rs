@@ -1,3 +1,4 @@
+use glam::Vec2;
 use serde::{
     Serialize,
     Deserialize,
@@ -13,7 +14,7 @@ pub struct NetAttack {
     pub owner_team: usize,
     pub owner_player: usize,
     pub kind: AttackKind,
-    pub facing: [f32; 2],
+    pub facing: Vec2,
     pub frame: usize,
 }
 

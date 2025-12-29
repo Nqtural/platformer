@@ -3,7 +3,7 @@ use serde::{
     Deserialize,
 };
 use foundation::color::Color;
-use simulation::player::Player;
+use simulation::Player;
 use simulation::team::Team;
 
 #[derive(Serialize, Deserialize, Clone)]

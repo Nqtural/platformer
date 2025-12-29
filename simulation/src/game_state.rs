@@ -50,7 +50,7 @@ impl GameState {
         }
 
         for (team_idx, team) in self.teams.iter_mut().enumerate() {
-            if team.players.iter().all(|p| p.is_dead()) {
+            if team.all_players_dead() {
                 self.winner = if team_idx == 0 { 2 } else { 1 };
                 break;
             }
@@ -58,6 +58,6 @@ impl GameState {
     }
 
     pub fn update_input(&mut self, pressed: &HashSet<KeyCode>) {
-        self.teams[self.c_team].players[self.c_player].update_input(pressed);
+        self.teams[self.c_team].players[self.c_player].input.update(pressed);
     }
 }
