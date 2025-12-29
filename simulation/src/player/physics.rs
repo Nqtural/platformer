@@ -12,7 +12,11 @@ use crate::constants::{
     WALL_SLIDE_SPEED,
 };
 use crate::team::Team;
-use super::PlayerInput;
+use super::{
+    PlayerCombat,
+    PlayerInput,
+    PlayerStatus,
+};
 
 #[derive(Clone)]
 pub struct PlayerPhysics {
@@ -38,12 +42,27 @@ impl PlayerPhysics {
         }
     }
 
-    pub fn update_position(
+    pub fn tick(
         &mut self,
+        dt: f32,
+        combat: &PlayerCombat,
+        input: &PlayerInput,
+        status: &PlayerStatus,
         map: &Rect,
         enemy_team: &Team,
-        slamming: bool,
+    ) {
+        self.update_facing(input);
+        self.apply_movement_input(dt, input, map);
+        self.check_platform_collision(dt, input, status, map);
+        self.update_position(dt, combat, map, enemy_team);
+    }
+
+    fn update_position(
+        &mut self,
         dt: f32,
+        combat: &PlayerCombat,
+        map: &Rect,
+        enemy_team: &Team,
     ) {
         let old_pos = self.pos;
 
@@ -61,7 +80,7 @@ impl PlayerPhysics {
         }
 
         // sweep test to prevent downward tunneling through an opponent
-        if slamming {
+        if combat.is_slamming() {
             for opponent in &enemy_team.players {
                 if !opponent.status.invulnerable()
                 && let Some(corrected_y) = self.sweep_down(
@@ -129,12 +148,12 @@ impl PlayerPhysics {
         horizontal_overlap && on_top
     }
 
-    pub fn check_platform_collision(
+    fn check_platform_collision(
         &mut self,
-        map: &Rect,
-        input: &PlayerInput,
-        stunned: bool,
         dt: f32,
+        input: &PlayerInput,
+        status: &PlayerStatus,
+        map: &Rect,
     ) {
         let mut rect = self.get_rect();
         let mut on_wall_right = false;
@@ -179,7 +198,7 @@ impl PlayerPhysics {
             self.double_jumps = 2;
         }
 
-        if holding_wall && !on_platform && !stunned {
+        if holding_wall && !on_platform && !status.stunned() {
             self.vel.y = WALL_SLIDE_SPEED;
         } else {
             self.vel.y += GRAVITY * dt;
@@ -189,7 +208,7 @@ impl PlayerPhysics {
         self.pos.y = rect.y;
     }
 
-    pub fn update_facing(&mut self, input: &PlayerInput) {
+    fn update_facing(&mut self, input: &PlayerInput) {
         self.facing = Vec2::new(0.0, 0.0);
         if input.left() { self.facing.x -= 1.0; }
         if input.right() { self.facing.x += 1.0; }
@@ -197,11 +216,11 @@ impl PlayerPhysics {
         if input.slam() { self.facing.y += 1.0; }
     }
 
-    pub fn apply_movement_input(
+    fn apply_movement_input(
         &mut self,
-        map: &Rect,
-        input: &PlayerInput,
         dt: f32,
+        input: &PlayerInput,
+        map: &Rect,
     ) {
         if self.facing.x != 0.0 && self.vel.x.abs() < MAX_SPEED[0] {
             self.vel.x += ACCELERATION * dt * self.facing.x;
@@ -239,7 +258,7 @@ impl PlayerPhysics {
         self.vel.y = self.vel.y.signum() * -200.0 * multiplier;
     }
 
-    pub fn get_parried_vel(&mut self) {
+    pub fn set_parried_vel(&mut self) {
         self.vel *= 0.5;
     }
 

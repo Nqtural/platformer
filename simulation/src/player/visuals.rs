@@ -20,11 +20,27 @@ impl Default for PlayerVisuals {
 }
 
 impl PlayerVisuals {
-    pub fn update_trail(&mut self, rect: Rect, color: Color, dt: f32) {
-        self.trail_timer += dt;
+    pub fn tick(
+        &mut self,
+        dt: f32,
+        rect: Rect,
+        color: Color,
+        trail_active: bool,
+    ) {
+        self.update_trail(dt);
+        if trail_active {
+            self.spawn_trail_squares(rect, color);
+        }
+    }
+
+    fn update_trail(&mut self, dt: f32) {
         self.trail_squares.iter_mut().for_each(|s| s.update(dt));
         self.trail_squares.retain(|s| s.lifetime > 0.0);
 
+        self.trail_timer += dt;
+    }
+
+    fn spawn_trail_squares(&mut self, rect: Rect, color: Color) {
         if self.trail_timer >= 0.01 {
             self.trail_timer = 0.0;
             self.trail_squares.push(TrailSquare::new(rect, color));
