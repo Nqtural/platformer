@@ -58,6 +58,6 @@ impl GameState {
     }
 
     pub fn update_input(&mut self, pressed: &HashSet<KeyCode>) {
-        self.teams[self.c_team].players[self.c_player].update_input(pressed);
+        self.teams[self.c_team].players[self.c_player].input.update(pressed);
     }
 }

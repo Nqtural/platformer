@@ -7,7 +7,6 @@ pub struct PlayerStatus {
     pub invulnerable_timer: f32,
     pub parry: f32,
     pub can_slam: bool,
-    pub has_jumped: bool,
 }
 
 impl Default for  PlayerStatus {
@@ -18,7 +17,6 @@ impl Default for  PlayerStatus {
             invulnerable_timer: 0.0,
             parry: 0.0,
             can_slam: true,
-            has_jumped: false,
         }
     }
 }
@@ -40,14 +38,6 @@ impl PlayerStatus {
         self.respawn_timer = RESPAWN_TIME;
         self.stunned = RESPAWN_TIME;
         self.invulnerable_timer = RESPAWN_TIME + 0.5;
-    }
-
-    pub fn handle_jump_input(&mut self, jump_input: bool) {
-        if jump_input && !self.has_jumped {
-            self.has_jumped = true;
-        } else if !jump_input {
-            self.has_jumped = false;
-        }
     }
 
     // GETTERS

@@ -464,7 +464,7 @@ impl RenderState {
                 game_canvas.draw(&outline, camera_transform);
 
                 let text = Text::new(TextFragment {
-                    text: player.name(),
+                    text: player.identity.name().to_string(),
                     font: None,
                     scale: Some(PxScale::from(14.0)),
                     color: Some(color_to_ggez(&NAME_COLOR)),
@@ -531,7 +531,7 @@ impl RenderState {
                 let text = Text::new(TextFragment {
                     text: format!(
                         "{}: {}",
-                        player.name(),
+                        player.identity.name(),
                         player.combat.lives,
                     ),
                     font: None,

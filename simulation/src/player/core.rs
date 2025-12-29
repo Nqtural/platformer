@@ -1,5 +1,3 @@
-use ggez::input::keyboard::KeyCode;
-use std::collections::HashSet;
 use crate::{
     attack::{
         Attack,
@@ -29,7 +27,6 @@ pub struct Player {
     pub physics: PlayerPhysics,
     pub status: PlayerStatus,
     pub visuals: PlayerVisuals,
-    pub double_jumps: u8,
     pub input: PlayerInput,
 }
 
@@ -54,7 +51,6 @@ impl Player {
             ),
             status: PlayerStatus::default(),
             visuals: PlayerVisuals::default(),
-            double_jumps: 2,
             input: PlayerInput::new(),
         }
     }
@@ -88,7 +84,6 @@ impl Player {
         self.physics.check_platform_collision(
             map,
             &self.input,
-            &mut self.double_jumps,
             self.status.stunned(),
             dt,
         );
@@ -96,7 +91,6 @@ impl Player {
         if self.physics.is_on_platform(map) {
             self.combat.remove_slams();
             self.status.touch_platform();
-            self.double_jumps = 2;
         }
 
 
@@ -118,11 +112,8 @@ impl Player {
         self.physics.apply_movement_input(
             map,
             &self.input,
-            &mut self.double_jumps,
-            self.status.has_jumped,
             dt,
         );
-        self.status.handle_jump_input(self.input.jump());
 
         if self.input.slam() {
             if self.status.can_slam {
@@ -202,7 +193,6 @@ impl Player {
     }
 
     pub fn lose_life(&mut self) {
-        self.double_jumps = 2;
         self.combat.lose_life();
         self.physics.reset();
         self.status.lose_life();
@@ -294,14 +284,6 @@ impl Player {
         self.combat.combo_timer = 1.0;
     }
 
-    pub fn update_input(&mut self, pressed: &HashSet<KeyCode>) {
-        self.input.update(pressed);
-    }
-
-    pub fn set_input(&mut self, input: PlayerInput) {
-        self.input = input;
-    }
-
     // GETTERS
     #[must_use]
     pub fn get_color(&self) -> Color {
@@ -317,10 +299,4 @@ impl Player {
             self.identity.color().clone()
         }
     }
-
-    #[must_use]
-    pub fn name(&self) -> String { self.identity.name().to_string() }
-
-    #[must_use]
-    pub fn get_input(&self) -> &PlayerInput { &self.input }
 }
