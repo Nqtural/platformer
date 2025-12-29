@@ -36,7 +36,7 @@ zoom = 1.1
 # Sync frame rate to display refresh rate
 # 
 # default: true
-vsync = false
+vsync = true
 
 # Display name above player
 #
@@ -73,7 +73,7 @@ port = "4000"
 
 # Team size
 #
-# Only read when hosting server
+# Only used when hosting server
 #
 # default: 1
 team_size = 1
