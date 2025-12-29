@@ -11,6 +11,7 @@ use crate::utils::{
 pub struct Config {
     player: Player,
     teams: Teams,
+    appearance: Appearance,
     camera: Camera,
     client: ClientConfig,
     server: ServerConfig,
@@ -25,6 +26,13 @@ struct Player {
 struct Teams {
     team_one_color: Color,
     team_two_color: Color,
+}
+
+#[derive(Deserialize)]
+struct Appearance {
+    trail_delay: f32,
+    trail_opacity: f32,
+    trail_lifetime: f32,
 }
 
 #[derive(Deserialize)]
@@ -94,6 +102,15 @@ impl Config {
 
     #[must_use]
     pub fn clientport(&self) -> &str { &self.client.port }
+
+    #[must_use]
+    pub fn trail_delay(&self) -> f32 { self.appearance.trail_delay }
+
+    #[must_use]
+    pub fn trail_opacity(&self) -> f32 { self.appearance.trail_opacity }
+
+    #[must_use]
+    pub fn trail_lifetime(&self) -> f32 { self.appearance.trail_lifetime }
 
     #[must_use]
     pub fn camera_bias(&self) -> f32 { self.camera.bias }

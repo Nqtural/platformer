@@ -24,14 +24,22 @@ pub struct Player {
 
 impl Player {
     #[must_use]
-    pub fn new(start_pos: [f32; 2], name: String, color: Color, team_idx: usize) -> Self {
+    pub fn new(
+        start_pos: [f32; 2],
+        name: String,
+        color: Color,
+        team_idx: usize,
+        trail_delay: f32,
+        trail_opacity: f32,
+        trail_lifetime: f32,
+    ) -> Self {
         Self {
             combat: PlayerCombat::default(),
             cooldowns: PlayerCooldowns::default(),
             identity: PlayerIdentity::new(name, color),
             physics: PlayerPhysics::new(start_pos.into(), team_idx),
             status: PlayerStatus::default(),
-            visuals: PlayerVisuals::default(),
+            visuals: PlayerVisuals::new(trail_delay, trail_opacity, trail_lifetime),
             input: PlayerInput::new(),
         }
     }

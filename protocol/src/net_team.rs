@@ -31,11 +31,24 @@ impl InitTeamData {
 }
 
 #[must_use]
-pub fn from_init(init: InitTeamData) -> Team {
+pub fn from_init(
+    init: InitTeamData,
+    trail_delay: f32,
+    trail_opacity: f32,
+    trail_lifetime: f32,
+) -> Team {
     let mut players = Vec::new();
 
     for name in init.player_names.iter() {
-        players.push(Player::new(init.start_position, name.clone(), init.color.clone(), init.index));
+        players.push(Player::new(
+            init.start_position,
+            name.clone(),
+            init.color.clone(),
+            init.index,
+            trail_delay,
+            trail_opacity,
+            trail_lifetime,
+        ));
     }
 
     Team::new(players)
