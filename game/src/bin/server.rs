@@ -40,7 +40,16 @@ async fn main() -> Result<()> {
     );
 
     // create actual GameState from InitTeamData
-    server.game_state = Some(Arc::new(Mutex::new(net_game_state::new_from_initial(0, 0, init_teams.clone())?)));
+    server.game_state = Some(Arc::new(Mutex::new(
+        net_game_state::new_from_initial(
+            0,
+            0,
+            init_teams.clone(),
+            config.trail_delay(),
+            config.trail_opacity(),
+            config.trail_lifetime(),
+        )?
+    )));
 
     // broadcast to clients
     broadcast(

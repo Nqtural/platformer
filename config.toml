@@ -17,6 +17,24 @@ team_two_color = { r = 1.0, g = 0.0, b = 0.0, a = 1.0 }
 
 
 
+[appearance]
+# How often to spawn trail squares (seconds)
+#
+# default: 0.01
+trail_delay = 0.01
+
+# Start opacity for trail squares
+#
+# default: 0.15
+trail_opacity = 0.15
+
+# Lifetime for trail squares
+#
+# default: 0.15
+trail_lifetime = 0.15
+
+
+
 [camera]
 # How much bias toward the center the camera has
 #

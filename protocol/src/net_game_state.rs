@@ -13,10 +13,18 @@ pub fn new_from_initial(
     c_team: usize,
     c_player: usize,
     init: Vec<net_team::InitTeamData>,
+    trail_delay: f32,
+    trail_opacity: f32,
+    trail_lifetime: f32,
 ) -> Result<GameState> {
     let teams_vec: Vec<Team> = init
         .into_iter()
-        .map(net_team::from_init)
+        .map(|i| net_team::from_init(
+            i,
+            trail_delay,
+            trail_opacity,
+            trail_lifetime,
+        ))
         .collect();
 
     let teams: [Team; 2] = teams_vec
