@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use super::PlayerInput;
 use super::{
     PlayerCombat, PlayerCooldowns, PlayerIdentity, PlayerPhysics, PlayerStatus, PlayerVisuals,
@@ -12,7 +10,6 @@ use crate::{
 };
 use foundation::color::Color;
 use foundation::rect::Rect;
-use ggez::input::keyboard::KeyCode;
 
 #[derive(Clone)]
 pub struct Player {
@@ -22,7 +19,6 @@ pub struct Player {
     pub physics: PlayerPhysics,
     pub status: PlayerStatus,
     pub visuals: PlayerVisuals,
-    pub double_jumps: u8,
     pub input: PlayerInput,
 }
 
@@ -36,7 +32,6 @@ impl Player {
             physics: PlayerPhysics::new(start_pos.into(), team_idx),
             status: PlayerStatus::default(),
             visuals: PlayerVisuals::default(),
-            double_jumps: 2,
             input: PlayerInput::new(),
         }
     }
@@ -60,18 +55,12 @@ impl Player {
         }
 
         self.physics.update_position(map, enemy_team, slamming, dt);
-        self.physics.check_platform_collision(
-            map,
-            &self.input,
-            &mut self.double_jumps,
-            self.status.stunned(),
-            dt,
-        );
+        self.physics
+            .check_platform_collision(map, &self.input, self.status.stunned(), dt);
 
         if self.physics.is_on_platform(map) {
             self.combat.remove_slams();
             self.status.touch_platform();
-            self.double_jumps = 2;
         }
 
         if !self.status.stunned() && self.combat.is_alive() {
@@ -84,14 +73,7 @@ impl Player {
     }
 
     pub fn apply_input(&mut self, map: &Rect, player_idx: usize, dt: f32) {
-        self.physics.apply_movement_input(
-            map,
-            &self.input,
-            &mut self.double_jumps,
-            self.status.has_jumped,
-            dt,
-        );
-        self.status.handle_jump_input(self.input.jump());
+        self.physics.apply_movement_input(map, &self.input, dt);
 
         if self.input.slam() {
             if self.status.can_slam {
@@ -170,7 +152,6 @@ impl Player {
     }
 
     pub fn lose_life(&mut self) {
-        self.double_jumps = 2;
         self.combat.lose_life();
         self.physics.reset();
         self.status.lose_life();
@@ -269,14 +250,6 @@ impl Player {
 
         self.combat.combo += 1;
         self.combat.combo_timer = 1.0;
-    }
-
-    pub fn update_input(&mut self, pressed: &HashSet<KeyCode>) {
-        self.input.update(pressed);
-    }
-
-    pub fn set_input(&mut self, input: PlayerInput) {
-        self.input = input;
     }
 
     // GETTERS

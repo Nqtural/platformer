@@ -117,7 +117,6 @@ fn interpolate_player(a: &Player, b: &Player, alpha: f32) -> Player {
         physics: interpolate_physics(&a.physics, &b.physics, alpha),
         status: interpolate_status(&a.status, &b.status, alpha),
         visuals: interpolate_visuals(&a.visuals, &b.visuals, alpha),
-        double_jumps: a.double_jumps,
         input: a.input.clone(),
     }
 }
@@ -148,6 +147,8 @@ fn interpolate_physics(a: &PlayerPhysics, b: &PlayerPhysics, alpha: f32) -> Play
         vel: a.vel,
         facing: a.facing,
         team_idx: a.team_idx,
+        double_jumps: a.double_jumps,
+        has_jumped: a.has_jumped,
     }
 }
 
@@ -158,7 +159,6 @@ fn interpolate_status(a: &PlayerStatus, b: &PlayerStatus, alpha: f32) -> PlayerS
         invulnerable_timer: lerp(a.invulnerable_timer, b.invulnerable_timer, alpha),
         parry: lerp(a.parry, b.parry, alpha),
         can_slam: a.can_slam,
-        has_jumped: a.has_jumped,
     }
 }
 

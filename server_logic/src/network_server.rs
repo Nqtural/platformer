@@ -111,7 +111,7 @@ impl NetworkServer {
                                         let mut gs_locked = game_state_arc.lock().await;
                                         if let Some(team) = gs_locked.teams.get_mut(team_id)
                                         && let Some(player) = team.players.get_mut(player_id) {
-                                            player.set_input(input);
+                                            player.input = input;
                                         }
                                     }
                                 }
