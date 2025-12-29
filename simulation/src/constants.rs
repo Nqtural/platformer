@@ -5,7 +5,6 @@ pub const VIRTUAL_HEIGHT: f32 = 1080.0;
 
 pub const MAP_COLOR: Color = Color { r: 0.0, g: 0.0, b: 0.0, a: 1.0 };
 pub const NAME_COLOR: Color = Color { r: 0.6, g: 0.6, b: 0.6, a: 1.0 };
-pub const TRAIL_OPACITY: f32 = 0.15;
 
 pub const PLAYER_SIZE: f32 = 20.0;
 

@@ -37,6 +37,9 @@ impl Player {
         name: String,
         color: Color,
         team_idx: usize,
+        trail_delay: f32,
+        trail_opacity: f32,
+        trail_lifetime: f32,
     ) -> Self {
         Self {
             combat: PlayerCombat::default(),
@@ -50,7 +53,11 @@ impl Player {
                 team_idx
             ),
             status: PlayerStatus::default(),
-            visuals: PlayerVisuals::default(),
+            visuals: PlayerVisuals::new(
+                trail_delay,
+                trail_opacity,
+                trail_lifetime,
+            ),
             input: PlayerInput::new(),
         }
     }

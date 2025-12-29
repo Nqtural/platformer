@@ -178,6 +178,9 @@ fn interpolate_visuals(a: &PlayerVisuals, b: &PlayerVisuals, alpha: f32) -> Play
     PlayerVisuals {
         trail_squares: a.trail_squares.clone(),
         trail_timer: lerp(a.trail_timer, b.trail_timer, alpha),
+        trail_delay: a.trail_delay,
+        trail_opacity: a.trail_opacity,
+        trail_lifetime: a.trail_lifetime,
     }
 }
 

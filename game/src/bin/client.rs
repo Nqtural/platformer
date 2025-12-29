@@ -25,6 +25,9 @@ async fn main() -> Result<()> {
         team_id,
         player_id,
         init_teams,
+        config.trail_delay(),
+        config.trail_opacity(),
+        config.trail_lifetime(),
     )?);
 
     network.spawn_receive_task(Arc::clone(&client));
