@@ -51,10 +51,12 @@ impl PlayerPhysics {
         map: &Rect,
         enemy_team: &Team,
     ) {
+        if status.respawning() { return; }
+
         self.update_facing(input);
         self.apply_movement_input(dt, input, map);
-        self.check_platform_collision(dt, input, status, map);
         self.update_position(dt, combat, map, enemy_team);
+        self.check_platform_collision(dt, input, status, map);
     }
 
     fn update_position(
