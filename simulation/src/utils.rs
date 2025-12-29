@@ -15,3 +15,12 @@ pub fn current_and_enemy<const N: usize>(teams: &mut [Team; N], i: usize) -> (&m
         (&mut right[0], &mut left[0])
     }
 }
+
+pub fn tick_timers(timers: &mut [&mut f32], dt: f32) {
+    for t in timers {
+        if **t > 0.0 {
+            **t -= dt;
+        }
+        **t = (**t).max(0.0);
+    }
+}

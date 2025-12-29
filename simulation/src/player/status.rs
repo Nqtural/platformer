@@ -1,4 +1,5 @@
 use crate::constants::RESPAWN_TIME;
+use crate::utils::tick_timers;
 
 #[derive(Clone)]
 pub struct PlayerStatus {
@@ -22,6 +23,15 @@ impl Default for  PlayerStatus {
 }
 
 impl PlayerStatus {
+    pub fn tick(&mut self, dt: f32) {
+        tick_timers(&mut [
+            &mut self.stunned,
+            &mut self.respawn_timer,
+            &mut self.invulnerable_timer,
+            &mut self.parry,
+        ], dt);
+    }
+
     pub fn touch_platform(&mut self) {
         self.can_slam = false;
     }
