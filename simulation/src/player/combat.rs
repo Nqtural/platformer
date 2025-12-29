@@ -76,7 +76,6 @@ impl PlayerCombat {
         self.attacks.iter().any(|atk| atk.kind() == kind)
     }
 
-    // GETTERS
     #[must_use]
     pub fn is_alive(&self) -> bool { self.lives > 0 }
 

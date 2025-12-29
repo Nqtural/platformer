@@ -275,7 +275,6 @@ impl PlayerPhysics {
         self.double_jumps = 2;
     }
 
-    // GETTERS
     #[must_use]
     pub fn get_rect(&self) -> Rect {
         Rect::new(self.pos.x, self.pos.y, PLAYER_SIZE, PLAYER_SIZE)

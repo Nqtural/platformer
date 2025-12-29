@@ -50,7 +50,6 @@ impl PlayerStatus {
         self.invulnerable_timer = RESPAWN_TIME + 0.5;
     }
 
-    // GETTERS
     #[must_use]
     pub fn respawning(&self) -> bool { self.respawn_timer > 0.0 }
 
