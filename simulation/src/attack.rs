@@ -112,7 +112,6 @@ impl Attack {
             .floor() as usize % self.frame_count;
     }
 
-    // GETTERS
     #[must_use]
     pub fn owner_team(&self) -> usize { self.owner_team }
 

@@ -93,7 +93,6 @@ impl Lobby {
         teams
     }
 
-    // GETTERS
     #[must_use]
     pub fn players_list(&self) -> Vec<(usize, usize, String)> {
         self.players
