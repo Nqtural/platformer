@@ -4,6 +4,8 @@ use foundation::{
 };
 use crate::trail::TrailSquare;
 
+const TRAIL_DELAY: f32 = 0.1;
+
 #[derive(Clone)]
 pub struct PlayerVisuals {
     pub trail_squares: Vec<TrailSquare>,
@@ -37,11 +39,14 @@ impl PlayerVisuals {
         self.trail_squares.iter_mut().for_each(|s| s.update(dt));
         self.trail_squares.retain(|s| s.lifetime > 0.0);
 
-        self.trail_timer += dt;
+        if self.trail_timer < TRAIL_DELAY {
+            // prevent increasing the trail timer indefinitely
+            self.trail_timer += dt;
+        }
     }
 
     fn spawn_trail_squares(&mut self, rect: Rect, color: Color) {
-        if self.trail_timer >= 0.01 {
+        if self.trail_timer >= TRAIL_DELAY {
             self.trail_timer = 0.0;
             self.trail_squares.push(TrailSquare::new(rect, color));
         }
