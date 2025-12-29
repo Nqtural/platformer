@@ -1,3 +1,5 @@
+use crate::utils::tick_timers;
+
 #[derive(Clone)]
 pub struct PlayerCooldowns {
     pub dash: f32,
@@ -18,6 +20,15 @@ impl Default for PlayerCooldowns {
 }
 
 impl PlayerCooldowns {
+    pub fn tick(&mut self, dt: f32) {
+        tick_timers(&mut [
+            &mut self.dash,
+            &mut self.normal,
+            &mut self.light,
+            &mut self.parry,
+        ], dt);
+    }
+
     pub fn activate_dash(&mut self) {
         self.dash = 3.0;
     }

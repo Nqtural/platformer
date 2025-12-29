@@ -1,5 +1,6 @@
 use crate::attack::{Attack, AttackKind};
-use glam::Vec2;
+use crate::utils::tick_timers;
+use super::PlayerPhysics;
 
 #[derive(Clone)]
 pub struct PlayerCombat {
@@ -23,10 +24,21 @@ impl Default for  PlayerCombat {
 }
 
 impl PlayerCombat {
-    pub fn expire_combo_if_needed(&mut self) {
+    pub fn tick(&mut self, dt: f32) {
+        tick_timers(&mut [
+            &mut self.combo_timer,
+        ], dt);
+
+        // reset combo if needed
         if self.combo > 0 && self.combo_timer == 0.0 {
             self.combo = 0;
         }
+
+        // update attacks
+        for attack in &mut self.attacks {
+            attack.update(dt);
+        }
+        self.attacks.retain(|atk| !atk.is_expired());
     }
 
     pub fn lose_life(&mut self) {
@@ -43,23 +55,25 @@ impl PlayerCombat {
         self.attacks.retain(|a| *a.kind() != AttackKind::Dash);
     }
 
-    pub fn update_attacks(&mut self, dt: f32) {
-        for attack in &mut self.attacks {
-            attack.update(dt);
-        }
-        self.attacks.retain(|atk| !atk.is_expired());
+    pub fn increase_combo(&mut self) {
+        self.combo += 1;
+        self.combo_timer = 1.0;
     }
 
     pub fn spawn_attack(
         &mut self,
         kind: AttackKind,
-        team_idx: usize,
+        physics: &PlayerPhysics,
         player_idx: usize,
-        facing: Vec2,
     ) {
         self.attacks.push(
-            Attack::new(kind, team_idx, player_idx, facing)
+            Attack::new(kind, physics.team_idx, player_idx, physics.facing)
         );
+    }
+
+    #[must_use]
+    fn is_doing_attack(&self, kind: &AttackKind) -> bool {
+        self.attacks.iter().any(|atk| atk.kind() == kind)
     }
 
     // GETTERS
@@ -67,8 +81,16 @@ impl PlayerCombat {
     pub fn is_alive(&self) -> bool { self.lives > 0 }
 
     #[must_use]
-    pub fn is_doing_attack(&self, kind: &AttackKind) -> bool {
-        self.attacks.iter().any(|atk| atk.kind() == kind)
+    pub fn is_slamming(&self) -> bool {
+        self.is_doing_attack(&AttackKind::Slam)
+    }
+    #[must_use]
+    pub fn is_dashing(&self) -> bool {
+        self.is_doing_attack(&AttackKind::Dash)
+    }
+
+    pub fn trail_active(&self) -> bool {
+        self.is_slamming() || self.is_dashing()
     }
 
     #[must_use]
