@@ -55,7 +55,6 @@ impl Config {
         Ok(config)
     }
 
-    // GETTERS
     #[must_use]
     pub fn playername(&self) -> &str { &self.player.name }
 

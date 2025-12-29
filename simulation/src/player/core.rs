@@ -231,7 +231,6 @@ impl Player {
         self.combat.increase_combo();
     }
 
-    // GETTERS
     #[must_use]
     pub fn get_color(&self) -> Color {
         if self.status.stunned() {

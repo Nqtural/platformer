@@ -34,7 +34,6 @@ impl Map {
         }
     }
 
-    // GETTERS
     #[must_use]
     pub fn get_rect(&self) -> &Rect { &self.rect }
 

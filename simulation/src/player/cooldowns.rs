@@ -49,7 +49,6 @@ impl PlayerCooldowns {
         self.normal -= 0.25;
     }
 
-    // GETTERS
     #[must_use]
     pub fn can_dash(&self) -> bool { self.dash <= 0.0 }
 
