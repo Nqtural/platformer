@@ -1,6 +1,7 @@
 use ggez::input::keyboard::KeyCode;
 use crate::{
     map::Map,
+    Player,
     team::Team,
     utils::current_and_enemy,
 };
@@ -42,6 +43,22 @@ impl GameState {
                 dt,
             );
         }
+    }
+
+    pub fn stimulate_local(&mut self, mut dt: f32) {
+        let (current, enemy_team) = current_and_enemy(&mut self.teams, self.c_team);
+        let player = &mut current.players[self.c_player];
+        if !player.combat.is_alive() { return; }
+
+        if self.winner > 0 {
+            dt /= 2.0;
+        }
+
+        player.update(self.map.get_rect(), self.c_player, enemy_team, dt);
+    }
+
+    pub fn update_local_player(&mut self, player: &Player) {
+        self.teams[self.c_team].players[self.c_player] = player.clone();
     }
 
     pub fn check_for_win(&mut self) {

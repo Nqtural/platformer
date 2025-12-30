@@ -8,6 +8,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::sync::mpsc::UnboundedSender;
 use client_logic::interpolation::SnapshotHistory;
+use client_logic::ClientState;
 use simulation::constants::{
     VIRTUAL_HEIGHT,
     VIRTUAL_WIDTH,
@@ -18,6 +19,7 @@ pub fn run(
     input_tx: UnboundedSender<HashSet<KeyCode>>,
     snapshot_history: Arc<Mutex<SnapshotHistory>>,
     render_tick_clone: Arc<Mutex<f32>>,
+    client_state: Arc<ClientState>,
     context_name: &str,
     vsync: bool,
 ) -> Result<()> {
@@ -38,6 +40,7 @@ pub fn run(
         &ctx,
         snapshot_history,
         render_tick_clone,
+        client_state,
         input_tx,
     )?;
     ggez::event::run(
