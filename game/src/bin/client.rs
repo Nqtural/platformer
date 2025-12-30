@@ -47,6 +47,7 @@ async fn main() -> Result<()> {
         input_tx,
         history_clone_render,
         render_tick_clone,
+        Arc::clone(&client),
         "client",
         config.vsync(),
     )?;
