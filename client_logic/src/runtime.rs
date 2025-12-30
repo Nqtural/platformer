@@ -27,9 +27,19 @@ impl ClientState {
     pub fn new(
         team_id: usize,
         player_id: usize,
-        teams: Vec<InitTeamData>
+        teams: Vec<InitTeamData>,
+        trail_delay: f32,
+        trail_opacity: f32,
+        trail_lifetime: f32,
     ) -> Result<Self> {
-        let gs = new_from_initial(team_id, player_id, teams)?;
+        let gs = new_from_initial(
+            team_id,
+            player_id,
+            teams,
+            trail_delay,
+            trail_opacity,
+            trail_lifetime,
+        )?;
 
         Ok(Self {
             team_id,
