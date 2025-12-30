@@ -20,7 +20,7 @@ pub struct TimedSnapshot {
 const SNAPSHOT_HISTORY_SIZE: usize = 128;
 
 pub struct SnapshotHistory {
-    buffer: VecDeque<TimedSnapshot>,
+    pub buffer: VecDeque<TimedSnapshot>,
     capacity: usize,
 }
 
@@ -81,6 +81,18 @@ impl SnapshotHistory {
         gs.teams[c_team].players[c_player] = last.teams[c_team].players[c_player].clone();
 
         gs
+    }
+
+    pub fn get_last(&self) -> &GameState {
+        &self.buffer.back().unwrap().snapshot
+    }
+
+    pub fn get_latest_local_player(&self) -> &Player {
+        let last = self.get_last();
+        let c_team = last.c_team;
+        let c_player = last.c_player;
+
+        &last.teams[c_team].players[c_player]
     }
 }
 

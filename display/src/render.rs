@@ -2,6 +2,7 @@ use anyhow::Result;
 use ggez::input::keyboard::KeyCode;
 use std::collections::HashSet;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use tokio::sync::Mutex;
 use crate::utils::{
     color_to_ggez,
@@ -31,6 +32,7 @@ use ggez::{
 };
 use glam::Vec2;
 use client_logic::interpolation::SnapshotHistory;
+use client_logic::ClientState;
 use game_config::read::Config;
 use foundation::color::Color;
 use simulation::{
@@ -39,6 +41,7 @@ use simulation::{
         AttackKind,
     },
     constants::{
+        FIXED_DT,
         NAME_COLOR,
         PLAYER_SIZE,
         VIRTUAL_HEIGHT,
@@ -53,6 +56,9 @@ pub struct Renderer {
     snapshot_history: Arc<Mutex<SnapshotHistory>>,
     render_tick: Arc<Mutex<f32>>,
 
+    client_state: Arc<ClientState>,
+    predicted_snapshot_history: SnapshotHistory,
+
     // INPUT
     input_state: InputState,
     input_tx: tokio::sync::mpsc::UnboundedSender<HashSet<KeyCode>>,
@@ -63,41 +69,72 @@ impl Renderer {
         ctx: &Context,
         snapshot_history: Arc<Mutex<SnapshotHistory>>,
         render_tick: Arc<Mutex<f32>>,
+        client_state: Arc<ClientState>,
         input_tx: tokio::sync::mpsc::UnboundedSender<HashSet<KeyCode>>,
     ) -> Result<Self> {
         Ok(Self {
             render_state: RenderState::new(ctx)?,
             snapshot_history,
             render_tick,
+            client_state,
+            predicted_snapshot_history: SnapshotHistory::default(),
             input_state: InputState::new(),
             input_tx,
         })
     }
 
     pub fn render(&mut self, ctx: &mut Context) -> GameResult {
-        let history = match self.snapshot_history.try_lock() {
-            Ok(history) => history,
-            Err(_) => {
-                return Ok(())
-            }, // skip this frame
+        let state = if let (Ok(history), Ok(render_tick)) =
+        (self.snapshot_history.try_lock(), self.render_tick.try_lock())
+        {
+            let mut gs = history.get_interpolated(*render_tick);
+            gs.update_local_player(
+                self.predicted_snapshot_history.get_latest_local_player()
+            );
+
+            gs
+        } else {
+            self.predicted_snapshot_history.get_last().clone()
         };
 
-        let render_tick = match self.render_tick.try_lock() {
-            Ok(render_tick) => render_tick,
-            Err(_) => {
-                return Ok(())
-            }, // skip this frame
-        };
-
-        self.render_state.render(ctx, &history.get_interpolated(*render_tick))?;
+        self.render_state.render(ctx, &state)?;
 
         Ok(())
     }
 }
 
 impl EventHandler for Renderer {
-    fn update(&mut self, _ctx: &mut Context) -> GameResult {
-        // render does not handle updates
+    fn update(&mut self, ctx: &mut Context) -> GameResult {
+        let dt = ctx.time.delta().as_secs_f32();
+
+        let mut core = match self.client_state.core.try_lock() {
+            Ok(core) => core,
+            Err(_) => return Ok(()),
+        };
+
+        let mut tick_accumulator = match self.client_state.tick_accumulator.try_lock() {
+            Ok(tick_accumulator) => tick_accumulator,
+            Err(_) => return Ok(()),
+        };
+
+        *tick_accumulator += dt;
+
+        while *tick_accumulator >= FIXED_DT {
+            *tick_accumulator -= FIXED_DT;
+
+            // Increment simulation tick
+            self.client_state.tick.fetch_add(1, Ordering::Relaxed);
+
+            // Apply inputs for this tick
+            core.step(FIXED_DT);
+
+            // Store in predicted buffer
+            self.predicted_snapshot_history.push(
+                self.client_state.tick.load(Ordering::SeqCst),
+                core.game_state().clone()
+            );
+        }
+
         Ok(())
     }
 

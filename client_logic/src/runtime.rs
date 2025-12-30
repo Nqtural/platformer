@@ -20,6 +20,7 @@ pub struct ClientState {
     pub render_tick: Arc<Mutex<f32>>,
     pub core: Arc<Mutex<SimulationCore>>,
     pub tick: Arc<AtomicU64>,
+    pub tick_accumulator: Mutex<f32>,
 }
 
 impl ClientState {
@@ -39,7 +40,7 @@ impl ClientState {
             render_tick: Arc::new(Mutex::new(0.0)),
             core: Arc::new(Mutex::new(SimulationCore::new(gs))),
             tick: Arc::new(AtomicU64::new(0)),
+            tick_accumulator: Mutex::new(0.0),
         })
     }
 }
-
