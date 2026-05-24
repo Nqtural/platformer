@@ -18,7 +18,7 @@ use tokio::sync::{
 enum ClientView {
     Menu,
     Queue(QueueSession),
-    InGame(GameSession),
+    InGame(Box<GameSession>),
 }
 
 struct QueueSession {
@@ -26,7 +26,7 @@ struct QueueSession {
 }
 
 enum QueueEvent {
-    MatchFound(GameSession),
+    MatchFound(Box<GameSession>),
     Error(Error),
 }
 
@@ -71,7 +71,7 @@ impl App {
         tokio::spawn(async move {
             match App::queue_and_connect(render_state, network, &config).await {
                 Ok(session) => {
-                    let _ = event_tx.send(QueueEvent::MatchFound(session));
+                    let _ = event_tx.send(QueueEvent::MatchFound(Box::new(session)));
                 }
                 Err(err) => {
                     let _ = event_tx.send(QueueEvent::Error(err));
