@@ -9,9 +9,7 @@ pub struct Team {
 impl Team {
     #[must_use]
     pub fn new(players: Vec<Player>) -> Team {
-        Team {
-            players,
-        }
+        Team { players }
     }
 
     pub fn all_players_dead(&self) -> bool {
@@ -31,7 +29,9 @@ impl Team {
 
         for player_idx in 0..self.players.len() {
             let player = &mut self.players[player_idx];
-            if !player.combat.is_alive() { continue; }
+            if !player.combat.is_alive() {
+                continue;
+            }
 
             for atk in player.combat.attacks().clone() {
                 let atk_rect = atk.get_rect(player.physics.pos);
