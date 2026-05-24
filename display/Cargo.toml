@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-client_logic = { path = "../client_logic" }
 foundation = { path = "../foundation" }
 game_config = { path = "../game_config" }
 protocol = { path = "../protocol" }

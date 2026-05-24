@@ -3,6 +3,7 @@ pub mod interpolation;
 mod network_client;
 pub mod render_clock;
 mod runtime;
-
-pub use runtime::ClientState;
+mod session;
 pub use network_client::NetworkClient;
+pub use runtime::ClientState;
+pub use session::GameSession;
