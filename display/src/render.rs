@@ -1,18 +1,13 @@
-use crate::input::InputState;
 use crate::utils::{IntoMint, color_to_ggez, rect_to_ggez};
 use anyhow::Result;
-use client_logic::interpolation::SnapshotHistory;
 use foundation::color::Color;
 use game_config::read::Config;
-use ggez::input::keyboard::KeyCode;
 use ggez::{
     Context, GameResult,
-    event::EventHandler,
     graphics::{
         Canvas, Color as GgezColor, DrawMode, DrawParam, Drawable, GraphicsContext, Image,
         ImageFormat, Mesh, PxScale, Rect as GgezRect, Text, TextFragment,
     },
-    input::keyboard::KeyInput,
 };
 use glam::Vec2;
 use simulation::{
@@ -20,85 +15,8 @@ use simulation::{
     constants::{NAME_COLOR, PLAYER_SIZE, VIRTUAL_HEIGHT, VIRTUAL_WIDTH},
     game_state::GameState,
 };
-use std::collections::HashSet;
-use std::sync::Arc;
-use tokio::sync::Mutex;
 
-pub struct GameView {
-    render_state: RenderState,
-    snapshot_history: Arc<Mutex<SnapshotHistory>>,
-    render_tick: Arc<Mutex<f32>>,
-
-    // INPUT
-    input_state: InputState,
-    input_tx: tokio::sync::mpsc::UnboundedSender<HashSet<KeyCode>>,
-}
-
-impl GameView {
-    pub fn new(
-        ctx: &Context,
-        snapshot_history: Arc<Mutex<SnapshotHistory>>,
-        render_tick: Arc<Mutex<f32>>,
-        input_tx: tokio::sync::mpsc::UnboundedSender<HashSet<KeyCode>>,
-    ) -> Result<Self> {
-        Ok(Self {
-            render_state: RenderState::new(ctx)?,
-            snapshot_history,
-            render_tick,
-            input_state: InputState::new(),
-            input_tx,
-        })
-    }
-
-    pub fn render(&mut self, ctx: &mut Context) -> GameResult {
-        let history = match self.snapshot_history.try_lock() {
-            Ok(history) => history,
-            Err(_) => return Ok(()), // skip this frame
-        };
-
-        let render_tick = match self.render_tick.try_lock() {
-            Ok(render_tick) => render_tick,
-            Err(_) => return Ok(()), // skip this frame
-        };
-
-        self.render_state
-            .render(ctx, &history.get_interpolated(*render_tick))?;
-
-        Ok(())
-    }
-}
-
-impl EventHandler for GameView {
-    fn update(&mut self, _ctx: &mut Context) -> GameResult {
-        // render does not handle updates
-        Ok(())
-    }
-
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        self.render(ctx)
-    }
-
-    // INPUT
-    fn key_down_event(&mut self, _ctx: &mut Context, key: KeyInput, _: bool) -> GameResult {
-        if let Some(keycode) = key.keycode {
-            self.input_state.press(keycode);
-            let _ = self.input_tx.send(self.input_state.pressed.clone()); // send to async task
-        }
-
-        Ok(())
-    }
-
-    fn key_up_event(&mut self, _ctx: &mut Context, key: KeyInput) -> GameResult {
-        if let Some(keycode) = key.keycode {
-            self.input_state.release(keycode);
-            let _ = self.input_tx.send(self.input_state.pressed.clone()); // send to async task
-        }
-
-        Ok(())
-    }
-}
-
-struct RenderState {
+pub struct RenderState {
     team_one_color: Color,
     team_two_color: Color,
     player_name_above: bool,
@@ -111,8 +29,7 @@ struct RenderState {
 }
 
 impl RenderState {
-    pub fn new(ctx: &Context) -> Result<Self> {
-        let config = Config::get().expect("Unable to get config file");
+    pub fn new(ctx: &Context, config: &Config) -> Result<Self> {
         let bg_img = Image::from_bytes(&ctx.gfx, &config.background_image()?)?;
         let attack_img = Image::from_bytes(&ctx.gfx, &config.attack_image()?)?;
         let parry_img = Image::from_bytes(&ctx.gfx, &config.parry_image()?)?;

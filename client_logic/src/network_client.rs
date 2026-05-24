@@ -14,6 +14,7 @@ use std::{
 };
 use tokio::net::UdpSocket;
 
+#[derive(Clone)]
 pub struct NetworkClient {
     socket: Arc<UdpSocket>,
     server_addr: SocketAddr,
