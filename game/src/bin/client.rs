@@ -1,22 +1,17 @@
 use anyhow::{Error, Result};
-use client_logic::{ClientState, NetworkClient, interpolation::SnapshotHistory};
+use client_logic::{ClientState, GameSession, NetworkClient};
+use display::menus;
 use display::render::RenderState;
 use game_config::read::Config;
-use ggez::glam::Vec2;
-use ggez::graphics::{Canvas, Color as GgezColor, DrawParam, PxScale, Text, TextFragment};
 use ggez::{
     Context, ContextBuilder, GameResult,
     event::EventHandler,
-    graphics::Drawable,
     input::keyboard::{KeyCode, KeyInput},
 };
 use simulation::constants::{VIRTUAL_HEIGHT, VIRTUAL_WIDTH};
 use std::collections::HashSet;
 use std::sync::Arc;
-use tokio::sync::{
-    Mutex,
-    mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel},
-};
+use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
 
 enum ClientView {
     Menu,
@@ -37,42 +32,6 @@ struct App {
     view: ClientView,
     network: NetworkClient,
     config: Config,
-}
-
-struct GameSession {
-    input_tx: UnboundedSender<HashSet<KeyCode>>,
-    input_state: HashSet<KeyCode>,
-    snapshot_history: Arc<Mutex<SnapshotHistory>>,
-    render_tick: Arc<Mutex<f32>>,
-    render_state: RenderState,
-    post_game: bool,
-    post_game_timer: f32,
-}
-
-fn draw_centered_text(
-    game_canvas: &mut Canvas,
-    ctx: &Context,
-    text: &str,
-    scale: f32,
-    y_offset: f32,
-) -> GameResult {
-    let (w, h) = ctx.gfx.drawable_size();
-    let center = Vec2::new(w / 2.0, h / 2.0);
-
-    let text = Text::new(TextFragment {
-        text: text.to_string(),
-        font: None,
-        scale: Some(PxScale::from(scale)),
-        color: Some(GgezColor::WHITE),
-    });
-
-    let dims = text.dimensions(ctx).unwrap_or_default();
-
-    let pos = Vec2::new(center.x - dims.w / 2.0, center.y - dims.h / 2.0 + y_offset);
-
-    game_canvas.draw(&text, DrawParam::default().dest(pos));
-
-    Ok(())
 }
 
 impl App {
@@ -143,15 +102,12 @@ impl App {
             }
         });
 
-        Ok(GameSession {
+        Ok(GameSession::new(
             input_tx,
-            input_state: HashSet::new(),
-            snapshot_history: Arc::clone(&client.snapshot_history),
-            render_tick: Arc::clone(&client.render_tick),
+            Arc::clone(&client.snapshot_history),
+            Arc::clone(&client.render_tick),
             render_state,
-            post_game: false,
-            post_game_timer: 3.0,
-        })
+        ))
     }
 
     fn update_menu(_app: &mut App, _ctx: &mut Context) -> GameResult<Option<ClientView>> {
@@ -178,46 +134,12 @@ impl App {
     }
 
     fn update_game(ctx: &mut Context, session: &mut GameSession) -> GameResult<Option<ClientView>> {
-        if !session.post_game
-            && let Ok(history) = session.snapshot_history.try_lock()
-            && let Some(gs) = history.latest()
-            && gs.winner != 0
-        {
-            session.post_game = true;
-        }
-
-        if session.post_game {
-            let dt = ctx.time.delta().as_secs_f32();
-            session.post_game_timer -= dt;
-
-            if session.post_game_timer <= 0.0 {
-                return Ok(Some(ClientView::Menu));
-            }
+        let dt = ctx.time.delta().as_secs_f32();
+        if session.has_ended(dt) {
+            return Ok(Some(ClientView::Menu));
         }
 
         Ok(None)
-    }
-
-    fn draw_menu(ctx: &mut Context) -> GameResult {
-        use ggez::graphics::{Canvas, Color as GgezColor};
-
-        let mut canvas = Canvas::from_frame(&ctx.gfx, GgezColor::BLACK);
-
-        draw_centered_text(&mut canvas, ctx, "Main Menu", 64.0, -40.0)?;
-        draw_centered_text(&mut canvas, ctx, "Press R to queue", 28.0, 40.0)?;
-
-        canvas.finish(&mut ctx.gfx)
-    }
-
-    fn draw_queue(ctx: &mut Context, _session: &mut QueueSession) -> GameResult {
-        use ggez::graphics::{Canvas, Color as GgezColor};
-
-        let mut canvas = Canvas::from_frame(&ctx.gfx, GgezColor::BLACK);
-
-        draw_centered_text(&mut canvas, ctx, "Queuing...", 48.0, -20.0)?;
-        draw_centered_text(&mut canvas, ctx, "Press Esc to cancel", 24.0, 40.0)?;
-
-        canvas.finish(&mut ctx.gfx)
     }
 
     fn draw_game(ctx: &mut Context, session: &mut GameSession) -> GameResult {
@@ -256,8 +178,8 @@ impl EventHandler for App {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         match &mut self.view {
-            ClientView::Menu => App::draw_menu(ctx),
-            ClientView::Queue(session) => App::draw_queue(ctx, session),
+            ClientView::Menu => menus::draw_menu(ctx),
+            ClientView::Queue(_) => menus::draw_queue(ctx),
             ClientView::InGame(session) => App::draw_game(ctx, session),
         }
     }
@@ -278,10 +200,7 @@ impl EventHandler for App {
                     KeyCode::Escape => self.view = ClientView::Menu,
                     _ => {}
                 },
-                ClientView::InGame(session) => {
-                    session.input_state.insert(keycode);
-                    let _ = session.input_tx.send(session.input_state.clone());
-                }
+                ClientView::InGame(session) => session.press(keycode),
             }
         }
 
@@ -291,10 +210,7 @@ impl EventHandler for App {
     fn key_up_event(&mut self, _ctx: &mut Context, input: KeyInput) -> GameResult {
         if let Some(keycode) = input.keycode {
             match &mut self.view {
-                ClientView::InGame(session) => {
-                    session.input_state.remove(&keycode);
-                    let _ = session.input_tx.send(session.input_state.clone());
-                }
+                ClientView::InGame(session) => session.release(&keycode),
                 _ => {}
             }
         }
