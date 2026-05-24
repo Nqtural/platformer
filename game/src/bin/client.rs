@@ -2,9 +2,12 @@ use anyhow::{Error, Result};
 use client_logic::{ClientState, NetworkClient, interpolation::SnapshotHistory};
 use display::render::RenderState;
 use game_config::read::Config;
+use ggez::glam::Vec2;
+use ggez::graphics::{Canvas, Color as GgezColor, DrawParam, PxScale, Text, TextFragment};
 use ggez::{
     Context, ContextBuilder, GameResult,
     event::EventHandler,
+    graphics::Drawable,
     input::keyboard::{KeyCode, KeyInput},
 };
 use simulation::constants::{VIRTUAL_HEIGHT, VIRTUAL_WIDTH};
@@ -44,6 +47,32 @@ struct GameSession {
     render_state: RenderState,
     post_game: bool,
     post_game_timer: f32,
+}
+
+fn draw_centered_text(
+    game_canvas: &mut Canvas,
+    ctx: &Context,
+    text: &str,
+    scale: f32,
+    y_offset: f32,
+) -> GameResult {
+    let (w, h) = ctx.gfx.drawable_size();
+    let center = Vec2::new(w / 2.0, h / 2.0);
+
+    let text = Text::new(TextFragment {
+        text: text.to_string(),
+        font: None,
+        scale: Some(PxScale::from(scale)),
+        color: Some(GgezColor::WHITE),
+    });
+
+    let dims = text.dimensions(ctx).unwrap_or_default();
+
+    let pos = Vec2::new(center.x - dims.w / 2.0, center.y - dims.h / 2.0 + y_offset);
+
+    game_canvas.draw(&text, DrawParam::default().dest(pos));
+
+    Ok(())
 }
 
 impl App {
@@ -169,12 +198,26 @@ impl App {
         Ok(None)
     }
 
-    fn draw_menu(_ctx: &mut Context) -> GameResult {
-        Ok(())
+    fn draw_menu(ctx: &mut Context) -> GameResult {
+        use ggez::graphics::{Canvas, Color as GgezColor};
+
+        let mut canvas = Canvas::from_frame(&ctx.gfx, GgezColor::BLACK);
+
+        draw_centered_text(&mut canvas, ctx, "Main Menu", 64.0, -40.0)?;
+        draw_centered_text(&mut canvas, ctx, "Press R to queue", 28.0, 40.0)?;
+
+        canvas.finish(&mut ctx.gfx)
     }
 
-    fn draw_queue(_ctx: &mut Context, _session: &mut QueueSession) -> GameResult {
-        Ok(())
+    fn draw_queue(ctx: &mut Context, _session: &mut QueueSession) -> GameResult {
+        use ggez::graphics::{Canvas, Color as GgezColor};
+
+        let mut canvas = Canvas::from_frame(&ctx.gfx, GgezColor::BLACK);
+
+        draw_centered_text(&mut canvas, ctx, "Queuing...", 48.0, -20.0)?;
+        draw_centered_text(&mut canvas, ctx, "Press Esc to cancel", 24.0, 40.0)?;
+
+        canvas.finish(&mut ctx.gfx)
     }
 
     fn draw_game(ctx: &mut Context, session: &mut GameSession) -> GameResult {
