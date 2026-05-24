@@ -1,7 +1,11 @@
 use anyhow::Result;
 use client_logic::{ClientState, NetworkClient};
 use game_config::read::Config;
-use ggez::{Context, ContextBuilder, GameResult, event::EventHandler, input::keyboard::KeyCode};
+use ggez::{
+    Context, ContextBuilder, GameResult,
+    event::EventHandler,
+    input::keyboard::{KeyCode, KeyInput},
+};
 use simulation::constants::{VIRTUAL_HEIGHT, VIRTUAL_WIDTH};
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -17,7 +21,6 @@ struct App {
     view: ClientView,
     network: NetworkClient,
     config: Config,
-    temp_delay: i32,
 }
 
 struct GameSession {
@@ -37,17 +40,10 @@ impl App {
             )
             .await,
             config,
-            temp_delay: 300,
         }
     }
 
     fn update_menu(app: &mut App, _ctx: &mut Context) -> GameResult<Option<ClientView>> {
-        if dbg!(app.temp_delay) == 0 {
-            app.temp_delay = 300;
-            return Ok(Some(ClientView::Queue));
-        }
-
-        app.temp_delay -= 1;
         Ok(None)
         // let (team_id, player_id, init_teams) =
         //     self.network.handshake(self.config.playername()).await?;
@@ -79,12 +75,6 @@ impl App {
     }
 
     fn update_queue(app: &mut App, _ctx: &mut Context) -> GameResult<Option<ClientView>> {
-        if dbg!(app.temp_delay) == 0 {
-            app.temp_delay = 300;
-            return Ok(Some(ClientView::Menu));
-        }
-
-        app.temp_delay -= 1;
         Ok(None)
     }
 
@@ -136,6 +126,25 @@ impl EventHandler for App {
             ClientView::Queue => App::draw_queue(ctx),
             ClientView::InGame(session) => App::draw_game(ctx, session),
         }
+    }
+
+    fn key_down_event(&mut self, _ctx: &mut Context, input: KeyInput, _repeat: bool) -> GameResult {
+        if let Some(keycode) = input.keycode {
+            match &self.view {
+                ClientView::Menu => match keycode {
+                    KeyCode::R => self.view = ClientView::Queue,
+                    KeyCode::Q => panic!("Exiting..."), // exit hack, TODO
+                    _ => {}
+                },
+                ClientView::Queue => match keycode {
+                    KeyCode::Escape => self.view = ClientView::Menu,
+                    _ => {}
+                },
+                _ => {}
+            }
+        }
+
+        Ok(())
     }
 }
 
