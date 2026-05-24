@@ -82,6 +82,10 @@ impl SnapshotHistory {
 
         Some(gs)
     }
+
+    pub fn latest(&self) -> Option<&GameState> {
+        self.buffer.back().map(|s| &s.snapshot)
+    }
 }
 
 fn lerp(a: f32, b: f32, t: f32) -> f32 {

@@ -27,7 +27,6 @@ struct QueueSession {
 
 enum QueueEvent {
     MatchFound(GameSession),
-    QueueCancelled,
     Error(Error),
 }
 
@@ -38,7 +37,6 @@ struct App {
 }
 
 struct GameSession {
-    client: Arc<ClientState>,
     input_tx: UnboundedSender<HashSet<KeyCode>>,
     input_state: HashSet<KeyCode>,
     snapshot_history: Arc<Mutex<SnapshotHistory>>,
@@ -114,21 +112,16 @@ impl App {
             }
         });
 
-        let snapshot_history = Arc::clone(&client.snapshot_history);
-        let render_tick = Arc::clone(&client.render_tick);
-        let input_state = HashSet::new();
-
         Ok(GameSession {
-            client,
             input_tx,
-            input_state,
-            snapshot_history,
-            render_tick,
+            input_state: HashSet::new(),
+            snapshot_history: Arc::clone(&client.snapshot_history),
+            render_tick: Arc::clone(&client.render_tick),
             render_state,
         })
     }
 
-    fn update_menu(app: &mut App, _ctx: &mut Context) -> GameResult<Option<ClientView>> {
+    fn update_menu(_app: &mut App, _ctx: &mut Context) -> GameResult<Option<ClientView>> {
         Ok(None)
     }
 
@@ -141,11 +134,6 @@ impl App {
                 QueueEvent::MatchFound(game) => {
                     return Ok(Some(ClientView::InGame(game)));
                 }
-
-                QueueEvent::QueueCancelled => {
-                    return Ok(Some(ClientView::Menu));
-                }
-
                 QueueEvent::Error(err) => {
                     eprintln!("{err}");
                     return Ok(Some(ClientView::Menu));
@@ -160,7 +148,10 @@ impl App {
         _ctx: &mut Context,
         session: &mut GameSession,
     ) -> GameResult<Option<ClientView>> {
-        if game_finished(session) {
+        if let Ok(history) = session.snapshot_history.try_lock()
+            && let Some(gs) = history.latest()
+            && gs.winner != 0
+        {
             return Ok(Some(ClientView::Menu));
         }
 
@@ -168,12 +159,10 @@ impl App {
     }
 
     fn draw_menu(_ctx: &mut Context) -> GameResult {
-        dbg!("view: Main Menu");
         Ok(())
     }
 
     fn draw_queue(_ctx: &mut Context, _session: &mut QueueSession) -> GameResult {
-        dbg!("view: Queue");
         Ok(())
     }
 
@@ -258,12 +247,6 @@ impl EventHandler for App {
 
         Ok(())
     }
-}
-
-fn game_finished(session: &GameSession) -> bool {
-    // TODO: check for real, this is not viable:
-    // session.client.core.blocking_lock().game_state().winner != 0
-    false
 }
 
 #[tokio::main]
