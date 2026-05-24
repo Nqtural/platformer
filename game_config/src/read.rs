@@ -1,63 +1,69 @@
-use ggez::{
-    GameError,
-    GameResult,
-};
+use crate::utils::{find_resource_path, load_resource_bytes};
+use anyhow::Result;
+use foundation::color::Color;
 use serde::Deserialize;
 use toml;
-use foundation::color::Color;
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct Config {
     player: Player,
     teams: Teams,
+    appearance: Appearance,
     camera: Camera,
     client: ClientConfig,
     server: ServerConfig,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 struct Player {
     name: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 struct Teams {
     team_one_color: Color,
     team_two_color: Color,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
+struct Appearance {
+    trail_delay: f32,
+    trail_opacity: f32,
+    trail_lifetime: f32,
+}
+
+#[derive(Clone, Deserialize)]
 struct Camera {
     bias: f32,
     zoom: f32,
+    vsync: bool,
+    player_name_above: bool,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 struct ClientConfig {
     ip: String,
     port: String,
-    practice_mode: bool,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 struct ServerConfig {
     ip: String,
     port: String,
-    render_server: bool,
+    team_size: usize,
 }
 
 impl Config {
-    pub fn get() -> GameResult<Self> {
-        let toml_str = std::fs::read_to_string("config.toml")
-            .map_err(|e| GameError::ResourceLoadError(e.to_string()))?;
-        let config: Config = toml::from_str(&toml_str)
-            .map_err(|e| GameError::ConfigError(e.to_string()))?;
+    pub fn get() -> Result<Self> {
+        let toml_str = std::fs::read_to_string(find_resource_path("config.toml")?)?;
+        let config: Config = toml::from_str(&toml_str)?;
         Ok(config)
     }
 
-    // GETTERS
     #[must_use]
-    pub fn playername(&self) -> &str { &self.player.name }
+    pub fn playername(&self) -> &str {
+        &self.player.name
+    }
 
     #[must_use]
     pub fn team_one_color(&self) -> Color {
@@ -69,27 +75,75 @@ impl Config {
         self.teams.team_two_color.clone()
     }
 
-    #[must_use]
-    pub fn serverip(&self) -> &str { &self.server.ip }
+    pub fn background_image(&self) -> Result<Vec<u8>> {
+        load_resource_bytes("assets/background.png")
+    }
+
+    pub fn attack_image(&self) -> Result<Vec<u8>> {
+        load_resource_bytes("assets/normal.png")
+    }
+
+    pub fn parry_image(&self) -> Result<Vec<u8>> {
+        load_resource_bytes("assets/parry.png")
+    }
 
     #[must_use]
-    pub fn serverport(&self) -> &str { &self.server.port }
+    pub fn serverip(&self) -> &str {
+        &self.server.ip
+    }
 
     #[must_use]
-    pub fn render_server(&self) -> bool { self.server.render_server }
+    pub fn serverport(&self) -> &str {
+        &self.server.port
+    }
 
     #[must_use]
-    pub fn clientip(&self) -> &str { &self.client.ip }
+    pub fn team_size(&self) -> usize {
+        self.server.team_size
+    }
 
     #[must_use]
-    pub fn clientport(&self) -> &str { &self.client.port }
+    pub fn clientip(&self) -> &str {
+        &self.client.ip
+    }
 
     #[must_use]
-    pub fn practice_mode(&self) -> bool { self.client.practice_mode }
+    pub fn clientport(&self) -> &str {
+        &self.client.port
+    }
 
     #[must_use]
-    pub fn camera_bias(&self) -> f32 { self.camera.bias }
+    pub fn trail_delay(&self) -> f32 {
+        self.appearance.trail_delay
+    }
 
     #[must_use]
-    pub fn camera_zoom(&self) -> f32 { self.camera.zoom }
+    pub fn trail_opacity(&self) -> f32 {
+        self.appearance.trail_opacity
+    }
+
+    #[must_use]
+    pub fn trail_lifetime(&self) -> f32 {
+        self.appearance.trail_lifetime
+    }
+
+    #[must_use]
+    pub fn camera_bias(&self) -> f32 {
+        self.camera.bias
+    }
+
+    #[must_use]
+    pub fn camera_zoom(&self) -> f32 {
+        self.camera.zoom
+    }
+
+    #[must_use]
+    pub fn vsync(&self) -> bool {
+        self.camera.vsync
+    }
+
+    #[must_use]
+    pub fn player_name_above(&self) -> bool {
+        self.camera.player_name_above
+    }
 }

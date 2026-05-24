@@ -1,3 +1,4 @@
+use glam::Vec2;
 use serde::{
     Deserialize,
     Serialize,
@@ -70,7 +71,7 @@ pub struct Attack {
     pub timer: f32,
     pub owner_team: usize,
     pub owner_player: usize,
-    pub facing: [f32; 2],
+    pub facing: Vec2,
     pub stun: f32,
     pub knockback_increase: f32,
 
@@ -85,7 +86,7 @@ impl Attack {
         kind: AttackKind,
         owner_team: usize,
         owner_player: usize,
-        facing: [f32; 2]
+        facing: Vec2,
     ) -> Attack {
         let properties = kind.properties();
         Attack {
@@ -111,7 +112,6 @@ impl Attack {
             .floor() as usize % self.frame_count;
     }
 
-    // GETTERS
     #[must_use]
     pub fn owner_team(&self) -> usize { self.owner_team }
 
@@ -122,7 +122,7 @@ impl Attack {
     pub fn kind(&self) -> &AttackKind { &self.kind }
 
     #[must_use]
-    pub fn facing(&self) -> [f32; 2] { self.facing }
+    pub fn facing(&self) -> Vec2 { self.facing }
 
     #[must_use]
     pub fn stun(&self) -> f32 { self.stun }
@@ -134,7 +134,7 @@ impl Attack {
     pub fn is_expired(&self) -> bool { self.timer >= self.duration }
 
     #[must_use]
-    pub fn get_rect(&self, player_pos: [f32; 2]) -> Rect {
+    pub fn get_rect(&self, player_pos: Vec2) -> Rect {
         Rect::new(
             self.x(player_pos),
             self.y(player_pos),
@@ -144,13 +144,13 @@ impl Attack {
     }
 
     #[must_use]
-    pub fn x(&self, player_pos: [f32; 2]) -> f32 {
-        player_pos[0] - self.offset + (self.offset * self.facing[0])
+    pub fn x(&self, player_pos: Vec2) -> f32 {
+        player_pos.x - self.offset + (self.offset * self.facing.x)
     }
 
     #[must_use]
-    pub fn y(&self, player_pos: [f32; 2]) -> f32 {
-        player_pos[1] - self.offset + (self.offset * self.facing[1])
+    pub fn y(&self, player_pos: Vec2) -> f32 {
+        player_pos.y - self.offset + (self.offset * self.facing.y)
     }
 
     #[must_use]

@@ -1,27 +1,23 @@
-use ggez::{GameError, GameResult};
-use simulation::{
-    game_state::GameState,
-    team::Team,
-};
-use crate::{
-    net_player,
-    net_server::NetSnapshot,
-    net_team,
-};
+use crate::{net_player, net_server::NetSnapshot, net_team};
+use anyhow::{Result, anyhow};
+use simulation::{game_state::GameState, team::Team};
 
 pub fn new_from_initial(
     c_team: usize,
     c_player: usize,
     init: Vec<net_team::InitTeamData>,
-) -> GameResult<GameState> {
-
-    // convert init teams to runtime Teams
-    let teams: [Team; 2] = init
+    trail_delay: f32,
+    trail_opacity: f32,
+    trail_lifetime: f32,
+) -> Result<GameState> {
+    let teams_vec: Vec<Team> = init
         .into_iter()
-        .map(net_team::from_init)
-        .collect::<Vec<_>>()
+        .map(|i| net_team::from_init(i, trail_delay, trail_opacity, trail_lifetime))
+        .collect();
+
+    let teams: [Team; 2] = teams_vec
         .try_into()
-        .map_err(|_| GameError::ResourceLoadError("Exactly 2 teams required".to_string()))?;
+        .map_err(|v: Vec<Team>| anyhow!("Expected exactly 2 teams, got {}", v.len()))?;
 
     Ok(GameState::new(c_team, c_player, teams))
 }
@@ -31,20 +27,26 @@ pub fn to_net(gs: &GameState) -> NetSnapshot {
     NetSnapshot {
         tick: 0,
         winner: gs.winner,
-        players: gs.teams.iter().flat_map(|team| {
-            team.players.iter().enumerate().map(move |(player_idx, player)| {
-                net_player::to_net(player, player_idx)
+        players: gs
+            .teams
+            .iter()
+            .flat_map(|team| {
+                team.players
+                    .iter()
+                    .enumerate()
+                    .map(move |(player_idx, player)| net_player::to_net(player, player_idx))
             })
-        }).collect(),
+            .collect(),
     }
 }
 
-pub fn apply_snapshot(gs: &mut GameState, snapshot: NetSnapshot) {
+pub fn apply_snapshot(gs: &mut GameState, snapshot: &NetSnapshot) {
     gs.winner = snapshot.winner;
 
-    for net_player in snapshot.players {
+    for net_player in &snapshot.players {
         if let Some(team) = gs.teams.get_mut(net_player.team_idx)
-        && let Some(player) = team.players.get_mut(net_player.player_idx) {
+            && let Some(player) = team.players.get_mut(net_player.player_idx)
+        {
             net_player::from_net(player, net_player);
         }
     }

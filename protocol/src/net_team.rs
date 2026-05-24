@@ -3,9 +3,8 @@ use serde::{
     Deserialize,
 };
 use foundation::color::Color;
-use simulation::player::Player;
+use simulation::Player;
 use simulation::team::Team;
-use crate::constants::TEAM_SIZE;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct InitTeamData {
@@ -16,10 +15,15 @@ pub struct InitTeamData {
 }
 
 impl InitTeamData {
-    pub fn new(color: Color, start_position: [f32; 2], index: usize) -> Self {
+    pub fn new(
+        color: Color,
+        start_position: [f32; 2],
+        index: usize,
+        team_size: usize
+    ) -> Self {
         Self {
             color,
-            player_names: vec![String::new(); TEAM_SIZE],
+            player_names: vec![String::new(); team_size],
             start_position,
             index,
         }
@@ -27,11 +31,24 @@ impl InitTeamData {
 }
 
 #[must_use]
-pub fn from_init(init: InitTeamData) -> Team {
+pub fn from_init(
+    init: InitTeamData,
+    trail_delay: f32,
+    trail_opacity: f32,
+    trail_lifetime: f32,
+) -> Team {
     let mut players = Vec::new();
 
     for name in init.player_names.iter() {
-        players.push(Player::new(init.start_position, name.clone(), init.color.clone(), init.index));
+        players.push(Player::new(
+            init.start_position,
+            name.clone(),
+            init.color.clone(),
+            init.index,
+            trail_delay,
+            trail_opacity,
+            trail_lifetime,
+        ));
     }
 
     Team::new(players)

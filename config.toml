@@ -17,6 +17,24 @@ team_two_color = { r = 1.0, g = 0.0, b = 0.0, a = 1.0 }
 
 
 
+[appearance]
+# How often to spawn trail squares (seconds)
+#
+# default: 0.01
+trail_delay = 0.01
+
+# Start opacity for trail squares
+#
+# default: 0.15
+trail_opacity = 0.15
+
+# Lifetime for trail squares
+#
+# default: 0.15
+trail_lifetime = 0.15
+
+
+
 [camera]
 # How much bias toward the center the camera has
 #
@@ -33,6 +51,17 @@ bias = 0.7
 # default: 1.1
 zoom = 1.1
 
+# Sync frame rate to display refresh rate
+# 
+# default: true
+vsync = true
+
+# Display name above player
+#
+# default: false
+player_name_above = false
+
+
 
 [client]
 # IP address to host client on (should usually not be changed)
@@ -47,11 +76,6 @@ ip = "0.0.0.0"
 # default: "0"
 port = "0"
 
-# Join a game with a dummy player to practice on
-#
-# default: false
-practice_mode = false
-
 
 
 [server]
@@ -65,7 +89,9 @@ ip = "0.0.0.0"
 # default: "4000"
 port = "4000"
 
-# Render game on server
+# Team size
 #
-# default: false
-render_server = false
+# Only used when hosting server
+#
+# default: 1
+team_size = 1

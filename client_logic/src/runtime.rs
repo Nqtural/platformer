@@ -1,0 +1,54 @@
+use anyhow::Result;
+use ggez::input::keyboard::KeyCode;
+use std::collections::HashSet;
+use std::sync::Arc;
+use std::sync::atomic::AtomicU64;
+use tokio::sync::Mutex;
+
+use crate::interpolation::SnapshotHistory;
+use crate::render_clock::RenderClock;
+use protocol::net_game_state::new_from_initial;
+use protocol::net_team::InitTeamData;
+use simulation::simulation::SimulationCore;
+
+pub struct ClientState {
+    pub team_id: usize,
+    pub player_id: usize,
+    pub current_input: Arc<Mutex<HashSet<KeyCode>>>,
+    pub snapshot_history: Arc<Mutex<SnapshotHistory>>,
+    pub render_clock: Arc<Mutex<RenderClock>>,
+    pub render_tick: Arc<Mutex<f32>>,
+    pub core: Arc<Mutex<SimulationCore>>,
+    pub tick: Arc<AtomicU64>,
+}
+
+impl ClientState {
+    pub fn new(
+        team_id: usize,
+        player_id: usize,
+        teams: Vec<InitTeamData>,
+        trail_delay: f32,
+        trail_opacity: f32,
+        trail_lifetime: f32,
+    ) -> Result<Self> {
+        let gs = new_from_initial(
+            team_id,
+            player_id,
+            teams,
+            trail_delay,
+            trail_opacity,
+            trail_lifetime,
+        )?;
+
+        Ok(Self {
+            team_id,
+            player_id,
+            current_input: Arc::new(Mutex::new(HashSet::new())),
+            snapshot_history: Arc::new(Mutex::new(SnapshotHistory::default())),
+            render_clock: Arc::new(Mutex::new(RenderClock::default())),
+            render_tick: Arc::new(Mutex::new(0.0)),
+            core: Arc::new(Mutex::new(SimulationCore::new(gs))),
+            tick: Arc::new(AtomicU64::new(0)),
+        })
+    }
+}
