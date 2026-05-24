@@ -1,15 +1,15 @@
 use anyhow::Result;
+use ggez::input::keyboard::KeyCode;
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 use tokio::sync::Mutex;
-use ggez::input::keyboard::KeyCode;
 
-use protocol::net_team::InitTeamData;
-use protocol::net_game_state::new_from_initial;
-use simulation::simulation::SimulationCore;
 use crate::interpolation::SnapshotHistory;
 use crate::render_clock::RenderClock;
+use protocol::net_game_state::new_from_initial;
+use protocol::net_team::InitTeamData;
+use simulation::simulation::SimulationCore;
 
 pub struct ClientState {
     pub team_id: usize,
@@ -52,4 +52,3 @@ impl ClientState {
         })
     }
 }
-

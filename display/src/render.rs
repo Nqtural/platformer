@@ -1,140 +1,22 @@
+use crate::utils::{IntoMint, color_to_ggez, rect_to_ggez};
 use anyhow::Result;
-use ggez::input::keyboard::KeyCode;
-use std::collections::HashSet;
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use crate::utils::{
-    color_to_ggez,
-    IntoMint,
-    rect_to_ggez,
-};
+use foundation::color::Color;
+use game_config::read::Config;
 use ggez::{
-    Context,
-    event::EventHandler,
-    GameResult,
+    Context, GameResult,
     graphics::{
-        Canvas,
-        Color as GgezColor,
-        GraphicsContext,
-            Drawable,
-        DrawMode,
-        DrawParam,
-        Image,
-        ImageFormat,
-        Mesh,
-        PxScale,
-        Rect as GgezRect,
-        Text,
-        TextFragment,
+        Canvas, Color as GgezColor, DrawMode, DrawParam, Drawable, GraphicsContext, Image,
+        ImageFormat, Mesh, PxScale, Rect as GgezRect, Text, TextFragment,
     },
-    input::keyboard::KeyInput,
 };
 use glam::Vec2;
-use client_logic::interpolation::SnapshotHistory;
-use game_config::read::Config;
-use foundation::color::Color;
 use simulation::{
-    attack::{
-        Attack,
-        AttackKind,
-    },
-    constants::{
-        NAME_COLOR,
-        PLAYER_SIZE,
-        VIRTUAL_HEIGHT,
-        VIRTUAL_WIDTH,
-    },
+    attack::{Attack, AttackKind},
+    constants::{NAME_COLOR, PLAYER_SIZE, VIRTUAL_HEIGHT, VIRTUAL_WIDTH},
     game_state::GameState,
 };
-use crate::input::InputState;
 
-pub struct Renderer {
-    render_state: RenderState,
-    snapshot_history: Arc<Mutex<SnapshotHistory>>,
-    render_tick: Arc<Mutex<f32>>,
-
-    // INPUT
-    input_state: InputState,
-    input_tx: tokio::sync::mpsc::UnboundedSender<HashSet<KeyCode>>,
-}
-
-impl Renderer {
-    pub fn new(
-        ctx: &Context,
-        snapshot_history: Arc<Mutex<SnapshotHistory>>,
-        render_tick: Arc<Mutex<f32>>,
-        input_tx: tokio::sync::mpsc::UnboundedSender<HashSet<KeyCode>>,
-    ) -> Result<Self> {
-        Ok(Self {
-            render_state: RenderState::new(ctx)?,
-            snapshot_history,
-            render_tick,
-            input_state: InputState::new(),
-            input_tx,
-        })
-    }
-
-    pub fn render(&mut self, ctx: &mut Context) -> GameResult {
-        let history = match self.snapshot_history.try_lock() {
-            Ok(history) => history,
-            Err(_) => {
-                return Ok(())
-            }, // skip this frame
-        };
-
-        let render_tick = match self.render_tick.try_lock() {
-            Ok(render_tick) => render_tick,
-            Err(_) => {
-                return Ok(())
-            }, // skip this frame
-        };
-
-        self.render_state.render(ctx, &history.get_interpolated(*render_tick))?;
-
-        Ok(())
-    }
-}
-
-impl EventHandler for Renderer {
-    fn update(&mut self, _ctx: &mut Context) -> GameResult {
-        // render does not handle updates
-        Ok(())
-    }
-
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        self.render(ctx)
-    }
-
-    // INPUT
-    fn key_down_event(
-        &mut self,
-        _ctx: &mut Context,
-        key: KeyInput,
-        _: bool,
-    ) -> GameResult {
-        if let Some(keycode) = key.keycode {
-            self.input_state.press(keycode);
-            let _ = self.input_tx.send(self.input_state.pressed.clone()); // send to async task
-        }
-
-        Ok(())
-    }
-
-    fn key_up_event(
-        &mut self,
-        _ctx: &mut Context,
-        key: KeyInput,
-    ) -> GameResult {
-        if let Some(keycode) = key.keycode {
-            self.input_state.release(keycode);
-            let _ = self.input_tx.send(self.input_state.pressed.clone()); // send to async task
-        }
-
-        Ok(())
-    }
-}
-
-struct RenderState {
+pub struct RenderState {
     team_one_color: Color,
     team_two_color: Color,
     player_name_above: bool,
@@ -147,8 +29,7 @@ struct RenderState {
 }
 
 impl RenderState {
-    pub fn new(ctx: &Context) -> Result<Self> {
-        let config = Config::get().expect("Unable to get config file");
+    pub fn new(ctx: &Context, config: &Config) -> Result<Self> {
         let bg_img = Image::from_bytes(&ctx.gfx, &config.background_image()?)?;
         let attack_img = Image::from_bytes(&ctx.gfx, &config.attack_image()?)?;
         let parry_img = Image::from_bytes(&ctx.gfx, &config.parry_image()?)?;
@@ -166,11 +47,7 @@ impl RenderState {
         })
     }
 
-    pub fn render(
-        &mut self,
-        ctx: &mut Context,
-        gs: &GameState,
-    ) -> GameResult {
+    pub fn render(&mut self, ctx: &mut Context, gs: &GameState) -> GameResult {
         self.update_camera(gs);
 
         let target_image = Image::new_canvas_image(
@@ -186,25 +63,16 @@ impl RenderState {
             target_image.clone(),
             GgezColor::new(0.1, 0.1, 0.15, 1.0),
         );
-        game_canvas.set_screen_coordinates(
-            GgezRect::new(
-                0.0,
-                0.0,
-                VIRTUAL_WIDTH,
-                VIRTUAL_HEIGHT
-            )
-        );
+        game_canvas.set_screen_coordinates(GgezRect::new(0.0, 0.0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT));
 
         // draw background
         if let Some(img) = self.background_image.as_ref() {
             game_canvas.draw(
                 img,
-                DrawParam::default()
-                    .dest([0.0, 0.0])
-                    .scale([
-                        VIRTUAL_WIDTH  / img.width()  as f32,
-                        VIRTUAL_HEIGHT / img.height() as f32,
-                    ]),
+                DrawParam::default().dest([0.0, 0.0]).scale([
+                    VIRTUAL_WIDTH / img.width() as f32,
+                    VIRTUAL_HEIGHT / img.height() as f32,
+                ]),
             );
         }
 
@@ -212,10 +80,7 @@ impl RenderState {
         let virtual_aspect = VIRTUAL_WIDTH / VIRTUAL_HEIGHT;
         let window_aspect = win_w / win_h;
 
-        let screen_center = Vec2::new(
-            VIRTUAL_WIDTH / 2.0,
-            VIRTUAL_HEIGHT / 2.0
-        );
+        let screen_center = Vec2::new(VIRTUAL_WIDTH / 2.0, VIRTUAL_HEIGHT / 2.0);
         let camera_translation = screen_center - self.camera_pos * self.zoom;
 
         let camera_transform = DrawParam::default()
@@ -258,21 +123,22 @@ impl RenderState {
 
         for team in &gs.teams {
             for player in &team.players {
-                if !player.combat.is_alive() { continue; }
+                if !player.combat.is_alive() {
+                    continue;
+                }
                 sum += player.physics.pos + PLAYER_SIZE / 2.0;
                 count += 1;
             }
         }
 
-        if count == 0 { return; }
+        if count == 0 {
+            return;
+        }
 
         let player_center = sum / count as f32;
 
         let map_rect = gs.map.get_rect();
-        let map_center = Vec2::new(
-            map_rect.x + map_rect.w / 2.0,
-            map_rect.y + map_rect.h / 2.0,
-        );
+        let map_center = Vec2::new(map_rect.x + map_rect.w / 2.0, map_rect.y + map_rect.h / 2.0);
 
         let biased_target = player_center.lerp(map_center, self.bias_strength);
 
@@ -280,16 +146,11 @@ impl RenderState {
         self.camera_pos = self.camera_pos.lerp(biased_target, lerp_factor);
     }
 
-
     fn drawparam_constructor(&self, pos: Vec2) -> DrawParam {
         let screen_center = Vec2::new(VIRTUAL_WIDTH / 2.0, VIRTUAL_HEIGHT / 2.0);
 
         DrawParam::default()
-            .dest(
-                screen_center 
-                + pos * self.zoom 
-                - self.camera_pos * self.zoom
-            )
+            .dest(screen_center + pos * self.zoom - self.camera_pos * self.zoom)
             .scale(Vec2::new(self.zoom, self.zoom).to_mint_vec())
     }
 
@@ -311,11 +172,7 @@ impl RenderState {
         Ok(())
     }
 
-    fn draw_parry(
-        &self,
-        game_canvas: &mut Canvas,
-        player_pos: Vec2,
-    ) {
+    fn draw_parry(&self, game_canvas: &mut Canvas, player_pos: Vec2) {
         if let Some(img) = self.parry_image.as_ref() {
             // draw frame
             let draw_param = self.drawparam_constructor(
@@ -326,15 +183,9 @@ impl RenderState {
         }
     }
 
-    fn draw_attacks(
-        &self,
-        game_canvas: &mut Canvas,
-        player_pos: Vec2,
-        attacks: &[Attack],
-    ) {
+    fn draw_attacks(&self, game_canvas: &mut Canvas, player_pos: Vec2, attacks: &[Attack]) {
         for atk in attacks {
-            if *atk.kind() == AttackKind::Dash
-            || *atk.kind() == AttackKind::Slam {
+            if *atk.kind() == AttackKind::Dash || *atk.kind() == AttackKind::Slam {
                 continue;
             }
 
@@ -363,13 +214,11 @@ impl RenderState {
                 );
 
                 // draw frame
-                let draw_param = self.drawparam_constructor(
-                    // add half the width to balance offset
-                    Vec2::new(
-                        rect.x + rect.w * 0.5,
-                        rect.y + rect.h * 0.5,
-                    ),
-                )
+                let draw_param = self
+                    .drawparam_constructor(
+                        // add half the width to balance offset
+                        Vec2::new(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5),
+                    )
                     // offset to be able to rotate around centre
                     .offset([0.5, 0.5])
                     .rotation(rotation)
@@ -428,7 +277,6 @@ impl RenderState {
         Ok(())
     }
 
-
     fn draw_players(
         &self,
         game_canvas: &mut Canvas,
@@ -441,7 +289,9 @@ impl RenderState {
             .scale(Vec2::new(self.zoom, self.zoom).to_mint_vec());
         for (ti, team) in gs.teams.iter().enumerate() {
             for (pi, player) in team.players.iter().enumerate() {
-                if !player.combat.is_alive() { continue; }
+                if !player.combat.is_alive() {
+                    continue;
+                }
 
                 let rect = player.physics.get_rect();
                 let mesh = Mesh::new_rectangle(
@@ -472,16 +322,14 @@ impl RenderState {
 
                 let text_dims = text.dimensions(ctx).unwrap();
 
-                let draw_param = self.drawparam_constructor(
-                    Vec2::new(
-                        player.physics.pos.x + (PLAYER_SIZE / 2.0) - (text_dims.w / 2.0),
-                        if self.player_name_above {
-                            player.physics.pos.y - (text_dims.h * 1.5)
-                        } else {
-                            player.physics.pos.y + PLAYER_SIZE + (text_dims.h / 2.0)
-                        },
-                    ),
-                );
+                let draw_param = self.drawparam_constructor(Vec2::new(
+                    player.physics.pos.x + (PLAYER_SIZE / 2.0) - (text_dims.w / 2.0),
+                    if self.player_name_above {
+                        player.physics.pos.y - (text_dims.h * 1.5)
+                    } else {
+                        player.physics.pos.y + PLAYER_SIZE + (text_dims.h / 2.0)
+                    },
+                ));
                 game_canvas.draw(&text, draw_param);
 
                 if player.combat.combo > 0 {
@@ -491,12 +339,10 @@ impl RenderState {
                         scale: Some(PxScale::from(20.0)),
                         color: Some(GgezColor::new(1.0, 1.0, 1.0, 1.0)),
                     });
-                    let draw_param_number = self.drawparam_constructor(
-                        Vec2::new(
-                            player.physics.pos.x + PLAYER_SIZE + 5.0,
-                            player.physics.pos.y - 10.0,
-                        ),
-                    );
+                    let draw_param_number = self.drawparam_constructor(Vec2::new(
+                        player.physics.pos.x + PLAYER_SIZE + 5.0,
+                        player.physics.pos.y - 10.0,
+                    ));
                     game_canvas.draw(&combo_number, draw_param_number);
                 }
 
@@ -511,12 +357,7 @@ impl RenderState {
         Ok(())
     }
 
-    fn draw_hud(
-        &self,
-        game_canvas: &mut Canvas,
-        ctx: &Context,
-        gs: &GameState,
-    ) {
+    fn draw_hud(&self, game_canvas: &mut Canvas, ctx: &Context, gs: &GameState) {
         const MARGIN: f32 = 40.0;
         const START_X_LEFT: f32 = MARGIN;
         const START_X_RIGHT: f32 = VIRTUAL_WIDTH - MARGIN;
@@ -529,11 +370,7 @@ impl RenderState {
             for (player_idx, player) in team.players.iter().enumerate() {
                 let y = START_Y + player_idx as f32 * LINE_HEIGHT;
                 let text = Text::new(TextFragment {
-                    text: format!(
-                        "{}: {}",
-                        player.identity.name(),
-                        player.combat.lives,
-                    ),
+                    text: format!("{}: {}", player.identity.name(), player.combat.lives,),
                     font: None,
                     scale: Some(PxScale::from(36.0)),
                     ..Default::default()
@@ -564,9 +401,7 @@ impl RenderState {
 
         game_canvas.draw(
             &fps_text,
-            DrawParam::default().dest(
-                Vec2::new(fps_x, fps_y).to_mint_point()
-            )
+            DrawParam::default().dest(Vec2::new(fps_x, fps_y).to_mint_point()),
         );
 
         if gs.winner > 0 {
@@ -574,13 +409,11 @@ impl RenderState {
                 text: format!("TEAM {} WINS!", gs.winner),
                 font: None,
                 scale: Some(PxScale::from(200.0)),
-                color: Some(
-                    if gs.winner == 1 {
-                        color_to_ggez(&self.team_one_color)
-                    } else {
-                        color_to_ggez(&self.team_two_color)
-                    }
-                ),
+                color: Some(if gs.winner == 1 {
+                    color_to_ggez(&self.team_one_color)
+                } else {
+                    color_to_ggez(&self.team_two_color)
+                }),
             });
 
             let winner_dims = winner_text.dimensions(ctx).unwrap();
@@ -589,10 +422,7 @@ impl RenderState {
 
             game_canvas.draw(
                 &winner_text,
-                DrawParam::default().dest(Vec2::new(
-                    winner_x,
-                    winner_y,
-                ).to_mint_point())
+                DrawParam::default().dest(Vec2::new(winner_x, winner_y).to_mint_point()),
             );
         }
     }

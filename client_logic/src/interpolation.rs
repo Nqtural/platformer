@@ -1,15 +1,8 @@
-use std::collections::VecDeque;
 use simulation::{
-    attack::Attack,
-    game_state::GameState,
-    Player,
-    PlayerCombat,
-    PlayerCooldowns,
-    PlayerPhysics,
-    PlayerStatus,
-    PlayerVisuals,
-    team::Team,
+    Player, PlayerCombat, PlayerCooldowns, PlayerPhysics, PlayerStatus, PlayerVisuals,
+    attack::Attack, game_state::GameState, team::Team,
 };
+use std::collections::VecDeque;
 
 #[derive(Clone)]
 pub struct TimedSnapshot {
@@ -38,26 +31,33 @@ impl SnapshotHistory {
         if self.buffer.len() == self.capacity {
             self.buffer.pop_front();
         }
-        self.buffer.push_back(TimedSnapshot { server_tick, snapshot });
+        self.buffer.push_back(TimedSnapshot {
+            server_tick,
+            snapshot,
+        });
     }
 
     pub fn get(&self, server_tick: u64) -> Option<&GameState> {
-        self.buffer.iter()
+        self.buffer
+            .iter()
             .find(|s| s.server_tick == server_tick)
             .map(|s| &s.snapshot)
     }
 
-    pub fn surrounding(&self, tick: f32) -> (&GameState, &GameState, f32) {
+    pub fn surrounding(&self, tick: f32) -> Option<(&GameState, &GameState, f32)> {
         if self.buffer.is_empty() {
-            panic!("no snapshots available");
+            return None;
         }
 
-        let floor = self.buffer.iter()
+        let floor = self
+            .buffer
+            .iter()
             .rev()
-            .find(|s| s.server_tick as f32 <= tick)
-            .unwrap();
+            .find(|s| s.server_tick as f32 <= tick)?;
 
-        let ceil = self.buffer.iter()
+        let ceil = self
+            .buffer
+            .iter()
             .find(|s| s.server_tick as f32 >= tick)
             .unwrap_or(floor);
 
@@ -67,20 +67,24 @@ impl SnapshotHistory {
             (tick - floor.server_tick as f32) / (ceil.server_tick as f32 - floor.server_tick as f32)
         };
 
-        (&floor.snapshot, &ceil.snapshot, alpha)
+        Some((&floor.snapshot, &ceil.snapshot, alpha))
     }
 
-    pub fn get_interpolated(&self, render_tick: f32) -> GameState {
-        let (a, b, alpha) = self.surrounding(render_tick);
+    pub fn get_interpolated(&self, render_tick: f32) -> Option<GameState> {
+        let (a, b, alpha) = self.surrounding(render_tick)?;
         let mut gs = interpolate(a, b, alpha);
 
         // overwrite local player with the latest state
-        let last = &self.buffer.back().unwrap().snapshot;
+        let last = &self.buffer.back()?.snapshot;
         let c_team = last.c_team;
         let c_player = last.c_player;
         gs.teams[c_team].players[c_player] = last.teams[c_team].players[c_player].clone();
 
-        gs
+        Some(gs)
+    }
+
+    pub fn latest(&self) -> Option<&GameState> {
+        self.buffer.back().map(|s| &s.snapshot)
     }
 }
 
@@ -102,9 +106,12 @@ pub fn interpolate(a: &GameState, b: &GameState, alpha: f32) -> GameState {
 }
 
 fn interpolate_team(a: &Team, b: &Team, alpha: f32) -> Team {
-    let players = a.players.iter().zip(&b.players).map(|(pa, pb)| {
-        interpolate_player(pa, pb, alpha)
-    }).collect();
+    let players = a
+        .players
+        .iter()
+        .zip(&b.players)
+        .map(|(pa, pb)| interpolate_player(pa, pb, alpha))
+        .collect();
 
     Team { players }
 }
@@ -173,10 +180,13 @@ fn interpolate_visuals(a: &PlayerVisuals, b: &PlayerVisuals, alpha: f32) -> Play
 }
 
 fn interpolate_attacks(a: &[Attack], b: &[Attack], alpha: f32) -> Vec<Attack> {
-    a.iter().zip(b).map(|(aa, ab)| {
-        Attack {
-            timer: lerp(aa.timer, ab.timer, alpha),
-            ..aa.clone() // everything else copied
-        }
-    }).collect()
+    a.iter()
+        .zip(b)
+        .map(|(aa, ab)| {
+            Attack {
+                timer: lerp(aa.timer, ab.timer, alpha),
+                ..aa.clone() // everything else copied
+            }
+        })
+        .collect()
 }

@@ -1,12 +1,5 @@
-use serde::{
-    Serialize,
-    Deserialize,
-};
-use crate::{
-    lobby::LobbyPlayer,
-    net_player::NetPlayer,
-    net_team::InitTeamData,
-};
+use crate::{lobby::LobbyPlayer, net_player::NetPlayer, net_team::InitTeamData};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct NetSnapshot {

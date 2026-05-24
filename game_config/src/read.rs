@@ -1,13 +1,10 @@
+use crate::utils::{find_resource_path, load_resource_bytes};
 use anyhow::Result;
+use foundation::color::Color;
 use serde::Deserialize;
 use toml;
-use foundation::color::Color;
-use crate::utils::{
-    find_resource_path,
-    load_resource_bytes,
-};
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct Config {
     player: Player,
     teams: Teams,
@@ -17,25 +14,25 @@ pub struct Config {
     server: ServerConfig,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 struct Player {
     name: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 struct Teams {
     team_one_color: Color,
     team_two_color: Color,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 struct Appearance {
     trail_delay: f32,
     trail_opacity: f32,
     trail_lifetime: f32,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 struct Camera {
     bias: f32,
     zoom: f32,
@@ -43,13 +40,13 @@ struct Camera {
     player_name_above: bool,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 struct ClientConfig {
     ip: String,
     port: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 struct ServerConfig {
     ip: String,
     port: String,
@@ -64,7 +61,9 @@ impl Config {
     }
 
     #[must_use]
-    pub fn playername(&self) -> &str { &self.player.name }
+    pub fn playername(&self) -> &str {
+        &self.player.name
+    }
 
     #[must_use]
     pub fn team_one_color(&self) -> Color {
@@ -89,38 +88,62 @@ impl Config {
     }
 
     #[must_use]
-    pub fn serverip(&self) -> &str { &self.server.ip }
+    pub fn serverip(&self) -> &str {
+        &self.server.ip
+    }
 
     #[must_use]
-    pub fn serverport(&self) -> &str { &self.server.port }
+    pub fn serverport(&self) -> &str {
+        &self.server.port
+    }
 
     #[must_use]
-    pub fn team_size(&self) -> usize { self.server.team_size }
+    pub fn team_size(&self) -> usize {
+        self.server.team_size
+    }
 
     #[must_use]
-    pub fn clientip(&self) -> &str { &self.client.ip }
+    pub fn clientip(&self) -> &str {
+        &self.client.ip
+    }
 
     #[must_use]
-    pub fn clientport(&self) -> &str { &self.client.port }
+    pub fn clientport(&self) -> &str {
+        &self.client.port
+    }
 
     #[must_use]
-    pub fn trail_delay(&self) -> f32 { self.appearance.trail_delay }
+    pub fn trail_delay(&self) -> f32 {
+        self.appearance.trail_delay
+    }
 
     #[must_use]
-    pub fn trail_opacity(&self) -> f32 { self.appearance.trail_opacity }
+    pub fn trail_opacity(&self) -> f32 {
+        self.appearance.trail_opacity
+    }
 
     #[must_use]
-    pub fn trail_lifetime(&self) -> f32 { self.appearance.trail_lifetime }
+    pub fn trail_lifetime(&self) -> f32 {
+        self.appearance.trail_lifetime
+    }
 
     #[must_use]
-    pub fn camera_bias(&self) -> f32 { self.camera.bias }
+    pub fn camera_bias(&self) -> f32 {
+        self.camera.bias
+    }
 
     #[must_use]
-    pub fn camera_zoom(&self) -> f32 { self.camera.zoom }
+    pub fn camera_zoom(&self) -> f32 {
+        self.camera.zoom
+    }
 
     #[must_use]
-    pub fn vsync(&self) -> bool { self.camera.vsync }
+    pub fn vsync(&self) -> bool {
+        self.camera.vsync
+    }
 
     #[must_use]
-    pub fn player_name_above(&self) -> bool { self.camera.player_name_above }
+    pub fn player_name_above(&self) -> bool {
+        self.camera.player_name_above
+    }
 }
