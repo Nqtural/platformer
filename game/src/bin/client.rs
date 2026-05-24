@@ -40,6 +40,7 @@ struct App {
 struct GameSession {
     client: Arc<ClientState>,
     input_tx: UnboundedSender<HashSet<KeyCode>>,
+    input_state: HashSet<KeyCode>,
     snapshot_history: Arc<Mutex<SnapshotHistory>>,
     render_tick: Arc<Mutex<f32>>,
     render_state: RenderState,
@@ -115,10 +116,12 @@ impl App {
 
         let snapshot_history = Arc::clone(&client.snapshot_history);
         let render_tick = Arc::clone(&client.render_tick);
+        let input_state = HashSet::new();
 
         Ok(GameSession {
             client,
             input_tx,
+            input_state,
             snapshot_history,
             render_tick,
             render_state,
@@ -218,7 +221,7 @@ impl EventHandler for App {
 
     fn key_down_event(&mut self, ctx: &mut Context, input: KeyInput, _repeat: bool) -> GameResult {
         if let Some(keycode) = input.keycode {
-            match &self.view {
+            match &mut self.view {
                 ClientView::Menu => match keycode {
                     KeyCode::R => {
                         self.view = ClientView::Queue(
@@ -232,6 +235,23 @@ impl EventHandler for App {
                     KeyCode::Escape => self.view = ClientView::Menu,
                     _ => {}
                 },
+                ClientView::InGame(session) => {
+                    session.input_state.insert(keycode);
+                    let _ = session.input_tx.send(session.input_state.clone());
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn key_up_event(&mut self, _ctx: &mut Context, input: KeyInput) -> GameResult {
+        if let Some(keycode) = input.keycode {
+            match &mut self.view {
+                ClientView::InGame(session) => {
+                    session.input_state.remove(&keycode);
+                    let _ = session.input_tx.send(session.input_state.clone());
+                }
                 _ => {}
             }
         }
