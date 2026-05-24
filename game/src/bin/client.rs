@@ -42,6 +42,8 @@ struct GameSession {
     snapshot_history: Arc<Mutex<SnapshotHistory>>,
     render_tick: Arc<Mutex<f32>>,
     render_state: RenderState,
+    post_game: bool,
+    post_game_timer: f32,
 }
 
 impl App {
@@ -118,6 +120,8 @@ impl App {
             snapshot_history: Arc::clone(&client.snapshot_history),
             render_tick: Arc::clone(&client.render_tick),
             render_state,
+            post_game: false,
+            post_game_timer: 3.0,
         })
     }
 
@@ -144,15 +148,22 @@ impl App {
         Ok(None)
     }
 
-    fn update_game(
-        _ctx: &mut Context,
-        session: &mut GameSession,
-    ) -> GameResult<Option<ClientView>> {
-        if let Ok(history) = session.snapshot_history.try_lock()
+    fn update_game(ctx: &mut Context, session: &mut GameSession) -> GameResult<Option<ClientView>> {
+        if !session.post_game
+            && let Ok(history) = session.snapshot_history.try_lock()
             && let Some(gs) = history.latest()
             && gs.winner != 0
         {
-            return Ok(Some(ClientView::Menu));
+            session.post_game = true;
+        }
+
+        if session.post_game {
+            let dt = ctx.time.delta().as_secs_f32();
+            session.post_game_timer -= dt;
+
+            if session.post_game_timer <= 0.0 {
+                return Ok(Some(ClientView::Menu));
+            }
         }
 
         Ok(None)
