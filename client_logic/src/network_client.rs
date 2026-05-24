@@ -1,21 +1,18 @@
+use crate::ClientState;
 use anyhow::Result;
-use bincode::{config, serde::{encode_to_vec, decode_from_slice}};
-use protocol::{
-    net_client::ClientMessage,
-    net_game_state,
-    net_server::ServerMessage,
-    net_team::InitTeamData,
+use bincode::{
+    config,
+    serde::{decode_from_slice, encode_to_vec},
 };
+use protocol::{
+    net_client::ClientMessage, net_game_state, net_server::ServerMessage, net_team::InitTeamData,
+};
+use simulation::PlayerInput;
 use std::{
     net::SocketAddr,
-    sync::{
-        Arc,
-        atomic::Ordering,
-    },
+    sync::{Arc, atomic::Ordering},
 };
 use tokio::net::UdpSocket;
-use simulation::PlayerInput;
-use crate::ClientState;
 
 pub struct NetworkClient {
     socket: Arc<UdpSocket>,
@@ -28,23 +25,34 @@ impl NetworkClient {
         client_ip: &str,
         client_port: &str,
         server_ip: &str,
-        server_port: &str
-    ) -> Result<Self> {
-        let server_addr: SocketAddr = format!("{}:{}", server_ip, server_port).parse()?;
-        let socket = Arc::new(UdpSocket::bind(format!("{}:{}", client_ip, client_port)).await?);
-        socket.connect(server_addr).await?;
+        server_port: &str,
+    ) -> Self {
+        let server_addr: SocketAddr = format!("{server_ip}:{server_port}")
+            .parse()
+            .expect("Fatal: Unable to parse server IP from configuration file");
+        let socket = Arc::new(
+            UdpSocket::bind(format!("{}:{}", client_ip, client_port))
+                .await
+                .expect("Fatal: Unable to create client socket"),
+        );
+        socket
+            .connect(server_addr)
+            .await
+            .expect("Fatal: Unable to connect to server");
 
-        Ok(Self {
+        Self {
             socket,
             server_addr,
             bincode_config: config::standard(),
-        })
+        }
     }
 
     pub async fn handshake(&self, player_name: &str) -> Result<(usize, usize, Vec<InitTeamData>)> {
         // send Hello packet
         let packet = encode_to_vec(
-            &ClientMessage::Hello { name: player_name.to_string() },
+            &ClientMessage::Hello {
+                name: player_name.to_string(),
+            },
             self.bincode_config,
         )?;
         self.socket.send(&packet).await?;
@@ -55,10 +63,14 @@ impl NetworkClient {
 
         let init_teams = loop {
             let (len, _addr) = self.socket.recv_from(&mut buf).await?;
-            let (msg, _): (ServerMessage, usize) = decode_from_slice(&buf[..len], self.bincode_config)?;
+            let (msg, _): (ServerMessage, usize) =
+                decode_from_slice(&buf[..len], self.bincode_config)?;
 
             match msg {
-                ServerMessage::Welcome { team_id: t, player_id: p } => {
+                ServerMessage::Welcome {
+                    team_id: t,
+                    player_id: p,
+                } => {
                     team_id = Some(t);
                     player_id = Some(p);
                 }
@@ -74,10 +86,7 @@ impl NetworkClient {
         Ok((team_id, player_id, init_teams))
     }
 
-    pub fn spawn_receive_task(
-        &self,
-        client: Arc<ClientState>,
-    ) {
+    pub fn spawn_receive_task(&self, client: Arc<ClientState>) {
         let socket = Arc::clone(&self.socket);
         let config = self.bincode_config;
         tokio::spawn(async move {
@@ -86,8 +95,13 @@ impl NetworkClient {
             loop {
                 match socket.recv_from(&mut buf).await {
                     Ok((len, _)) => {
-                        if let Ok((ServerMessage::Snapshot { server_tick, server_state }, _)) =
-                            decode_from_slice::<ServerMessage, _>(&buf[..len], config)
+                        if let Ok((
+                            ServerMessage::Snapshot {
+                                server_tick,
+                                server_state,
+                            },
+                            _,
+                        )) = decode_from_slice::<ServerMessage, _>(&buf[..len], config)
                         {
                             let mut snapshot_history = client.snapshot_history.lock().await;
                             {
@@ -100,7 +114,10 @@ impl NetworkClient {
 
                                 // apply server snapshot
                                 let mut core = client.core.lock().await;
-                                net_game_state::apply_snapshot(core.game_state_mut(), &server_state);
+                                net_game_state::apply_snapshot(
+                                    core.game_state_mut(),
+                                    &server_state,
+                                );
                                 snapshot_history.push(server_tick, core.game_state().clone());
                             }
                         }
@@ -111,15 +128,13 @@ impl NetworkClient {
         });
     }
 
-    pub fn spawn_send_task(
-        &self,
-        client: Arc<ClientState>,
-    ) {
+    pub fn spawn_send_task(&self, client: Arc<ClientState>) {
         let socket = Arc::clone(&self.socket);
         let config = self.bincode_config;
         let server_addr = self.server_addr;
         tokio::spawn(async move {
-            let tick_duration = std::time::Duration::from_millis(1000 / simulation::constants::TICK_RATE as u64);
+            let tick_duration =
+                std::time::Duration::from_millis(1000 / simulation::constants::TICK_RATE as u64);
 
             loop {
                 let start = std::time::Instant::now();
@@ -138,7 +153,9 @@ impl NetworkClient {
                 };
 
                 match encode_to_vec(&msg, config) {
-                    Ok(data) => { let _ = socket.send_to(&data, server_addr).await; }
+                    Ok(data) => {
+                        let _ = socket.send_to(&data, server_addr).await;
+                    }
                     Err(e) => eprintln!("Encoding error: {e}"),
                 }
 

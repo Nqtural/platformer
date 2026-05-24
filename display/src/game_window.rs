@@ -1,18 +1,12 @@
+use crate::render::GameView;
 use anyhow::Result;
-use ggez::{
-    ContextBuilder,
-    input::keyboard::KeyCode,
-};
+use client_logic::interpolation::SnapshotHistory;
+use ggez::{ContextBuilder, input::keyboard::KeyCode};
+use simulation::constants::{VIRTUAL_HEIGHT, VIRTUAL_WIDTH};
 use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::sync::mpsc::UnboundedSender;
-use client_logic::interpolation::SnapshotHistory;
-use simulation::constants::{
-    VIRTUAL_HEIGHT,
-    VIRTUAL_WIDTH,
-};
-use crate::render::Renderer;
 
 pub fn run(
     input_tx: UnboundedSender<HashSet<KeyCode>>,
@@ -25,24 +19,15 @@ pub fn run(
         .window_setup(
             ggez::conf::WindowSetup::default()
                 .vsync(vsync)
-                .title("Game")
+                .title("Game"),
         )
         .window_mode(
             ggez::conf::WindowMode::default()
                 .dimensions(VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
-                .resizable(true)
+                .resizable(true),
         )
         .build()?;
 
-    let renderer = Renderer::new(
-        &ctx,
-        snapshot_history,
-        render_tick_clone,
-        input_tx,
-    )?;
-    ggez::event::run(
-        ctx,
-        event_loop,
-        renderer,
-    )
+    let renderer = GameView::new(&ctx, snapshot_history, render_tick_clone, input_tx)?;
+    ggez::event::run(ctx, event_loop, renderer)
 }
