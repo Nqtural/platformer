@@ -8,6 +8,7 @@ fn draw_centered_text(
     game_canvas: &mut Canvas,
     ctx: &Context,
     text: &str,
+    color: GgezColor,
     scale: f32,
     y_offset: f32,
 ) -> GameResult {
@@ -18,7 +19,7 @@ fn draw_centered_text(
         text: text.to_string(),
         font: None,
         scale: Some(PxScale::from(scale)),
-        color: Some(GgezColor::WHITE),
+        color: Some(color),
     });
 
     let dims = text.dimensions(ctx).unwrap_or_default();
@@ -33,8 +34,15 @@ fn draw_centered_text(
 pub fn draw_menu(ctx: &mut Context) -> GameResult {
     let mut canvas = Canvas::from_frame(&ctx.gfx, GgezColor::BLACK);
 
-    draw_centered_text(&mut canvas, ctx, "Main Menu", 64.0, -40.0)?;
-    draw_centered_text(&mut canvas, ctx, "Press R to queue", 28.0, 40.0)?;
+    draw_centered_text(&mut canvas, ctx, "Main Menu", GgezColor::WHITE, 64.0, -40.0)?;
+    draw_centered_text(
+        &mut canvas,
+        ctx,
+        "Press Space to queue",
+        GgezColor::WHITE,
+        28.0,
+        40.0,
+    )?;
 
     canvas.finish(&mut ctx.gfx)
 }
@@ -42,8 +50,59 @@ pub fn draw_menu(ctx: &mut Context) -> GameResult {
 pub fn draw_queue(ctx: &mut Context) -> GameResult {
     let mut canvas = Canvas::from_frame(&ctx.gfx, GgezColor::BLACK);
 
-    draw_centered_text(&mut canvas, ctx, "Queuing...", 48.0, -20.0)?;
-    draw_centered_text(&mut canvas, ctx, "Press Esc to cancel", 24.0, 40.0)?;
+    draw_centered_text(
+        &mut canvas,
+        ctx,
+        "Queuing...",
+        GgezColor::WHITE,
+        48.0,
+        -20.0,
+    )?;
+    draw_centered_text(
+        &mut canvas,
+        ctx,
+        "Press Esc to cancel",
+        GgezColor::WHITE,
+        24.0,
+        40.0,
+    )?;
+
+    canvas.finish(&mut ctx.gfx)
+}
+
+pub fn draw_replay_picker(
+    ctx: &mut Context,
+    replay_files: Vec<String>,
+    selected_index: usize,
+    page: usize,
+    page_max: usize,
+) -> GameResult {
+    let mut canvas = Canvas::from_frame(&ctx.gfx, GgezColor::BLACK);
+
+    draw_centered_text(&mut canvas, ctx, "Replays", GgezColor::WHITE, 48.0, -40.0)?;
+    for (i, replay_file) in replay_files.iter().enumerate() {
+        draw_centered_text(
+            &mut canvas,
+            ctx,
+            replay_file,
+            if i == selected_index {
+                GgezColor::BLUE
+            } else {
+                GgezColor::WHITE
+            },
+            16.0,
+            20.0 * i as f32,
+        )?;
+    }
+
+    draw_centered_text(
+        &mut canvas,
+        ctx,
+        &format!("{page}/{page_max}"),
+        GgezColor::WHITE,
+        20.0,
+        80.0,
+    )?;
 
     canvas.finish(&mut ctx.gfx)
 }

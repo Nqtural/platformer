@@ -26,7 +26,7 @@ impl ClientState {
     pub fn new(
         team_id: usize,
         player_id: usize,
-        teams: Vec<InitTeamData>,
+        teams: [InitTeamData; 2],
         trail_delay: f32,
         trail_opacity: f32,
         trail_lifetime: f32,

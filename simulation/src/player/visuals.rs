@@ -1,10 +1,8 @@
-use foundation::{
-    color::Color,
-    rect::Rect,
-};
 use crate::trail::TrailSquare;
+use foundation::{color::Color, rect::Rect};
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct PlayerVisuals {
     pub trail_squares: Vec<TrailSquare>,
     pub trail_timer: f32,
@@ -24,13 +22,7 @@ impl PlayerVisuals {
         }
     }
 
-    pub fn tick(
-        &mut self,
-        dt: f32,
-        rect: Rect,
-        color: Color,
-        trail_active: bool,
-    ) {
+    pub fn tick(&mut self, dt: f32, rect: Rect, color: Color, trail_active: bool) {
         self.update_trail(dt);
         if trail_active {
             self.spawn_trail_squares(rect, color);
@@ -50,7 +42,12 @@ impl PlayerVisuals {
     fn spawn_trail_squares(&mut self, rect: Rect, color: Color) {
         if self.trail_timer >= self.trail_delay {
             self.trail_timer = 0.0;
-            self.trail_squares.push(TrailSquare::new(rect, color, self.trail_opacity, self.trail_lifetime));
+            self.trail_squares.push(TrailSquare::new(
+                rect,
+                color,
+                self.trail_opacity,
+                self.trail_lifetime,
+            ));
         }
     }
 }

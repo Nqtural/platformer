@@ -19,7 +19,7 @@ pub enum ServerMessage {
         required: usize,
     },
     StartGame {
-        teams: Vec<InitTeamData>,
+        teams: [InitTeamData; 2],
     },
     Snapshot {
         server_tick: u64,

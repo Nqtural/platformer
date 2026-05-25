@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 display = { path = "../display" }
+foundation = { path = "../foundation" }
 protocol = { path = "../protocol" }
 simulation = { path = "../simulation" }
 anyhow = "1.0.100"

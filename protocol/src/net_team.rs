@@ -1,12 +1,9 @@
-use serde::{
-    Serialize,
-    Deserialize,
-};
 use foundation::color::Color;
+use serde::{Deserialize, Serialize};
 use simulation::Player;
 use simulation::team::Team;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InitTeamData {
     pub color: Color,
     pub player_names: Vec<String>,
@@ -15,12 +12,7 @@ pub struct InitTeamData {
 }
 
 impl InitTeamData {
-    pub fn new(
-        color: Color,
-        start_position: [f32; 2],
-        index: usize,
-        team_size: usize
-    ) -> Self {
+    pub fn new(color: Color, start_position: [f32; 2], index: usize, team_size: usize) -> Self {
         Self {
             color,
             player_names: vec![String::new(); team_size],

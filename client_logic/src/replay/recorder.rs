@@ -1,7 +1,8 @@
 use super::core::Replay;
-use crate::interpolation::TimedSnapshot;
+use crate::{interpolation::TimedSnapshot, replay::constants::REPLAY_DIRECTORY};
 use bincode::serde::encode_to_vec;
 use chrono::Local;
+use protocol::net_team::InitTeamData;
 use std::{fs, path::Path};
 
 pub struct ReplayRecorder {
@@ -10,10 +11,10 @@ pub struct ReplayRecorder {
 }
 
 impl ReplayRecorder {
-    pub fn new(team_size: usize) -> Self {
+    pub fn new(teams: [InitTeamData; 2]) -> Self {
         Self {
             last_tick: 0,
-            replay: Replay::new(team_size),
+            replay: Replay::new(teams),
         }
     }
 
@@ -40,7 +41,11 @@ impl ReplayRecorder {
             }
         };
 
-        let path = format!("replays/{}.prp", Local::now().format("%Y-%m-%d-%H-%M-%S"));
+        let path = format!(
+            "{}{}.prp",
+            REPLAY_DIRECTORY,
+            Local::now().format("%Y-%m-%d-%H-%M-%S")
+        );
 
         if let Some(parent) = Path::new(&path).parent() {
             let _ = fs::create_dir_all(parent)

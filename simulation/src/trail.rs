@@ -1,7 +1,8 @@
 use foundation::color::Color;
 use foundation::rect::Rect;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct TrailSquare {
     pub rect: Rect,
     pub color: Color,

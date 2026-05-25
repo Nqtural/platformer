@@ -1,15 +1,9 @@
-use serde::{
-    Serialize,
-    Deserialize,
-};
-use std::net::SocketAddr;
-use foundation::color::Color;
+use crate::constants::{TEAM_ONE_START_POS, TEAM_TWO_START_POS};
 use crate::net_team::InitTeamData;
-use crate::constants::{
-    TEAM_ONE_START_POS,
-    TEAM_TWO_START_POS,
-};
 use crate::utils::condense_name;
+use foundation::color::Color;
+use serde::{Deserialize, Serialize};
+use std::net::SocketAddr;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct LobbyPlayer {
@@ -38,11 +32,7 @@ impl Lobby {
         }
     }
 
-    pub fn assign_slot(
-        &mut self,
-        addr: SocketAddr,
-        name: String
-    ) -> (usize, usize) {
+    pub fn assign_slot(&mut self, addr: SocketAddr, name: String) -> (usize, usize) {
         // assign team + player slots
         let team_id = self.next_team;
         let player_id = self.next_player;
@@ -72,13 +62,9 @@ impl Lobby {
     }
 
     #[must_use]
-    pub fn initial_teams(
-        &self,
-        team_one_color: Color,
-        team_two_color: Color
-    ) -> Vec<InitTeamData> {
+    pub fn initial_teams(&self, team_one_color: Color, team_two_color: Color) -> [InitTeamData; 2] {
         // Prepare output vec of length 2
-        let mut teams = vec![
+        let mut teams = [
             InitTeamData::new(team_one_color, TEAM_ONE_START_POS, 0, self.team_size),
             InitTeamData::new(team_two_color, TEAM_TWO_START_POS, 1, self.team_size),
         ];
@@ -102,12 +88,17 @@ impl Lobby {
     }
 
     #[must_use]
-    pub fn connected_count(&self) -> usize { self.players.len() }
+    pub fn connected_count(&self) -> usize {
+        self.players.len()
+    }
 
     #[must_use]
-    pub fn required(&self) -> usize { self.team_size * 2 }
-
+    pub fn required(&self) -> usize {
+        self.team_size * 2
+    }
 
     #[must_use]
-    pub fn is_full(&self) -> bool { self.connected_count() >= self.required() }
+    pub fn is_full(&self) -> bool {
+        self.connected_count() >= self.required()
+    }
 }

@@ -1,6 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 use crate::utils::tick_timers;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct PlayerCooldowns {
     pub dash: f32,
     pub normal: f32,
@@ -21,12 +23,15 @@ impl Default for PlayerCooldowns {
 
 impl PlayerCooldowns {
     pub fn tick(&mut self, dt: f32) {
-        tick_timers(&mut [
-            &mut self.dash,
-            &mut self.normal,
-            &mut self.light,
-            &mut self.parry,
-        ], dt);
+        tick_timers(
+            &mut [
+                &mut self.dash,
+                &mut self.normal,
+                &mut self.light,
+                &mut self.parry,
+            ],
+            dt,
+        );
     }
 
     pub fn activate_dash(&mut self) {
@@ -50,14 +55,22 @@ impl PlayerCooldowns {
     }
 
     #[must_use]
-    pub fn can_dash(&self) -> bool { self.dash <= 0.0 }
+    pub fn can_dash(&self) -> bool {
+        self.dash <= 0.0
+    }
 
     #[must_use]
-    pub fn can_normal(&self) -> bool { self.normal <= 0.0 }
+    pub fn can_normal(&self) -> bool {
+        self.normal <= 0.0
+    }
 
     #[must_use]
-    pub fn can_light(&self) -> bool { self.light <= 0.0 }
+    pub fn can_light(&self) -> bool {
+        self.light <= 0.0
+    }
 
     #[must_use]
-    pub fn can_parry(&self) -> bool { self.parry <= 0.0 }
+    pub fn can_parry(&self) -> bool {
+        self.parry <= 0.0
+    }
 }

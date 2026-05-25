@@ -24,7 +24,7 @@ impl GameSession {
         snapshot_history: Arc<Mutex<SnapshotHistory>>,
         render_tick: Arc<Mutex<f32>>,
         render_state: RenderState,
-        team_size: usize,
+        replay_recorder: ReplayRecorder,
     ) -> Self {
         Self {
             input_tx,
@@ -34,7 +34,7 @@ impl GameSession {
             render_state,
             post_game: false,
             post_game_timer: POST_GAME_TIMER,
-            replay_recorder: ReplayRecorder::new(team_size),
+            replay_recorder,
         }
     }
 

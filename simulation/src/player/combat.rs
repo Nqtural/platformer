@@ -1,8 +1,10 @@
+use serde::{Deserialize, Serialize};
+
+use super::PlayerPhysics;
 use crate::attack::{Attack, AttackKind};
 use crate::utils::tick_timers;
-use super::PlayerPhysics;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct PlayerCombat {
     pub lives: u8,
     pub combo: u32,
@@ -11,7 +13,7 @@ pub struct PlayerCombat {
     pub attacks: Vec<Attack>,
 }
 
-impl Default for  PlayerCombat {
+impl Default for PlayerCombat {
     fn default() -> Self {
         Self {
             lives: 3,
@@ -25,9 +27,7 @@ impl Default for  PlayerCombat {
 
 impl PlayerCombat {
     pub fn tick(&mut self, dt: f32) {
-        tick_timers(&mut [
-            &mut self.combo_timer,
-        ], dt);
+        tick_timers(&mut [&mut self.combo_timer], dt);
 
         // reset combo if needed
         if self.combo > 0 && self.combo_timer == 0.0 {
@@ -60,15 +60,13 @@ impl PlayerCombat {
         self.combo_timer = 1.0;
     }
 
-    pub fn spawn_attack(
-        &mut self,
-        kind: AttackKind,
-        physics: &PlayerPhysics,
-        player_idx: usize,
-    ) {
-        self.attacks.push(
-            Attack::new(kind, physics.team_idx, player_idx, physics.facing)
-        );
+    pub fn spawn_attack(&mut self, kind: AttackKind, physics: &PlayerPhysics, player_idx: usize) {
+        self.attacks.push(Attack::new(
+            kind,
+            physics.team_idx,
+            player_idx,
+            physics.facing,
+        ));
     }
 
     #[must_use]
@@ -77,7 +75,9 @@ impl PlayerCombat {
     }
 
     #[must_use]
-    pub fn is_alive(&self) -> bool { self.lives > 0 }
+    pub fn is_alive(&self) -> bool {
+        self.lives > 0
+    }
 
     #[must_use]
     pub fn is_slamming(&self) -> bool {
@@ -93,5 +93,7 @@ impl PlayerCombat {
     }
 
     #[must_use]
-    pub fn attacks(&self) -> &Vec<Attack> { &self.attacks }
+    pub fn attacks(&self) -> &Vec<Attack> {
+        &self.attacks
+    }
 }

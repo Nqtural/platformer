@@ -1,11 +1,15 @@
-use crate::{net_player, net_server::NetSnapshot, net_team};
+use crate::{
+    net_player,
+    net_server::NetSnapshot,
+    net_team::{self, InitTeamData},
+};
 use anyhow::{Result, anyhow};
 use simulation::{game_state::GameState, team::Team};
 
 pub fn new_from_initial(
     c_team: usize,
     c_player: usize,
-    init: Vec<net_team::InitTeamData>,
+    init: [InitTeamData; 2],
     trail_delay: f32,
     trail_opacity: f32,
     trail_lifetime: f32,

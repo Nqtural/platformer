@@ -1,7 +1,8 @@
 use crate::Player;
 use foundation::rect::Rect;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Team {
     pub players: Vec<Player>,
 }

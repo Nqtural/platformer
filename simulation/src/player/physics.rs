@@ -7,8 +7,9 @@ use crate::team::Team;
 use foundation::math_helpers::approach;
 use foundation::rect::Rect;
 use glam::Vec2;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct PlayerPhysics {
     pub start_pos: Vec2,
     pub pos: Vec2,

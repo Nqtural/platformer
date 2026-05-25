@@ -2,7 +2,7 @@ mod constants;
 pub mod interpolation;
 mod network_client;
 pub mod render_clock;
-mod replay;
+pub mod replay;
 mod runtime;
 mod session;
 pub use network_client::NetworkClient;

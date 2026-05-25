@@ -454,6 +454,7 @@ dependencies = [
  "bincode",
  "chrono",
  "display",
+ "foundation",
  "ggez",
  "protocol",
  "serde",

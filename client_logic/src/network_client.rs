@@ -48,7 +48,7 @@ impl NetworkClient {
         }
     }
 
-    pub async fn handshake(&self, player_name: &str) -> Result<(usize, usize, Vec<InitTeamData>)> {
+    pub async fn handshake(&self, player_name: &str) -> Result<(usize, usize, [InitTeamData; 2])> {
         // send Hello packet
         let packet = encode_to_vec(
             &ClientMessage::Hello {
@@ -75,7 +75,11 @@ impl NetworkClient {
                     team_id = Some(t);
                     player_id = Some(p);
                 }
-                ServerMessage::StartGame { teams } => break teams,
+                ServerMessage::StartGame { teams } => {
+                    let teams: [InitTeamData; 2] = teams;
+
+                    break teams;
+                }
                 ServerMessage::LobbyStatus { .. } => {} // can log or update UI later
                 _ => {}
             }
