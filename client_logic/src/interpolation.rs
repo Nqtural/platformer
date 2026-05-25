@@ -83,8 +83,8 @@ impl SnapshotHistory {
         Some(gs)
     }
 
-    pub fn latest(&self) -> Option<&GameState> {
-        self.buffer.back().map(|s| &s.snapshot)
+    pub fn latest(&self) -> Option<&TimedSnapshot> {
+        self.buffer.back()
     }
 }
 

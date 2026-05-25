@@ -1,10 +1,8 @@
-use glam::Vec2;
-use serde::{
-    Serialize,
-    Deserialize,
-};
-use simulation::Player;
 use crate::net_attack;
+use crate::net_input::NetInput;
+use glam::Vec2;
+use serde::{Deserialize, Serialize};
+use simulation::Player;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct NetPlayer {
@@ -15,6 +13,7 @@ pub struct NetPlayer {
     pub combo: u32,
     pub knockback_multiplier: f32,
     pub attacks: Vec<net_attack::NetAttack>,
+    pub input: NetInput,
     pub stunned: f32,
     pub invulnerable: f32,
     pub parry: f32,
@@ -30,7 +29,9 @@ pub fn to_net(player: &Player, player_idx: usize) -> NetPlayer {
         vel: player.physics.vel,
         combo: player.combat.combo,
         knockback_multiplier: player.combat.knockback_multiplier,
-        attacks: player.combat.attacks()
+        attacks: player
+            .combat
+            .attacks()
             .iter()
             .map(net_attack::to_net)
             .collect(),
@@ -38,6 +39,7 @@ pub fn to_net(player: &Player, player_idx: usize) -> NetPlayer {
         invulnerable: player.status.invulnerable_timer,
         parry: player.status.parry,
         lives: player.combat.lives,
+        input: NetInput::to_net(&player.input),
     }
 }
 
@@ -47,11 +49,13 @@ pub fn from_net(player: &mut Player, net_player: &NetPlayer) {
     player.combat.lives = net_player.lives;
     player.combat.combo = net_player.combo;
     player.combat.knockback_multiplier = net_player.knockback_multiplier;
-    player.combat.attacks = net_player.attacks
+    player.combat.attacks = net_player
+        .attacks
         .iter()
         .map(|na| net_attack::from_net(na.clone()))
         .collect();
     player.status.stunned = net_player.stunned;
     player.status.invulnerable_timer = net_player.invulnerable;
     player.status.parry = net_player.parry;
+    net_player.input.from_net(&mut player.input);
 }

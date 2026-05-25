@@ -68,7 +68,7 @@ impl Player {
     pub fn apply_input(&mut self, map: &Rect, player_idx: usize, dt: f32) {
         let mut kind: Option<AttackKind> = None;
 
-        if self.input.slam() && self.status.can_slam {
+        if self.input.slam && self.status.can_slam {
             self.physics.slam(dt);
             kind = Some(AttackKind::Slam);
         } else {
@@ -76,23 +76,23 @@ impl Player {
             self.combat.remove_slams();
         }
 
-        if self.input.light() && self.cooldowns.can_light() {
+        if self.input.light && self.cooldowns.can_light() {
             kind = Some(AttackKind::Light);
             self.cooldowns.activate_light();
         }
 
-        if self.input.normal() && self.cooldowns.can_normal() {
+        if self.input.normal && self.cooldowns.can_normal() {
             kind = Some(AttackKind::Normal);
             self.cooldowns.activate_normal();
         }
 
-        if self.input.dash() && self.cooldowns.can_dash() && !self.status.parrying() {
+        if self.input.dash && self.cooldowns.can_dash() && !self.status.parrying() {
             self.physics.dash();
             kind = Some(AttackKind::Dash);
             self.cooldowns.activate_dash();
         }
 
-        if self.input.parry()
+        if self.input.parry
             && self.physics.is_on_platform(map)
             && self.cooldowns.can_parry()
             && !self.combat.is_dashing()

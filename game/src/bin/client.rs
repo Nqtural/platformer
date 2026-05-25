@@ -107,6 +107,7 @@ impl App {
             Arc::clone(&client.snapshot_history),
             Arc::clone(&client.render_tick),
             render_state,
+            config.team_size(),
         ))
     }
 
@@ -138,6 +139,8 @@ impl App {
         if session.has_ended(dt) {
             return Ok(Some(ClientView::Menu));
         }
+
+        session.update_replay();
 
         Ok(None)
     }

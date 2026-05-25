@@ -11,3 +11,5 @@ anyhow = "1.0.100"
 bincode = { version = "2.0.1", features = ["serde"] }
 ggez = "0.9.3"
 tokio = "1.48.0"
+serde = { version = "1.0.228", features = ["derive"] }
+chrono = "0.4.44"
