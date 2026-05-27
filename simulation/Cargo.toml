@@ -9,3 +9,4 @@ foundation = { path = "../foundation" }
 ggez = "0.9.3"
 glam = "0.30.9"
 serde = { version = "1.0.228", features = ["derive"] }
+wincode = { version = "0.5.4", features = ["derive"] }

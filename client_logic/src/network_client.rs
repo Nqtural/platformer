@@ -1,24 +1,19 @@
 use crate::ClientState;
 use anyhow::Result;
-use bincode::{
-    config,
-    serde::{decode_from_slice, encode_to_vec},
-};
-use protocol::{
-    net_client::ClientMessage, net_game_state, net_server::ServerMessage, net_team::InitTeamData,
-};
+use foundation::GameMode;
+use protocol::{net_client::ClientMessage, net_game_state, net_server::ServerMessage};
 use simulation::PlayerInput;
 use std::{
     net::SocketAddr,
     sync::{Arc, atomic::Ordering},
 };
 use tokio::net::UdpSocket;
+use wincode::{deserialize, serialize};
 
 #[derive(Clone)]
 pub struct NetworkClient {
     socket: Arc<UdpSocket>,
     server_addr: SocketAddr,
-    bincode_config: config::Configuration,
 }
 
 impl NetworkClient {
@@ -44,74 +39,65 @@ impl NetworkClient {
         Self {
             socket,
             server_addr,
-            bincode_config: config::standard(),
         }
     }
 
-    pub async fn handshake(&self, player_name: &str) -> Result<(usize, usize, Vec<InitTeamData>)> {
-        // send Hello packet
-        let packet = encode_to_vec(
-            &ClientMessage::Hello {
-                name: player_name.to_string(),
-            },
-            self.bincode_config,
-        )?;
+    pub async fn handshake(&self, player_name: &str) -> Result<()> {
+        let packet = serialize(&ClientMessage::Hello {
+            player_name: player_name.to_string(),
+        })?;
         self.socket.send(&packet).await?;
 
-        let mut buf = [0u8; 1500];
-        let mut team_id: Option<usize> = None;
-        let mut player_id: Option<usize> = None;
+        Ok(())
+    }
 
-        let init_teams = loop {
-            let (len, _addr) = self.socket.recv_from(&mut buf).await?;
-            let (msg, _): (ServerMessage, usize) =
-                decode_from_slice(&buf[..len], self.bincode_config)?;
+    pub async fn leave_queue(&self) -> Result<()> {
+        self.socket
+            .send(&serialize(&ClientMessage::QueueLeave)?)
+            .await?;
 
-            match msg {
-                ServerMessage::Welcome {
-                    team_id: t,
-                    player_id: p,
-                } => {
-                    team_id = Some(t);
-                    player_id = Some(p);
-                }
-                ServerMessage::StartGame { teams } => break teams,
-                ServerMessage::LobbyStatus { .. } => {} // can log or update UI later
-                _ => {}
-            }
-        };
+        Ok(())
+    }
 
-        let team_id = team_id.expect("StartGame received before Welcome");
-        let player_id = player_id.expect("StartGame received before Welcome");
+    pub async fn enter_queue(&self, mode: GameMode) -> Result<()> {
+        self.socket
+            .send(&serialize(&ClientMessage::QueueJoin(mode))?)
+            .await?;
 
-        Ok((team_id, player_id, init_teams))
+        Ok(())
+    }
+
+    pub async fn poll_queue(&self) -> Result<ServerMessage> {
+        let mut buf = [0u8; 2048];
+        match self.socket.recv(&mut buf).await {
+            Ok(n) => Ok(deserialize(&buf[..n])?),
+            Err(e) => Err(anyhow::Error::from(e)),
+        }
     }
 
     pub fn spawn_receive_task(&self, client: Arc<ClientState>) {
         let socket = Arc::clone(&self.socket);
-        let config = self.bincode_config;
         tokio::spawn(async move {
             let mut buf = [0u8; 2048];
 
             loop {
                 match socket.recv_from(&mut buf).await {
                     Ok((len, _)) => {
-                        if let Ok((
-                            ServerMessage::Snapshot {
+                        match deserialize::<ServerMessage>(&buf[..len]) {
+                            Ok(ServerMessage::Snapshot {
                                 server_tick,
                                 server_state,
-                            },
-                            _,
-                        )) = decode_from_slice::<ServerMessage, _>(&buf[..len], config)
-                        {
-                            let mut snapshot_history = client.snapshot_history.lock().await;
-                            {
-                                // update render clock
-                                let mut render_clock_locked = client.render_clock.lock().await;
-                                render_clock_locked.update(server_tick);
-                                let mut render_tick = client.render_tick.lock().await;
-                                *render_tick = render_clock_locked.render_tick();
-                                drop(render_tick);
+                            }) => {
+                                let mut snapshot_history = client.snapshot_history.lock().await;
+
+                                {
+                                    // update render clock
+                                    let mut render_clock_locked = client.render_clock.lock().await;
+                                    render_clock_locked.update(server_tick);
+
+                                    let mut render_tick = client.render_tick.lock().await;
+                                    *render_tick = render_clock_locked.render_tick();
+                                }
 
                                 // apply server snapshot
                                 let mut core = client.core.lock().await;
@@ -119,10 +105,20 @@ impl NetworkClient {
                                     core.game_state_mut(),
                                     &server_state,
                                 );
+
                                 snapshot_history.push(server_tick, core.game_state().clone());
+                            }
+
+                            Ok(_) => {
+                                // ignore other message types
+                            }
+
+                            Err(e) => {
+                                eprintln!("Decode error: {e}");
                             }
                         }
                     }
+
                     Err(e) => eprintln!("Receive error: {e}"),
                 }
             }
@@ -131,7 +127,6 @@ impl NetworkClient {
 
     pub fn spawn_send_task(&self, client: Arc<ClientState>) {
         let socket = Arc::clone(&self.socket);
-        let config = self.bincode_config;
         let server_addr = self.server_addr;
         tokio::spawn(async move {
             let tick_duration =
@@ -148,12 +143,10 @@ impl NetworkClient {
 
                 let msg = ClientMessage::Input {
                     client_tick: tick,
-                    team_id: client.team_id,
-                    player_id: client.player_id,
                     input,
                 };
 
-                match encode_to_vec(&msg, config) {
+                match serialize(&msg) {
                     Ok(data) => {
                         let _ = socket.send_to(&data, server_addr).await;
                     }

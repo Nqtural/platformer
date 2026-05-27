@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
+use wincode::{SchemaRead, SchemaWrite};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, SchemaWrite, SchemaRead)]
 pub struct Color {
     pub r: f32,
     pub g: f32,

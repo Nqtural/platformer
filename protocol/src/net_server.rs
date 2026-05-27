@@ -1,14 +1,15 @@
-use crate::{lobby::LobbyPlayer, net_player::NetPlayer, net_team::InitTeamData};
+use crate::{lobby::LobbyPlayer, net_player::NetPlayer};
 use serde::{Deserialize, Serialize};
+use wincode::{SchemaRead, SchemaWrite};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, SchemaWrite, SchemaRead)]
 pub struct NetSnapshot {
     pub tick: u64,
     pub winner: usize,
     pub players: Vec<NetPlayer>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(SchemaWrite, SchemaRead)]
 pub enum ServerMessage {
     Welcome {
         team_id: usize,
@@ -19,7 +20,9 @@ pub enum ServerMessage {
         required: usize,
     },
     StartGame {
-        teams: Vec<InitTeamData>,
+        c_team_id: usize,
+        c_player_id: usize,
+        player_names: [Vec<String>; 2],
     },
     Snapshot {
         server_tick: u64,

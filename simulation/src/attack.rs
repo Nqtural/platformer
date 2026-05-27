@@ -1,12 +1,10 @@
-use glam::Vec2;
-use serde::{
-    Deserialize,
-    Serialize,
-};
 use crate::constants::PLAYER_SIZE;
 use foundation::rect::Rect;
+use glam::Vec2;
+use serde::{Deserialize, Serialize};
+use wincode::{SchemaRead, SchemaWrite};
 
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, SchemaWrite, SchemaRead)]
 pub enum AttackKind {
     Dash,
     Light,
@@ -82,12 +80,7 @@ pub struct Attack {
 
 impl Attack {
     #[must_use]
-    pub fn new(
-        kind: AttackKind,
-        owner_team: usize,
-        owner_player: usize,
-        facing: Vec2,
-    ) -> Attack {
+    pub fn new(kind: AttackKind, owner_team: usize, owner_player: usize, facing: Vec2) -> Attack {
         let properties = kind.properties();
         Attack {
             offset: properties.offset,
@@ -108,39 +101,48 @@ impl Attack {
     pub fn update(&mut self, dt: f32) {
         self.timer += dt;
 
-        self.frame = ((self.timer / self.duration) * self.frame_count as f32)
-            .floor() as usize % self.frame_count;
+        self.frame = ((self.timer / self.duration) * self.frame_count as f32).floor() as usize
+            % self.frame_count;
     }
 
     #[must_use]
-    pub fn owner_team(&self) -> usize { self.owner_team }
+    pub fn owner_team(&self) -> usize {
+        self.owner_team
+    }
 
     #[must_use]
-    pub fn owner_player(&self) -> usize { self.owner_player }
+    pub fn owner_player(&self) -> usize {
+        self.owner_player
+    }
 
     #[must_use]
-    pub fn kind(&self) -> &AttackKind { &self.kind }
+    pub fn kind(&self) -> &AttackKind {
+        &self.kind
+    }
 
     #[must_use]
-    pub fn facing(&self) -> Vec2 { self.facing }
+    pub fn facing(&self) -> Vec2 {
+        self.facing
+    }
 
     #[must_use]
-    pub fn stun(&self) -> f32 { self.stun }
+    pub fn stun(&self) -> f32 {
+        self.stun
+    }
 
     #[must_use]
-    pub fn knockback_increase(&self) -> f32 { self.knockback_increase }
+    pub fn knockback_increase(&self) -> f32 {
+        self.knockback_increase
+    }
 
     #[must_use]
-    pub fn is_expired(&self) -> bool { self.timer >= self.duration }
+    pub fn is_expired(&self) -> bool {
+        self.timer >= self.duration
+    }
 
     #[must_use]
     pub fn get_rect(&self, player_pos: Vec2) -> Rect {
-        Rect::new(
-            self.x(player_pos),
-            self.y(player_pos),
-            self.size,
-            self.size,
-        )
+        Rect::new(self.x(player_pos), self.y(player_pos), self.size, self.size)
     }
 
     #[must_use]
@@ -154,8 +156,12 @@ impl Attack {
     }
 
     #[must_use]
-    pub fn frame(&self) -> usize { self.frame }
+    pub fn frame(&self) -> usize {
+        self.frame
+    }
 
     #[must_use]
-    pub fn frame_count(&self) -> usize { self.kind.properties().frame_count }
+    pub fn frame_count(&self) -> usize {
+        self.kind.properties().frame_count
+    }
 }

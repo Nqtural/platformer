@@ -1,20 +1,14 @@
-use glam::Vec2;
-use serde::{
-    Serialize,
-    Deserialize,
-};
-use simulation::attack::{
-    Attack,
-    AttackKind,
-};
+use serde::{Deserialize, Serialize};
+use simulation::attack::{Attack, AttackKind};
+use wincode::{SchemaRead, SchemaWrite};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, SchemaWrite, SchemaRead)]
 pub struct NetAttack {
     pub timer: f32,
     pub owner_team: usize,
     pub owner_player: usize,
     pub kind: AttackKind,
-    pub facing: Vec2,
+    pub facing: [f32; 2],
     pub frame: usize,
 }
 
@@ -30,7 +24,7 @@ pub fn from_net(net: NetAttack) -> Attack {
         timer: net.timer,
         owner_team: net.owner_team,
         owner_player: net.owner_player,
-        facing: net.facing,
+        facing: net.facing.into(),
         stun: properties.stun,
         knockback_increase: properties.knockback_increase,
         frame: net.frame,
@@ -45,7 +39,7 @@ pub fn to_net(attack: &Attack) -> NetAttack {
         owner_team: attack.owner_team,
         owner_player: attack.owner_player,
         kind: attack.kind.clone(),
-        facing: attack.facing,
+        facing: attack.facing.into(),
         frame: attack.frame,
     }
 }
