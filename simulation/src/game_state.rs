@@ -1,4 +1,4 @@
-use crate::{map::Map, team::Team, utils::current_and_enemy};
+use crate::{PlayerInput, map::Map, team::Team, utils::current_and_enemy};
 use ggez::input::keyboard::KeyCode;
 use std::collections::HashSet;
 
@@ -48,5 +48,9 @@ impl GameState {
         self.teams[self.c_team].players[self.c_player]
             .input
             .update(pressed);
+    }
+
+    pub fn apply_input(&mut self, team_index: usize, player_index: usize, input: PlayerInput) {
+        self.teams[team_index].players[player_index].input = input;
     }
 }

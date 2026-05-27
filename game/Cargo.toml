@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 client_logic = { path = "../client_logic" }
 display = { path = "../display" }
+foundation = { path = "../foundation" }
 game_config = { path = "../game_config" }
 protocol = { path = "../protocol" }
 server_logic = { path = "../server_logic" }
@@ -13,3 +14,7 @@ simulation = { path = "../simulation" }
 anyhow = "1.0.100"
 ggez = "0.9.3"
 tokio = { version = "1.48.0", features = ["full"] }
+uuid = { version = "1.23.1", features = ["v4"] }
+futures = "0.3.32"
+wincode = "0.5.4"
+bimap = "0.6.3"
