@@ -4,7 +4,7 @@ use foundation::GameMode;
 use foundation::color::Color;
 use futures::future::pending;
 use game_config::read::Config;
-use protocol::constants::TEAM_ONE_START_POS;
+use protocol::constants::{TEAM_ONE_START_POS, TEAM_TWO_START_POS};
 use protocol::net_client::ClientMessage;
 use protocol::net_game_state;
 use protocol::net_server::ServerMessage;
@@ -218,7 +218,7 @@ impl Server {
                         .iter()
                         .map(|n| {
                             Player::new(
-                                TEAM_ONE_START_POS,
+                                TEAM_TWO_START_POS,
                                 n.clone(),
                                 Color::new(1.0, 0.0, 0.0, 1.0),
                                 1,
