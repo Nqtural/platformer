@@ -39,16 +39,15 @@ impl Queue {
 pub struct ClientSession {
     pub client_id: Uuid,
     pub player_name: String,
-    pub state: SessionState,
+    pub state: ClientState,
     pub addr: SocketAddr,
-    pub current_game: Option<Uuid>,
 }
 
 #[derive(Debug)]
-pub enum SessionState {
+pub enum ClientState {
     Menu,
     Queueing(GameMode),
-    InGame(Uuid),
+    InGame,
 }
 
 pub struct GameSession {
