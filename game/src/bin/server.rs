@@ -4,7 +4,7 @@ use foundation::GameMode;
 use foundation::color::Color;
 use futures::future::pending;
 use game_config::read::Config;
-use protocol::constants::{TEAM_ONE_START_POS, TEAM_TWO_START_POS};
+use protocol::constants::{DUO_OFFSET, TEAM_ONE_START_POS, TEAM_TWO_START_POS};
 use protocol::net_client::ClientMessage;
 use protocol::net_game_state;
 use protocol::net_server::ServerMessage;
@@ -193,44 +193,40 @@ impl Server {
         .try_into()
         .unwrap();
 
-        let gs = GameState::new(
-            0,
-            0,
-            [
+        let built_teams: Vec<Team> = teams
+            .iter()
+            .enumerate()
+            .map(|(team_index, team_players)| {
                 Team::new(
-                    teams[0]
+                    team_players
                         .iter()
-                        .map(|n| {
+                        .enumerate()
+                        .map(|(player_index, player_name)| {
                             Player::new(
-                                TEAM_ONE_START_POS,
-                                n.clone(),
-                                Color::new(0.0, 0.0, 1.0, 1.0),
-                                0,
+                                spawn_position(team_index, player_index),
+                                player_name.clone(),
+                                if team_index == 0 {
+                                    Color::new(0.0, 0.0, 1.0, 1.0)
+                                } else {
+                                    Color::new(1.0, 0.0, 0.0, 1.0)
+                                },
+                                team_index,
                                 0.0,
                                 0.0,
                                 0.0,
                             )
                         })
                         .collect(),
-                ),
-                Team::new(
-                    teams[1]
-                        .iter()
-                        .map(|n| {
-                            Player::new(
-                                TEAM_TWO_START_POS,
-                                n.clone(),
-                                Color::new(1.0, 0.0, 0.0, 1.0),
-                                1,
-                                0.0,
-                                0.0,
-                                0.0,
-                            )
-                        })
-                        .collect(),
-                ),
-            ],
-        );
+                )
+            })
+            .collect();
+
+        // TODO: can just unwrap instead of match once Team implements Debug
+        let built_teams: [Team; 2] = match built_teams.try_into() {
+            Ok(teams) => teams,
+            Err(_) => panic!("Expected exactly 2 teams"),
+        };
+        let gs = GameState::new(0, 0, built_teams);
 
         let (input_tx, input_rx) = unbounded_channel::<GameInput>();
         let game_id = Uuid::new_v4();
@@ -413,6 +409,8 @@ async fn handle_game(
 
         let bytes = serialize(&msg)?;
 
+        println!("Snapshot size: {}", bytes.len());
+
         for addr in &player_addrs {
             let _ = socket.send_to(&bytes, addr).await;
         }
@@ -430,6 +428,16 @@ async fn sleep_until_next_tick(frame_start: Instant) {
 
     if elapsed < tick_duration {
         sleep(tick_duration - elapsed).await;
+    }
+}
+
+fn spawn_position(team_id: usize, player_id: usize) -> [f32; 2] {
+    match (team_id, player_id) {
+        (0, 0) => TEAM_ONE_START_POS,
+        (0, 1) => [TEAM_ONE_START_POS[0] + DUO_OFFSET, TEAM_ONE_START_POS[1]],
+        (1, 0) => TEAM_TWO_START_POS,
+        (1, 1) => [TEAM_TWO_START_POS[0] - DUO_OFFSET, TEAM_TWO_START_POS[1]],
+        _ => unreachable!(),
     }
 }
 
