@@ -9,7 +9,7 @@ use protocol::net_client::ClientMessage;
 use protocol::net_game_state;
 use protocol::net_server::ServerMessage;
 use server_logic::runtime::{
-    ClientSession, GameHandle, GameInput, PlayerSlot, Queues, SessionState,
+    ClientSession, ClientState, GameHandle, GameInput, PlayerSlot, Queues,
 };
 use simulation::constants::FIXED_DT;
 use simulation::game_state::GameState;
@@ -80,9 +80,8 @@ impl Server {
             let session = ClientSession {
                 client_id,
                 player_name: player_name.clone(),
-                state: SessionState::Menu,
+                state: ClientState::Menu,
                 addr,
-                current_game: None,
             };
 
             self.sessions.write().await.insert(client_id, session);
@@ -125,7 +124,7 @@ impl Server {
         {
             let mut sessions = self.sessions.write().await;
             if let Some(session) = sessions.get_mut(&client_id) {
-                session.state = SessionState::Queueing(mode.clone());
+                session.state = ClientState::Queueing(mode.clone());
             }
         }
 
@@ -140,7 +139,7 @@ impl Server {
 
         let mut sessions = self.sessions.write().await;
         if let Some(session) = sessions.get_mut(&client_id) {
-            session.state = SessionState::Menu;
+            session.state = ClientState::Menu;
         }
     }
 
@@ -235,8 +234,7 @@ impl Server {
 
             for player_id in &player_ids {
                 if let Some(session) = sessions.get_mut(player_id) {
-                    session.current_game = Some(game_id);
-                    session.state = SessionState::InGame(game_id);
+                    session.state = ClientState::InGame;
                 }
             }
         }
@@ -350,19 +348,11 @@ impl Server {
     }
 
     async fn route_input(&self, client_id: Uuid, client_tick: u64, input: PlayerInput) {
-        let game_id = {
-            let sessions = self.sessions.read().await;
-
-            sessions.get(&client_id).and_then(|s| s.current_game)
-        };
-
-        let Some(game_id) = game_id else {
-            return;
-        };
-
         let games = self.games.read().await;
 
-        let Some(game) = games.get(&game_id) else {
+        let game = games.values().find(|g| g.players.contains_key(&client_id));
+
+        let Some(game) = game else {
             return;
         };
 
