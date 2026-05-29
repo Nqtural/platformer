@@ -7,14 +7,21 @@ use simulation::game_state::GameState;
 use simulation::team::Team;
 use std::collections::HashSet;
 use std::sync::Arc;
-use std::sync::atomic::AtomicU64;
-use tokio::sync::Mutex;
+use std::sync::atomic::{AtomicBool, AtomicU64};
+use tokio::sync::{Mutex, watch};
 
 use crate::interpolation::SnapshotHistory;
 use crate::render_clock::RenderClock;
 use simulation::simulation::SimulationCore;
 
+#[derive(Clone)]
+pub enum ClientEvent {
+    EndGame,
+}
+
 pub struct ClientState {
+    pub event_tx: watch::Sender<Option<ClientEvent>>,
+    pub event_rx: watch::Receiver<Option<ClientEvent>>,
     pub team_id: usize,
     pub player_id: usize,
     pub current_input: Arc<Mutex<HashSet<KeyCode>>>,
@@ -23,6 +30,7 @@ pub struct ClientState {
     pub render_tick: Arc<Mutex<f32>>,
     pub core: Arc<Mutex<SimulationCore>>,
     pub tick: Arc<AtomicU64>,
+    pub shutdown: Arc<AtomicBool>,
 }
 
 impl ClientState {
@@ -73,7 +81,11 @@ impl ClientState {
             ],
         );
 
+        let (event_tx, event_rx) = watch::channel(None);
+
         Ok(Self {
+            event_tx,
+            event_rx,
             team_id,
             player_id,
             current_input: Arc::new(Mutex::new(HashSet::new())),
@@ -82,6 +94,7 @@ impl ClientState {
             render_tick: Arc::new(Mutex::new(0.0)),
             core: Arc::new(Mutex::new(SimulationCore::new(gs))),
             tick: Arc::new(AtomicU64::new(0)),
+            shutdown: Arc::new(AtomicBool::new(false)),
         })
     }
 }

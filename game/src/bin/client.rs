@@ -1,5 +1,5 @@
 use anyhow::{Error, Result};
-use client_logic::{ClientState, GameSession, NetworkClient};
+use client_logic::{ClientEvent, ClientState, GameSession, NetworkClient};
 use display::menus;
 use display::render::RenderState;
 use foundation::GameMode;
@@ -18,7 +18,10 @@ use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
 enum ClientView {
     Menu,
     Queue(QueueController),
-    InGame(Box<GameSession>),
+    InGame {
+        session: Box<GameSession>,
+        client: Arc<ClientState>,
+    },
 }
 
 struct QueueController {
@@ -95,121 +98,9 @@ impl App {
                 }
             }
         });
-        // tokio::spawn(async move {
-        //     loop {
-        //         let _ = match network.poll_queue().await {
-        //             Ok(server_message) => {
-        //                 match server_message {
-        //                     ServerMessage::StartGame {
-        //                         c_team_id,
-        //                         c_player_id,
-        //                         player_names,
-        //                     } => {
-        //                         let client = Arc::new(
-        //                             match ClientState::new(
-        //                                 c_team_id,
-        //                                 c_player_id,
-        //                                 player_names,
-        //                                 config.trail_delay(),
-        //                                 config.trail_opacity(),
-        //                                 config.trail_lifetime(),
-        //                             ) {
-        //                                 Ok(client) => client,
-        //                                 Err(e) => {
-        //                                     println!("Error initializing client: {e}");
-        //                                     return;
-        //                                 }
-        //                             },
-        //                         );
-
-        //                         // spawn networking tasks.
-        //                         network.spawn_receive_task(Arc::clone(&client));
-        //                         network.spawn_send_task(Arc::clone(&client));
-
-        //                         // forward keyboard input into the shared client input state.
-        //                         let current_input_write = Arc::clone(&client.current_input);
-
-        //                         let (input_tx, mut input_rx) =
-        //                             unbounded_channel::<HashSet<KeyCode>>();
-
-        //                         tokio::spawn(async move {
-        //                             while let Some(input) = input_rx.recv().await {
-        //                                 let mut current = current_input_write.lock().await;
-        //                                 *current = input;
-        //                             }
-        //                         });
-
-        //                         let render_state = match RenderState::new(ctx, &config) {
-        //                             Ok(render_state) => render_state,
-        //                             Err(e) => {
-        //                                 eprintln!("Error initializing render_state: {e}");
-        //                                 return;
-        //                             }
-        //                         };
-
-        //                         // Ok(GameSession::new(
-        //                         //     input_tx,
-        //                         //     Arc::clone(&client.snapshot_history),
-        //                         //     Arc::clone(&client.render_tick),
-        //                         //     render_state,
-        //                         // ));
-
-        //                         event_tx.send(QueueEvent::MatchFound(Box::new(GameSession::new(
-        //                             input_tx,
-        //                             Arc::clone(&client.snapshot_history),
-        //                             Arc::clone(&client.render_tick),
-        //                             render_state,
-        //                         ))));
-        //                         break;
-        //                     }
-        //                     _ => {}
-        //                 }
-        //             }
-        //             Err(e) => {}
-        //         };
-        //     }
-        // });
 
         Ok(QueueController { event_rx })
     }
-
-    // async fn queue_and_connect(
-    //     render_state: RenderState,
-    //     network: NetworkClient,
-    //     config: &Config,
-    // ) -> Result<GameSession> {
-    //     let client = Arc::new(ClientState::new(
-    //         team_id,
-    //         player_id,
-    //         init_teams,
-    //         config.trail_delay(),
-    //         config.trail_opacity(),
-    //         config.trail_lifetime(),
-    //     )?);
-
-    //     // spawn networking tasks.
-    //     network.spawn_receive_task(Arc::clone(&client));
-    //     network.spawn_send_task(Arc::clone(&client));
-
-    //     // forward keyboard input into the shared client input state.
-    //     let current_input_write = Arc::clone(&client.current_input);
-
-    //     let (input_tx, mut input_rx) = unbounded_channel::<HashSet<KeyCode>>();
-
-    //     tokio::spawn(async move {
-    //         while let Some(input) = input_rx.recv().await {
-    //             let mut current = current_input_write.lock().await;
-    //             *current = input;
-    //         }
-    //     });
-
-    //     Ok(GameSession::new(
-    //         input_tx,
-    //         Arc::clone(&client.snapshot_history),
-    //         Arc::clone(&client.render_tick),
-    //         render_state,
-    //     ))
-    // }
 
     fn update_menu(_app: &mut App, _ctx: &mut Context) -> GameResult<Option<ClientView>> {
         Ok(None)
@@ -263,14 +154,14 @@ impl App {
                         }
                     });
 
-                    let session = GameSession::new(
+                    let session = Box::new(GameSession::new(
                         input_tx,
                         Arc::clone(&client.snapshot_history),
                         Arc::clone(&client.render_tick),
                         render_state,
-                    );
+                    ));
 
-                    return Ok(Some(ClientView::InGame(Box::new(session))));
+                    return Ok(Some(ClientView::InGame { session, client }));
                 }
                 QueueEvent::Error(_) => {
                     return Ok(Some(ClientView::Menu));
@@ -281,9 +172,10 @@ impl App {
         Ok(None)
     }
 
-    fn update_game(ctx: &mut Context, session: &mut GameSession) -> GameResult<Option<ClientView>> {
-        let dt = ctx.time.delta().as_secs_f32();
-        if session.has_ended(dt) {
+    fn update_game(client: &ClientState) -> GameResult<Option<ClientView>> {
+        if client.event_rx.has_changed().unwrap()
+            && let Some(ClientEvent::EndGame) = client.event_rx.borrow().clone()
+        {
             return Ok(Some(ClientView::Menu));
         }
 
@@ -316,7 +208,7 @@ impl EventHandler for App {
             ClientView::Queue(controller) => {
                 App::update_queue(ctx, controller, &self.config, Arc::clone(&self.network))?
             }
-            ClientView::InGame(session) => App::update_game(ctx, session)?,
+            ClientView::InGame { session: _, client } => App::update_game(client)?,
         };
 
         if let Some(new_view) = transition {
@@ -330,7 +222,7 @@ impl EventHandler for App {
         match &mut self.view {
             ClientView::Menu => menus::draw_menu(ctx),
             ClientView::Queue(_) => menus::draw_queue(ctx),
-            ClientView::InGame(session) => App::draw_game(ctx, session),
+            ClientView::InGame { session, client: _ } => App::draw_game(ctx, session),
         }
     }
 
@@ -371,7 +263,7 @@ impl EventHandler for App {
                     }
                     _ => {}
                 },
-                ClientView::InGame(session) => session.press(keycode),
+                ClientView::InGame { session, client: _ } => session.press(keycode),
             }
         }
 
@@ -381,7 +273,7 @@ impl EventHandler for App {
     fn key_up_event(&mut self, _ctx: &mut Context, input: KeyInput) -> GameResult {
         if let Some(keycode) = input.keycode {
             match &mut self.view {
-                ClientView::InGame(session) => session.release(&keycode),
+                ClientView::InGame { session, client: _ } => session.release(&keycode),
                 _ => {}
             }
         }

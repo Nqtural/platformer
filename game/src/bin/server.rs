@@ -36,16 +36,17 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn new(socket: Arc<UdpSocket>) -> Self {
-        Self {
+    pub fn new(socket: Arc<UdpSocket>) -> Arc<Self> {
+        Arc::new(Self {
             socket,
             sessions: RwLock::new(HashMap::new()),
             connections: RwLock::new(BiMap::new()),
             queues: Mutex::new(Queues::default()),
             games: RwLock::new(HashMap::new()),
-        }
+        })
     }
-    pub async fn run(self: Arc<Self>) {
+
+    pub async fn run(self: &Arc<Self>) {
         self.spawn_network_task();
 
         pending::<()>().await;
@@ -73,7 +74,7 @@ impl Server {
         });
     }
 
-    async fn handle_packet(&self, msg: ClientMessage, addr: SocketAddr) {
+    async fn handle_packet(self: &Arc<Self>, msg: ClientMessage, addr: SocketAddr) {
         if let ClientMessage::Hello { player_name } = &msg {
             let client_id = Uuid::new_v4();
 
@@ -110,7 +111,7 @@ impl Server {
         }
     }
 
-    async fn queue_player(&self, client_id: Uuid, mode: GameMode) {
+    async fn queue_player(self: &Arc<Self>, client_id: Uuid, mode: GameMode) {
         self.leave_queue(client_id).await;
 
         {
@@ -143,23 +144,26 @@ impl Server {
         }
     }
 
-    async fn try_start_match(&self, mode: GameMode) {
-        let mut queues = self.queues.lock().await;
-        let players = match mode {
-            GameMode::Solos => {
-                if queues.solos.len() < 2 {
-                    return;
+    async fn try_start_match(self: &Arc<Self>, mode: GameMode) {
+        let players;
+        {
+            let mut queues = self.queues.lock().await;
+            players = match mode {
+                GameMode::Solos => {
+                    if queues.solos.len() < 2 {
+                        return;
+                    }
+                    queues.solos.get_and_remove_players(2)
                 }
-                queues.solos.get_and_remove_players(2)
-            }
 
-            GameMode::Duos => {
-                if queues.duos.len() < 4 {
-                    return;
+                GameMode::Duos => {
+                    if queues.duos.len() < 4 {
+                        return;
+                    }
+                    queues.duos.get_and_remove_players(4)
                 }
-                queues.duos.get_and_remove_players(4)
-            }
-        };
+            };
+        }
 
         match self.start_game_instance(players, mode).await {
             Ok(_) => {}
@@ -167,7 +171,11 @@ impl Server {
         };
     }
 
-    async fn start_game_instance(&self, player_ids: Vec<Uuid>, mode: GameMode) -> Result<()> {
+    async fn start_game_instance(
+        self: &Arc<Self>,
+        player_ids: Vec<Uuid>,
+        mode: GameMode,
+    ) -> Result<()> {
         let players;
         {
             let sessions = self.sessions.read().await;
@@ -335,11 +343,14 @@ impl Server {
             .iter()
             .filter_map(|(id, _)| connections.get_by_right(id).copied())
             .collect();
-        let socket = Arc::clone(&self.socket);
+        let server = Arc::clone(self);
         tokio::spawn(async move {
             println!("Starting game with id '{game_id}'");
 
-            if let Err(e) = handle_game(gs, input_rx, socket, players, player_addrs).await {
+            if let Err(e) = server
+                .handle_game(gs, input_rx, players, player_addrs, game_id)
+                .await
+            {
                 eprintln!("Game ' {game_id}' crashed: {e}");
             }
         });
@@ -362,52 +373,70 @@ impl Server {
             input,
         });
     }
-}
 
-async fn handle_game(
-    mut gs: GameState,
-    mut input_rx: UnboundedReceiver<GameInput>,
-    socket: Arc<UdpSocket>,
-    players: HashMap<Uuid, PlayerSlot>,
-    player_addrs: Vec<SocketAddr>,
-) -> Result<()> {
-    let mut tick: u64 = 0;
+    async fn handle_game(
+        self: Arc<Self>,
+        mut gs: GameState,
+        mut input_rx: UnboundedReceiver<GameInput>,
+        players: HashMap<Uuid, PlayerSlot>,
+        player_addrs: Vec<SocketAddr>,
+        game_id: Uuid,
+    ) -> Result<()> {
+        let mut tick: u64 = 0;
 
-    loop {
-        let frame_start = Instant::now();
+        loop {
+            let frame_start = Instant::now();
 
-        while let Ok(input) = input_rx.try_recv() {
-            let Some(slot) = players.get(&input.client_id) else {
-                continue;
+            while let Ok(input) = input_rx.try_recv() {
+                let Some(slot) = players.get(&input.client_id) else {
+                    continue;
+                };
+
+                if let Some(team) = gs.teams.get_mut(slot.team_id)
+                    && let Some(player) = team.players.get_mut(slot.player_id)
+                {
+                    player.input = input.input;
+                }
+            }
+
+            gs.fixed_update(FIXED_DT);
+
+            let snapshot = net_game_state::to_net(&gs);
+            let msg = ServerMessage::Snapshot {
+                server_tick: tick,
+                server_state: snapshot,
             };
+            let bytes = serialize(&msg)?;
+            for addr in &player_addrs {
+                let _ = self.socket.send_to(&bytes, addr).await;
+            }
 
-            if let Some(team) = gs.teams.get_mut(slot.team_id)
-                && let Some(player) = team.players.get_mut(slot.player_id)
-            {
-                player.input = input.input;
+            tick += 1;
+
+            sleep_until_next_tick(frame_start).await;
+
+            if gs.is_game_over() {
+                break;
             }
         }
 
-        gs.fixed_update(FIXED_DT);
+        self.games.write().await.remove(&game_id);
 
-        let snapshot = net_game_state::to_net(&gs);
+        let mut sessions = self.sessions.write().await;
 
-        let msg = ServerMessage::Snapshot {
-            server_tick: tick,
-            server_state: snapshot,
-        };
-
+        let msg = ServerMessage::EndGame;
         let bytes = serialize(&msg)?;
-
-        println!("Snapshot size: {}", bytes.len());
-
         for addr in &player_addrs {
-            let _ = socket.send_to(&bytes, addr).await;
+            let _ = self.socket.send_to(&bytes, addr).await;
         }
 
-        tick += 1;
+        for client_id in players.keys() {
+            if let Some(session) = sessions.get_mut(client_id) {
+                session.state = ClientState::Menu;
+            }
+        }
 
-        sleep_until_next_tick(frame_start).await;
+        Ok(())
     }
 }
 
@@ -435,9 +464,9 @@ fn spawn_position(team_id: usize, player_id: usize) -> [f32; 2] {
 async fn main() -> Result<()> {
     let config = Config::get()?;
 
-    let server = Arc::new(Server::new(Arc::new(
+    let server = Server::new(Arc::new(
         UdpSocket::bind(format!("{}:{}", config.serverip(), config.serverport())).await?,
-    )));
+    ));
 
     tokio::select! {
         _ = server.run() => {}

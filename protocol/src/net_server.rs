@@ -24,6 +24,7 @@ pub enum ServerMessage {
         c_player_id: usize,
         player_names: [Vec<String>; 2],
     },
+    EndGame,
     Snapshot {
         server_tick: u64,
         server_state: NetSnapshot,
