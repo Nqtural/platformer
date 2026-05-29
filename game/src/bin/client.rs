@@ -1,4 +1,4 @@
-use anyhow::{Error, Result};
+use anyhow::Result;
 use client_logic::{ClientEvent, ClientState, GameSession, NetworkClient};
 use display::menus;
 use display::render::RenderState;
@@ -36,7 +36,6 @@ struct InitialGameData {
 
 enum QueueEvent {
     MatchFound(InitialGameData),
-    Error(Error),
 }
 
 struct App {
@@ -162,9 +161,6 @@ impl App {
                     ));
 
                     return Ok(Some(ClientView::InGame { session, client }));
-                }
-                QueueEvent::Error(_) => {
-                    return Ok(Some(ClientView::Menu));
                 }
             }
         }
