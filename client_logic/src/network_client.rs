@@ -1,4 +1,4 @@
-use crate::ClientState;
+use crate::{ClientState, runtime::ClientEvent};
 use anyhow::Result;
 use foundation::GameMode;
 use protocol::{net_client::ClientMessage, net_game_state, net_server::ServerMessage};
@@ -108,11 +108,14 @@ impl NetworkClient {
 
                                 snapshot_history.push(server_tick, core.game_state().clone());
                             }
-
+                            Ok(ServerMessage::EndGame) => {
+                                let _ = client.event_tx.send(Some(ClientEvent::EndGame));
+                                client.shutdown.store(true, Ordering::Relaxed);
+                                return;
+                            }
                             Ok(_) => {
                                 // ignore other message types
                             }
-
                             Err(e) => {
                                 eprintln!("Decode error: {e}");
                             }
@@ -133,6 +136,10 @@ impl NetworkClient {
                 std::time::Duration::from_millis(1000 / simulation::constants::TICK_RATE as u64);
 
             loop {
+                if client.shutdown.load(Ordering::Relaxed) {
+                    return;
+                }
+
                 let start = std::time::Instant::now();
                 let tick = client.tick.load(Ordering::Relaxed);
 

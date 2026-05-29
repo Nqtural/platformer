@@ -5,5 +5,6 @@ pub mod render_clock;
 mod runtime;
 mod session;
 pub use network_client::NetworkClient;
+pub use runtime::ClientEvent;
 pub use runtime::ClientState;
 pub use session::GameSession;
