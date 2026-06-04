@@ -47,7 +47,6 @@ impl ReplayViewer {
 
         while self.frame_time > FIXED_DT {
             self.tick += 1;
-            println!("ticking to {}", self.tick);
             self.frame_time -= FIXED_DT;
         }
     }
