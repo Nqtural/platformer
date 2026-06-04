@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::constants::RESPAWN_TIME;
 use crate::utils::tick_timers;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct PlayerStatus {
     pub stunned: f32,
     pub respawn_timer: f32,

@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 use simulation::PlayerInput;
+use wincode::{SchemaRead, SchemaWrite};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(SchemaRead, SchemaWrite, Serialize, Deserialize, Clone)]
 pub struct NetInput {
     jump: bool,
     up: bool,

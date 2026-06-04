@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::utils::tick_timers;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct PlayerCooldowns {
     pub dash: f32,
     pub normal: f32,

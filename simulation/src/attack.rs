@@ -2,8 +2,9 @@ use crate::constants::PLAYER_SIZE;
 use foundation::rect::Rect;
 use glam::Vec2;
 use serde::{Deserialize, Serialize};
+use wincode::{SchemaRead, SchemaWrite};
 
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, SchemaWrite, SchemaRead)]
 pub enum AttackKind {
     Dash,
     Light,

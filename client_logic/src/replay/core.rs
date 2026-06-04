@@ -1,19 +1,21 @@
-use protocol::net_team::{InitTeamData, from_init};
+use foundation::color::Color;
+use protocol::constants::{TEAM_ONE_START_POS, TEAM_TWO_START_POS};
 use serde::{Deserialize, Serialize};
-use simulation::{PlayerInput, game_state::GameState};
+use simulation::{Player, PlayerInput, game_state::GameState, team::Team};
+use wincode::{SchemaRead, SchemaWrite};
 
-#[derive(Serialize, Deserialize)]
+#[derive(SchemaRead, SchemaWrite, Serialize, Deserialize)]
 pub struct Replay {
     version: u32,
-    teams: [InitTeamData; 2],
+    player_names: [Vec<String>; 2],
     inputs: [Vec<PlayerInput>; 2],
 }
 
 impl Replay {
-    pub fn new(teams: [InitTeamData; 2]) -> Self {
+    pub fn new(player_names: [Vec<String>; 2]) -> Self {
         Self {
             version: 1,
-            teams,
+            player_names,
             inputs: [Vec::new(), Vec::new()],
         }
     }
@@ -42,17 +44,37 @@ impl Replay {
             0,
             0,
             [
-                from_init(
-                    self.teams[0].clone(),
-                    trail_delay,
-                    trail_opacity,
-                    trail_lifetime,
+                Team::new(
+                    self.player_names[0]
+                        .iter()
+                        .map(|n| {
+                            Player::new(
+                                TEAM_ONE_START_POS,
+                                n.clone(),
+                                Color::new(0.0, 0.0, 1.0, 1.0),
+                                0,
+                                trail_delay,
+                                trail_opacity,
+                                trail_lifetime,
+                            )
+                        })
+                        .collect(),
                 ),
-                from_init(
-                    self.teams[1].clone(),
-                    trail_delay,
-                    trail_opacity,
-                    trail_lifetime,
+                Team::new(
+                    self.player_names[1]
+                        .iter()
+                        .map(|n| {
+                            Player::new(
+                                TEAM_TWO_START_POS,
+                                n.clone(),
+                                Color::new(1.0, 0.0, 0.0, 1.0),
+                                1,
+                                trail_delay,
+                                trail_opacity,
+                                trail_lifetime,
+                            )
+                        })
+                        .collect(),
                 ),
             ],
         )

@@ -4,8 +4,9 @@ use crate::utils::condense_name;
 use foundation::color::Color;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
+use wincode::{SchemaRead, SchemaWrite};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, SchemaWrite, SchemaRead)]
 pub struct LobbyPlayer {
     pub addr: SocketAddr,
     pub team_id: usize,

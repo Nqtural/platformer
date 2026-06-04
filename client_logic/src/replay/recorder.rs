@@ -1,9 +1,8 @@
 use super::core::Replay;
 use crate::{interpolation::TimedSnapshot, replay::constants::REPLAY_DIRECTORY};
-use bincode::serde::encode_to_vec;
 use chrono::Local;
-use protocol::net_team::InitTeamData;
 use std::{fs, path::Path};
+use wincode::serialize;
 
 pub struct ReplayRecorder {
     last_tick: u64,
@@ -11,10 +10,10 @@ pub struct ReplayRecorder {
 }
 
 impl ReplayRecorder {
-    pub fn new(teams: [InitTeamData; 2]) -> Self {
+    pub fn new(player_names: [Vec<String>; 2]) -> Self {
         Self {
             last_tick: 0,
-            replay: Replay::new(teams),
+            replay: Replay::new(player_names),
         }
     }
 
@@ -33,7 +32,7 @@ impl ReplayRecorder {
     }
 
     pub fn save(&self) {
-        let bytes = match encode_to_vec(&self.replay, bincode::config::standard()) {
+        let bytes = match serialize(&self.replay) {
             Ok(bytes) => bytes,
             Err(e) => {
                 eprintln!("Failed to encode replay: {e}");

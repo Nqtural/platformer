@@ -1,10 +1,9 @@
-use bincode::config;
-use bincode::serde::encode_to_vec;
-use tokio::net::UdpSocket;
-use tokio::sync::RwLock;
+use crate::net_server::ServerMessage;
 use std::collections::HashSet;
 use std::net::SocketAddr;
-use crate::net_server::ServerMessage;
+use tokio::net::UdpSocket;
+use tokio::sync::RwLock;
+use wincode::serialize;
 
 pub fn condense_name(mut name: &str) -> String {
     // Skip leading "The"
@@ -19,14 +18,18 @@ pub fn condense_name(mut name: &str) -> String {
         .collect()
 }
 
-pub async fn send_to(addr: SocketAddr, msg: ServerMessage, socket: &UdpSocket, cfg: &config::Configuration) {
-    if let Ok(data) = encode_to_vec(&msg, *cfg) {
+pub async fn send_to(addr: SocketAddr, msg: ServerMessage, socket: &UdpSocket) {
+    if let Ok(data) = serialize(&msg) {
         let _ = socket.send_to(&data, addr).await;
     }
 }
 
-pub async fn broadcast(msg: ServerMessage, clients: &RwLock<HashSet<SocketAddr>>, socket: &UdpSocket, cfg: &config::Configuration) {
-    if let Ok(data) = encode_to_vec(&msg, *cfg) {
+pub async fn broadcast(
+    msg: ServerMessage,
+    clients: &RwLock<HashSet<SocketAddr>>,
+    socket: &UdpSocket,
+) {
+    if let Ok(data) = serialize(&msg) {
         let list = clients.read().await;
         for client in list.iter() {
             let _ = socket.send_to(&data, client).await;

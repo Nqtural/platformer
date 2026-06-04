@@ -1,8 +1,9 @@
 use ggez::input::keyboard::KeyCode;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use wincode::{SchemaRead, SchemaWrite};
 
-#[derive(Serialize, Deserialize, Clone, Default, PartialEq, Debug)]
+#[derive(SchemaRead, SchemaWrite, Serialize, Deserialize, Clone, Default, PartialEq, Debug)]
 pub struct PlayerInput {
     pub jump: bool,
     pub up: bool,

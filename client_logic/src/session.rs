@@ -1,4 +1,3 @@
-use crate::constants::POST_GAME_TIMER;
 use crate::interpolation::SnapshotHistory;
 use crate::replay::recorder::ReplayRecorder;
 use display::render::RenderState;
@@ -13,8 +12,6 @@ pub struct GameSession {
     pub snapshot_history: Arc<Mutex<SnapshotHistory>>,
     pub render_tick: Arc<Mutex<f32>>,
     pub render_state: RenderState,
-    post_game: bool,
-    post_game_timer: f32,
     pub replay_recorder: ReplayRecorder,
 }
 
@@ -32,31 +29,8 @@ impl GameSession {
             snapshot_history,
             render_tick,
             render_state,
-            post_game: false,
-            post_game_timer: POST_GAME_TIMER,
             replay_recorder,
         }
-    }
-
-    pub fn has_ended(&mut self, dt: f32) -> bool {
-        if !self.post_game
-            && let Ok(history) = self.snapshot_history.try_lock()
-            && let Some(timed_snapshot) = history.latest()
-            && timed_snapshot.snapshot.winner != 0
-        {
-            self.post_game = true;
-        }
-
-        if self.post_game {
-            self.post_game_timer -= dt;
-
-            if self.post_game_timer <= 0.0 {
-                self.replay_recorder.save();
-                return true;
-            }
-        }
-
-        false
     }
 
     pub fn press(&mut self, keycode: KeyCode) {
@@ -74,5 +48,9 @@ impl GameSession {
             .snapshot_history
             .try_lock()
             .map(|h| h.latest().map(|s| self.replay_recorder.update(s.clone())));
+    }
+
+    pub fn save_replay(&self) {
+        self.replay_recorder.save();
     }
 }

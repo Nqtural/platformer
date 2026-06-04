@@ -12,7 +12,7 @@ use foundation::color::Color;
 use foundation::rect::Rect;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Player {
     pub combat: PlayerCombat,
     pub cooldowns: PlayerCooldowns,

@@ -2,8 +2,9 @@ use foundation::color::Color;
 use serde::{Deserialize, Serialize};
 use simulation::Player;
 use simulation::team::Team;
+use wincode::{SchemaRead, SchemaWrite};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, SchemaWrite, SchemaRead)]
 pub struct InitTeamData {
     pub color: Color,
     pub player_names: Vec<String>,

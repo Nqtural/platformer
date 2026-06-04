@@ -1,4 +1,6 @@
-use crate::{map::Map, team::Team, utils::current_and_enemy};
+use crate::{
+    constants::POST_GAME_TIMER, map::Map, team::Team, utils::current_and_enemy, PlayerInput,
+};
 use ggez::input::keyboard::KeyCode;
 use std::collections::HashSet;
 
@@ -9,6 +11,7 @@ pub struct GameState {
     pub teams: [Team; 2],
     pub map: Map,
     pub winner: usize,
+    pub post_game_timer: f32,
 }
 
 impl GameState {
@@ -19,15 +22,24 @@ impl GameState {
             teams,
             map: Map::new(),
             winner: 0,
+            post_game_timer: POST_GAME_TIMER,
         }
     }
 
     pub fn fixed_update(&mut self, dt: f32) {
         self.check_for_win();
 
+        self.update_post_game_timer(dt);
+
         for i in 0..2 {
             let (current, enemy) = current_and_enemy(&mut self.teams, i);
             current.update_players(enemy, self.map.get_rect(), self.winner, dt);
+        }
+    }
+
+    fn update_post_game_timer(&mut self, dt: f32) {
+        if self.winner != 0 {
+            self.post_game_timer -= dt;
         }
     }
 
@@ -48,5 +60,13 @@ impl GameState {
         self.teams[self.c_team].players[self.c_player]
             .input
             .update(pressed);
+    }
+
+    pub fn apply_input(&mut self, team_index: usize, player_index: usize, input: PlayerInput) {
+        self.teams[team_index].players[player_index].input = input;
+    }
+
+    pub fn is_game_over(&self) -> bool {
+        self.post_game_timer <= 0.0
     }
 }

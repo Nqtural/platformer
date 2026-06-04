@@ -1,6 +1,6 @@
 use simulation::{
-    Player, PlayerCombat, PlayerCooldowns, PlayerPhysics, PlayerStatus, PlayerVisuals,
-    attack::Attack, game_state::GameState, team::Team,
+    attack::Attack, game_state::GameState, team::Team, Player, PlayerCombat, PlayerCooldowns,
+    PlayerPhysics, PlayerStatus, PlayerVisuals,
 };
 use std::collections::VecDeque;
 
@@ -102,6 +102,7 @@ pub fn interpolate(a: &GameState, b: &GameState, alpha: f32) -> GameState {
             interpolate_team(&a.teams[0], &b.teams[0], alpha),
             interpolate_team(&a.teams[1], &b.teams[1], alpha),
         ],
+        post_game_timer: a.post_game_timer,
     }
 }
 

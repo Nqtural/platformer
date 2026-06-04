@@ -1,16 +1,17 @@
-use serde::{
-    Serialize,
-    Deserialize,
-};
+use foundation::GameMode;
+use serde::{Deserialize, Serialize};
 use simulation::PlayerInput;
+use wincode::{SchemaRead, SchemaWrite};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, SchemaRead, SchemaWrite)]
 pub enum ClientMessage {
-    Hello { name: String },
+    Hello {
+        player_name: String,
+    },
+    QueueJoin(GameMode),
+    QueueLeave,
     Input {
         client_tick: u64,
-        team_id: usize,
-        player_id: usize,
         input: PlayerInput,
     },
 }

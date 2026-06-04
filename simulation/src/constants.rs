@@ -3,8 +3,18 @@ use foundation::color::Color;
 pub const VIRTUAL_WIDTH: f32 = 1980.0;
 pub const VIRTUAL_HEIGHT: f32 = 1080.0;
 
-pub const MAP_COLOR: Color = Color { r: 0.0, g: 0.0, b: 0.0, a: 1.0 };
-pub const NAME_COLOR: Color = Color { r: 0.6, g: 0.6, b: 0.6, a: 1.0 };
+pub const MAP_COLOR: Color = Color {
+    r: 0.0,
+    g: 0.0,
+    b: 0.0,
+    a: 1.0,
+};
+pub const NAME_COLOR: Color = Color {
+    r: 0.6,
+    g: 0.6,
+    b: 0.6,
+    a: 1.0,
+};
 
 pub const PLAYER_SIZE: f32 = 20.0;
 
@@ -19,3 +29,5 @@ pub const RESISTANCE: f32 = 1400.0;
 pub const WALL_SLIDE_SPEED: f32 = 0.0;
 
 pub const RESPAWN_TIME: f32 = 2.5;
+
+pub const POST_GAME_TIMER: f32 = 5.0;

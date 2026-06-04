@@ -1,10 +1,10 @@
 use crate::replay::core::Replay;
 use crate::{interpolation::TimedSnapshot, replay::constants::REPLAY_SPEEDS};
 use anyhow::Result;
-use bincode::{config, serde::decode_from_slice};
 use display::render::RenderState;
 use simulation::constants::{FIXED_DT, TICK_RATE};
 use simulation::game_state::GameState;
+use wincode::deserialize;
 
 pub struct ReplayViewer {
     pub render_state: RenderState,
@@ -104,7 +104,7 @@ impl ReplayViewer {
 
 fn load_replay(path: &str) -> Result<Replay> {
     let bytes = std::fs::read(path)?;
-    let (replay, _) = decode_from_slice(&bytes, config::standard())?;
+    let replay = deserialize(&bytes)?;
 
     Ok(replay)
 }
