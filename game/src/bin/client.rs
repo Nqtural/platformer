@@ -13,7 +13,10 @@ use protocol::net_server::ServerMessage;
 use simulation::constants::{VIRTUAL_HEIGHT, VIRTUAL_WIDTH};
 use std::collections::HashSet;
 use std::sync::Arc;
-use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
+use tokio::{
+    sync::mpsc::{UnboundedReceiver, unbounded_channel},
+    task::JoinHandle,
+};
 
 enum ClientView {
     Menu,
@@ -26,6 +29,7 @@ enum ClientView {
 
 struct QueueController {
     event_rx: UnboundedReceiver<QueueEvent>,
+    task: JoinHandle<()>,
 }
 
 struct InitialGameData {
@@ -76,7 +80,7 @@ impl App {
         });
 
         let network = Arc::clone(&self.network);
-        tokio::spawn({
+        let task = tokio::spawn({
             async move {
                 loop {
                     match network.poll_queue().await {
@@ -98,7 +102,7 @@ impl App {
             }
         });
 
-        Ok(QueueController { event_rx })
+        Ok(QueueController { event_rx, task })
     }
 
     fn update_menu(_app: &mut App, _ctx: &mut Context) -> GameResult<Option<ClientView>> {
@@ -249,8 +253,9 @@ impl EventHandler for App {
                     KeyCode::Q => panic!("Exiting..."), // exit hack, TODO
                     _ => {}
                 },
-                ClientView::Queue(_) => match keycode {
+                ClientView::Queue(controller) => match keycode {
                     KeyCode::Escape => {
+                        controller.task.abort();
                         let network = Arc::clone(&self.network);
                         tokio::spawn(async move {
                             let _ = network.leave_queue().await;
