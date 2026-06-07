@@ -1,20 +1,18 @@
 use anyhow::Result;
 use bimap::BiMap;
 use foundation::GameMode;
-use foundation::color::Color;
 use futures::future::pending;
 use game_config::read::Config;
-use protocol::constants::{DUO_OFFSET, TEAM_ONE_START_POS, TEAM_TWO_START_POS};
+use protocol::init::{InitData, InitPlayerData};
 use protocol::net_client::ClientMessage;
 use protocol::net_game_state;
 use protocol::net_server::ServerMessage;
 use server_logic::runtime::{
     ClientSession, ClientState, GameHandle, GameInput, PlayerSlot, Queues,
 };
+use simulation::PlayerInput;
 use simulation::constants::FIXED_DT;
 use simulation::game_state::GameState;
-use simulation::team::Team;
-use simulation::{Player, PlayerInput};
 use std::sync::Arc;
 use std::time::Duration;
 use std::{collections::HashMap, net::SocketAddr};
@@ -176,64 +174,32 @@ impl Server {
         player_ids: Vec<Uuid>,
         mode: GameMode,
     ) -> Result<()> {
-        let players;
+        let teams = match mode {
+            GameMode::Solos => [
+                vec![player_ids[0].to_string()],
+                vec![player_ids[1].to_string()],
+            ],
+            GameMode::Duos => [
+                vec![player_ids[0].to_string(), player_ids[1].to_string()],
+                vec![player_ids[2].to_string(), player_ids[3].to_string()],
+            ],
+        };
+
+        let mut players = HashMap::new();
         {
             let sessions = self.sessions.read().await;
-
-            players = player_ids
-                .iter()
-                .filter_map(|id| sessions.get(id).map(|s| (*id, s.player_name.clone())))
-                .collect::<Vec<(Uuid, String)>>();
-        }
-
-        let teams: [Vec<String>; 2] = match mode {
-            GameMode::Solos => {
-                vec![vec![players[0].1.clone()], vec![players[1].1.clone()]]
-            }
-            GameMode::Duos => {
-                vec![
-                    vec![players[0].1.clone(), players[1].1.clone()],
-                    vec![players[2].1.clone(), players[3].1.clone()],
-                ]
+            for player_id in &player_ids {
+                players.insert(
+                    player_id.to_string(),
+                    InitPlayerData {
+                        name: sessions.get(player_id).unwrap().player_name.clone(),
+                    },
+                );
             }
         }
-        .try_into()
-        .unwrap();
+        let init_data = InitData { players, teams };
 
-        let built_teams: Vec<Team> = teams
-            .iter()
-            .enumerate()
-            .map(|(team_index, team_players)| {
-                Team::new(
-                    team_players
-                        .iter()
-                        .enumerate()
-                        .map(|(player_index, player_name)| {
-                            Player::new(
-                                spawn_position(team_index, player_index),
-                                player_name.clone(),
-                                if team_index == 0 {
-                                    Color::new(0.0, 0.0, 1.0, 1.0)
-                                } else {
-                                    Color::new(1.0, 0.0, 0.0, 1.0)
-                                },
-                                team_index,
-                                0.0,
-                                0.0,
-                                0.0,
-                            )
-                        })
-                        .collect(),
-                )
-            })
-            .collect();
-
-        // TODO: can just unwrap instead of match once Team implements Debug
-        let built_teams: [Team; 2] = match built_teams.try_into() {
-            Ok(teams) => teams,
-            Err(_) => panic!("Expected exactly 2 teams"),
-        };
-        let gs = GameState::new(0, 0, built_teams);
+        let gs = init_data.to_game_state();
 
         let (input_tx, input_rx) = unbounded_channel::<GameInput>();
         let game_id = Uuid::new_v4();
@@ -317,7 +283,6 @@ impl Server {
             self.games.write().await.insert(game_id, handle.clone());
         }
 
-        let player_names: [Vec<String>; 2] = teams.clone();
         let connections = self.connections.read().await;
 
         for uuid in players.keys() {
@@ -326,13 +291,11 @@ impl Server {
                 None => continue,
             };
 
-            let slot = handle.players.get(uuid).unwrap();
             self.socket
                 .send_to(
                     &serialize(&ServerMessage::StartGame {
-                        c_team_id: slot.team_id,
-                        c_player_id: slot.player_id,
-                        player_names: player_names.clone(),
+                        c_player: uuid.to_string(),
+                        init_data: init_data.clone(),
                     })?,
                     addr,
                 )
@@ -388,18 +351,13 @@ impl Server {
             let frame_start = Instant::now();
 
             while let Ok(input) = input_rx.try_recv() {
-                let Some(slot) = players.get(&input.client_id) else {
+                let Some(player) = gs.players.get_mut(&input.client_id) else {
                     continue;
                 };
-
-                if let Some(team) = gs.teams.get_mut(slot.team_id)
-                    && let Some(player) = team.players.get_mut(slot.player_id)
-                {
-                    player.input = input.input;
-                }
+                player.input = input.input;
             }
 
-            gs.fixed_update(FIXED_DT);
+            gs.update(FIXED_DT);
 
             let snapshot = net_game_state::to_net(&gs);
             let msg = ServerMessage::Snapshot {
@@ -447,16 +405,6 @@ async fn sleep_until_next_tick(frame_start: Instant) {
 
     if elapsed < tick_duration {
         sleep(tick_duration - elapsed).await;
-    }
-}
-
-fn spawn_position(team_id: usize, player_id: usize) -> [f32; 2] {
-    match (team_id, player_id) {
-        (0, 0) => TEAM_ONE_START_POS,
-        (0, 1) => [TEAM_ONE_START_POS[0] + DUO_OFFSET, TEAM_ONE_START_POS[1]],
-        (1, 0) => TEAM_TWO_START_POS,
-        (1, 1) => [TEAM_TWO_START_POS[0] - DUO_OFFSET, TEAM_TWO_START_POS[1]],
-        _ => unreachable!(),
     }
 }
 

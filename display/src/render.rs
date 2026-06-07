@@ -1,6 +1,9 @@
+use std::collections::HashMap;
+
+use super::trail::TrailSquare;
 use crate::utils::{IntoMint, color_to_ggez, rect_to_ggez};
 use anyhow::Result;
-use foundation::color::Color;
+use foundation::{color::Color, rect::Rect};
 use game_config::read::Config;
 use ggez::{
     Context, GameResult,
@@ -10,13 +13,85 @@ use ggez::{
     },
 };
 use glam::Vec2;
+use protocol::init::InitData;
 use simulation::{
     attack::{Attack, AttackKind},
     constants::{NAME_COLOR, PLAYER_SIZE, VIRTUAL_HEIGHT, VIRTUAL_WIDTH},
     game_state::GameState,
 };
+use uuid::Uuid;
+
+pub struct PlayerRenderState {
+    name: String,
+    color: Color,
+    trail: TrailRenderer,
+}
+
+impl PlayerRenderState {
+    fn update(&mut self, dt: f32, trail_active: bool, rect: Rect, color: Color) {
+        self.trail.update(dt, trail_active, rect, color);
+    }
+
+    #[must_use]
+    pub fn get_color(&self, stunned: bool) -> Color {
+        if stunned {
+            let color = self.color.clone();
+            Color::new(
+                (color.r + 0.4).min(1.0),
+                (color.g + 0.4).min(1.0),
+                (color.b + 0.4).min(1.0),
+                1.0,
+            )
+        } else {
+            self.color.clone()
+        }
+    }
+}
+
+pub struct TrailRenderer {
+    pub squares: Vec<TrailSquare>,
+    pub timer: f32,
+    pub delay: f32,
+    pub opacity: f32,
+    pub lifetime: f32,
+}
+
+impl TrailRenderer {
+    pub fn new(delay: f32, opacity: f32, lifetime: f32) -> Self {
+        Self {
+            squares: Vec::new(),
+            timer: 0.0,
+            delay,
+            opacity,
+            lifetime,
+        }
+    }
+
+    fn update(&mut self, dt: f32, trail_active: bool, rect: Rect, color: Color) {
+        self.squares.iter_mut().for_each(|s| s.update(dt));
+        self.squares.retain(|s| s.lifetime > 0.0);
+
+        if self.timer < self.delay {
+            // prevent increasing the trail timer indefinitely
+            self.timer += dt;
+        }
+
+        if trail_active {
+            self.spawn_square(rect, color);
+        }
+    }
+
+    fn spawn_square(&mut self, rect: Rect, color: Color) {
+        if self.timer >= self.delay {
+            self.timer = 0.0;
+            self.squares
+                .push(TrailSquare::new(rect, color, self.opacity, self.lifetime));
+        }
+    }
+}
 
 pub struct RenderState {
+    c_player: Uuid,
     team_one_color: Color,
     team_two_color: Color,
     player_name_above: bool,
@@ -26,15 +101,42 @@ pub struct RenderState {
     background_image: Option<Image>,
     attack_image: Option<Image>,
     parry_image: Option<Image>,
+    players: HashMap<Uuid, PlayerRenderState>,
 }
 
 impl RenderState {
-    pub fn new(ctx: &Context, config: &Config) -> Result<Self> {
+    pub fn new(
+        ctx: &Context,
+        config: &Config,
+        init_data: InitData,
+        c_player: Uuid,
+    ) -> Result<Self> {
         let bg_img = Image::from_bytes(&ctx.gfx, &config.background_image()?)?;
         let attack_img = Image::from_bytes(&ctx.gfx, &config.attack_image()?)?;
         let parry_img = Image::from_bytes(&ctx.gfx, &config.parry_image()?)?;
 
+        let mut players = HashMap::new();
+        for (id, data) in init_data.players {
+            players.insert(
+                Uuid::parse_str(&id).expect("Invalid UUID string"),
+                PlayerRenderState {
+                    name: data.name,
+                    color: if init_data.teams[0].contains(&id) {
+                        config.team_one_color()
+                    } else {
+                        config.team_two_color()
+                    },
+                    trail: TrailRenderer::new(
+                        config.trail_delay(),
+                        config.trail_opacity(),
+                        config.trail_lifetime(),
+                    ),
+                },
+            );
+        }
+
         Ok(Self {
+            c_player,
             camera_pos: Vec2::new(0.0, 0.0),
             bias_strength: config.camera_bias(),
             team_one_color: config.team_one_color(),
@@ -44,11 +146,22 @@ impl RenderState {
             background_image: Some(bg_img),
             attack_image: Some(attack_img),
             parry_image: Some(parry_img),
+            players,
         })
     }
 
     pub fn render(&mut self, ctx: &mut Context, gs: &GameState) -> GameResult {
         self.update_camera(gs);
+
+        let dt = ctx.time.delta().as_secs_f32();
+        for (player_id, player) in &gs.players {
+            self.players.get_mut(player_id).unwrap().update(
+                dt,
+                player.combat.trail_active(),
+                player.physics.get_rect(),
+                Color::new(0.0, 0.5, 0.0, 1.0),
+            );
+        }
 
         let target_image = Image::new_canvas_image(
             &ctx.gfx,
@@ -88,7 +201,7 @@ impl RenderState {
             .scale(Vec2::new(self.zoom, self.zoom).to_mint_vec());
 
         self.draw_map(&mut game_canvas, &mut ctx.gfx, &camera_transform, gs)?;
-        self.draw_trails(&mut game_canvas, &mut ctx.gfx, &camera_transform, gs)?;
+        self.draw_trails(&mut game_canvas, &mut ctx.gfx, &camera_transform)?;
         self.draw_players(&mut game_canvas, ctx, &camera_translation, gs)?;
         self.draw_hud(&mut game_canvas, ctx, gs);
 
@@ -121,14 +234,12 @@ impl RenderState {
         let mut sum = Vec2::ZERO;
         let mut count: usize = 0;
 
-        for team in &gs.teams {
-            for player in &team.players {
-                if !player.combat.is_alive() {
-                    continue;
-                }
-                sum += player.physics.pos + PLAYER_SIZE / 2.0;
-                count += 1;
+        for player in gs.players.values() {
+            if !player.combat.is_alive() {
+                continue;
             }
+            sum += player.physics.pos + PLAYER_SIZE / 2.0;
+            count += 1;
         }
 
         if count == 0 {
@@ -236,17 +347,15 @@ impl RenderState {
         camera_transform: DrawParam,
         gs: &GameState,
     ) -> GameResult<()> {
-        for team in &gs.teams {
-            for player in &team.players {
-                for attack in &player.combat.attacks {
-                    let mesh = Mesh::new_rectangle(
-                        gfx,
-                        DrawMode::stroke(1.0),
-                        rect_to_ggez(&attack.get_rect(player.physics.pos)),
-                        GgezColor::new(1.0, 1.0, 1.0, 0.4),
-                    )?;
-                    game_canvas.draw(&mesh, camera_transform);
-                }
+        for player in gs.players.values() {
+            for attack in &player.combat.attacks {
+                let mesh = Mesh::new_rectangle(
+                    gfx,
+                    DrawMode::stroke(1.0),
+                    rect_to_ggez(&attack.get_rect(player.physics.pos)),
+                    GgezColor::new(1.0, 1.0, 1.0, 0.4),
+                )?;
+                game_canvas.draw(&mesh, camera_transform);
             }
         }
 
@@ -258,19 +367,16 @@ impl RenderState {
         game_canvas: &mut Canvas,
         gfx: &mut GraphicsContext,
         camera_transform: &DrawParam,
-        gs: &GameState,
     ) -> GameResult {
-        for team in &gs.teams {
-            for player in &team.players {
-                for square in &player.visuals.trail_squares {
-                    let mesh = Mesh::new_rectangle(
-                        gfx,
-                        DrawMode::fill(),
-                        rect_to_ggez(&square.rect),
-                        color_to_ggez(&square.color),
-                    )?;
-                    game_canvas.draw(&mesh, *camera_transform);
-                }
+        for player in self.players.values() {
+            for square in &player.trail.squares {
+                let mesh = Mesh::new_rectangle(
+                    gfx,
+                    DrawMode::fill(),
+                    rect_to_ggez(&square.rect),
+                    color_to_ggez(&square.color),
+                )?;
+                game_canvas.draw(&mesh, *camera_transform);
             }
         }
 
@@ -287,70 +393,77 @@ impl RenderState {
         let camera_transform = DrawParam::default()
             .dest(*camera_translation)
             .scale(Vec2::new(self.zoom, self.zoom).to_mint_vec());
-        for (ti, team) in gs.teams.iter().enumerate() {
-            for (pi, player) in team.players.iter().enumerate() {
-                if !player.combat.is_alive() {
-                    continue;
-                }
 
-                let rect = player.physics.get_rect();
-                let mesh = Mesh::new_rectangle(
-                    &ctx.gfx,
-                    DrawMode::fill(),
-                    rect_to_ggez(&rect),
-                    color_to_ggez(&player.get_color()),
-                )?;
-                game_canvas.draw(&mesh, camera_transform);
-                let outline = Mesh::new_rectangle(
-                    &ctx.gfx,
-                    DrawMode::stroke(2.0),
-                    rect_to_ggez(&rect),
-                    if ti == gs.c_team && pi == gs.c_player {
-                        GgezColor::new(0.75, 0.75, 0.75, 1.0)
-                    } else {
-                        GgezColor::new(0.0, 0.0, 0.0, 1.0)
-                    },
-                )?;
-                game_canvas.draw(&outline, camera_transform);
+        let mut players: Vec<_> = gs.players.iter().collect();
+        players.sort_by_key(|(id, _)| (*id == &self.c_player, *id));
+        for (player_id, player) in players {
+            if !player.combat.is_alive() {
+                continue;
+            }
 
-                let text = Text::new(TextFragment {
-                    text: player.identity.name().to_string(),
+            let rect = player.physics.get_rect();
+            let mesh = Mesh::new_rectangle(
+                &ctx.gfx,
+                DrawMode::fill(),
+                rect_to_ggez(&rect),
+                color_to_ggez(
+                    &self
+                        .players
+                        .get(player_id)
+                        .unwrap()
+                        .get_color(player.status.stunned()),
+                ),
+            )?;
+            game_canvas.draw(&mesh, camera_transform);
+            let outline = Mesh::new_rectangle(
+                &ctx.gfx,
+                DrawMode::stroke(2.0),
+                rect_to_ggez(&rect),
+                if *player_id == self.c_player {
+                    GgezColor::new(0.75, 0.75, 0.75, 1.0)
+                } else {
+                    GgezColor::new(0.0, 0.0, 0.0, 1.0)
+                },
+            )?;
+            game_canvas.draw(&outline, camera_transform);
+
+            let text = Text::new(TextFragment {
+                text: self.players.get(player_id).unwrap().name.clone(),
+                font: None,
+                scale: Some(PxScale::from(14.0)),
+                color: Some(color_to_ggez(&NAME_COLOR)),
+            });
+
+            let text_dims = text.dimensions(ctx).unwrap();
+
+            let draw_param = self.drawparam_constructor(Vec2::new(
+                player.physics.pos.x + (PLAYER_SIZE / 2.0) - (text_dims.w / 2.0),
+                if self.player_name_above {
+                    player.physics.pos.y - (text_dims.h * 1.5)
+                } else {
+                    player.physics.pos.y + PLAYER_SIZE + (text_dims.h / 2.0)
+                },
+            ));
+            game_canvas.draw(&text, draw_param);
+
+            if player.combat.combo > 0 {
+                let combo_number = Text::new(TextFragment {
+                    text: format!("{}", player.combat.combo),
                     font: None,
-                    scale: Some(PxScale::from(14.0)),
-                    color: Some(color_to_ggez(&NAME_COLOR)),
+                    scale: Some(PxScale::from(20.0)),
+                    color: Some(GgezColor::new(1.0, 1.0, 1.0, 1.0)),
                 });
-
-                let text_dims = text.dimensions(ctx).unwrap();
-
-                let draw_param = self.drawparam_constructor(Vec2::new(
-                    player.physics.pos.x + (PLAYER_SIZE / 2.0) - (text_dims.w / 2.0),
-                    if self.player_name_above {
-                        player.physics.pos.y - (text_dims.h * 1.5)
-                    } else {
-                        player.physics.pos.y + PLAYER_SIZE + (text_dims.h / 2.0)
-                    },
+                let draw_param_number = self.drawparam_constructor(Vec2::new(
+                    player.physics.pos.x + PLAYER_SIZE + 5.0,
+                    player.physics.pos.y - 10.0,
                 ));
-                game_canvas.draw(&text, draw_param);
+                game_canvas.draw(&combo_number, draw_param_number);
+            }
 
-                if player.combat.combo > 0 {
-                    let combo_number = Text::new(TextFragment {
-                        text: format!("{}", player.combat.combo),
-                        font: None,
-                        scale: Some(PxScale::from(20.0)),
-                        color: Some(GgezColor::new(1.0, 1.0, 1.0, 1.0)),
-                    });
-                    let draw_param_number = self.drawparam_constructor(Vec2::new(
-                        player.physics.pos.x + PLAYER_SIZE + 5.0,
-                        player.physics.pos.y - 10.0,
-                    ));
-                    game_canvas.draw(&combo_number, draw_param_number);
-                }
+            self.draw_attacks(game_canvas, player.physics.pos, &player.combat.attacks);
 
-                self.draw_attacks(game_canvas, player.physics.pos, &player.combat.attacks);
-
-                if player.status.parrying() {
-                    self.draw_parry(game_canvas, player.physics.pos)
-                }
+            if player.status.parrying() {
+                self.draw_parry(game_canvas, player.physics.pos)
             }
         }
 
@@ -364,13 +477,17 @@ impl RenderState {
         const START_Y: f32 = MARGIN;
         const LINE_HEIGHT: f32 = MARGIN;
 
-        for (team_idx, team) in gs.teams.iter().enumerate() {
-            let is_right_team = team_idx == 1;
+        for (team_index, _team) in gs.teams.iter().enumerate() {
+            let is_right_team = team_index == 1;
 
-            for (player_idx, player) in team.players.iter().enumerate() {
-                let y = START_Y + player_idx as f32 * LINE_HEIGHT;
+            for (player_index, player_id) in gs.teams[team_index].iter().enumerate() {
+                let y = START_Y + player_index as f32 * LINE_HEIGHT;
                 let text = Text::new(TextFragment {
-                    text: format!("{}: {}", player.identity.name(), player.combat.lives,),
+                    text: format!(
+                        "{}: {}",
+                        self.players.get(player_id).unwrap().name,
+                        gs.players.get(player_id).unwrap().combat.lives,
+                    ),
                     font: None,
                     scale: Some(PxScale::from(36.0)),
                     ..Default::default()

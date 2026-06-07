@@ -1,51 +1,50 @@
 use super::PlayerInput;
-use super::{
-    PlayerCombat, PlayerCooldowns, PlayerIdentity, PlayerPhysics, PlayerStatus, PlayerVisuals,
-};
+use super::{PlayerCombat, PlayerCooldowns, PlayerPhysics, PlayerStatus};
+use crate::constants::PLAYER_SIZE;
 use crate::{
     attack::{Attack, AttackKind},
-    constants::PLAYER_SIZE,
-    team::Team,
     utils::get_combo_multiplier,
 };
-use foundation::color::Color;
 use foundation::rect::Rect;
+use glam::Vec2;
+use uuid::Uuid;
+
+pub enum HitResult {
+    Hit,
+    DashClash,
+    Parried,
+    Ignored,
+}
 
 #[derive(Clone)]
 pub struct Player {
     pub combat: PlayerCombat,
     pub cooldowns: PlayerCooldowns,
-    pub identity: PlayerIdentity,
     pub physics: PlayerPhysics,
     pub status: PlayerStatus,
-    pub visuals: PlayerVisuals,
     pub input: PlayerInput,
 }
 
 impl Player {
     #[must_use]
-    pub fn new(
-        start_pos: [f32; 2],
-        name: String,
-        color: Color,
-        team_idx: usize,
-        trail_delay: f32,
-        trail_opacity: f32,
-        trail_lifetime: f32,
-    ) -> Self {
+    pub fn new(start_pos: [f32; 2], team_idx: usize) -> Self {
         Self {
             combat: PlayerCombat::default(),
             cooldowns: PlayerCooldowns::default(),
-            identity: PlayerIdentity::new(name, color),
             physics: PlayerPhysics::new(start_pos.into(), team_idx),
             status: PlayerStatus::default(),
-            visuals: PlayerVisuals::new(trail_delay, trail_opacity, trail_lifetime),
             input: PlayerInput::new(),
         }
     }
 
-    pub fn update(&mut self, map: &Rect, player_idx: usize, enemy_team: &Team, dt: f32) {
-        self.tick(dt, map, enemy_team);
+    pub fn update(
+        &mut self,
+        map: &Rect,
+        player_id: Uuid,
+        enemies: &[(Rect, bool)], // hitbox, invulnerable
+        dt: f32,
+    ) {
+        self.tick(dt, map, enemies);
 
         if self.status.respawning() {
             return;
@@ -57,7 +56,7 @@ impl Player {
         }
 
         if !self.status.stunned() && self.combat.is_alive() {
-            self.apply_input(map, player_idx, dt);
+            self.apply_input(map, player_id, dt);
         }
 
         if self.physics.should_lose_life() {
@@ -65,7 +64,7 @@ impl Player {
         }
     }
 
-    pub fn apply_input(&mut self, map: &Rect, player_idx: usize, dt: f32) {
+    pub fn apply_input(&mut self, map: &Rect, player_id: Uuid, dt: f32) {
         let mut kind: Option<AttackKind> = None;
 
         if self.input.slam() && self.status.can_slam {
@@ -103,22 +102,21 @@ impl Player {
         }
 
         if let Some(kind) = kind {
-            self.combat.spawn_attack(kind, &self.physics, player_idx);
+            self.combat.spawn_attack(kind, &self.physics, player_id);
         }
     }
 
-    fn tick(&mut self, dt: f32, map: &Rect, enemy_team: &Team) {
+    fn tick(
+        &mut self,
+        dt: f32,
+        map: &Rect,
+        enemies: &[(Rect, bool)], // hitbox, invulnerable
+    ) {
         self.combat.tick(dt);
         self.cooldowns.tick(dt);
         self.status.tick(dt);
-        self.visuals.tick(
-            dt,
-            self.physics.get_rect(),
-            self.identity.color().clone(),
-            self.combat.trail_active(),
-        );
         self.physics
-            .tick(dt, &self.combat, &self.input, &self.status, map, enemy_team);
+            .tick(dt, &self.combat, &self.input, &self.status, map, enemies);
     }
 
     pub fn lose_life(&mut self) {
@@ -127,105 +125,103 @@ impl Player {
         self.status.lose_life();
     }
 
-    pub fn attack(&mut self, atk: &Attack, attacker: &mut Player) {
+    pub fn apply_hit(&mut self, atk: &Attack, attacker_pos: Vec2, attacker_vel: Vec2) -> HitResult {
         if self.status.invulnerable() {
-            return;
+            return HitResult::Ignored;
         }
 
         if self.status.parrying() {
-            self.resolve_parry(atk, attacker);
-            return;
+            self.cooldowns.dash = 0.0;
+            self.combat.combo = 0;
+
+            return HitResult::Parried;
         }
 
         match atk.kind() {
-            AttackKind::Dash => self.resolve_dash(atk, attacker),
-            AttackKind::Light => self.resolve_light(atk, attacker),
-            AttackKind::Slam => self.resolve_slam(atk, attacker),
-            AttackKind::Normal => self.resolve_normal(atk, attacker),
-        }
-    }
-
-    fn resolve_parry(&mut self, atk: &Attack, attacker: &mut Player) {
-        // get dash ability back when successfully parrying
-        self.cooldowns.dash = 0.0;
-
-        // reset combo
-        self.combat.combo = 0;
-
-        // stun attacker with own attack's stun
-        attacker.status.stunned = atk.stun();
-
-        attacker.physics.set_parried_vel();
-    }
-
-    fn resolve_dash(&mut self, atk: &Attack, attacker: &mut Player) {
-        if self.combat.is_dashing() {
-            for player in [&mut *self, attacker] {
-                player
-                    .physics
-                    .apply_dash_collision(player.combat.knockback_multiplier);
-                player.status.stun(atk.stun());
-                player.combat.knockback_multiplier += atk.knockback_increase();
-                player.combat.remove_dashes();
+            AttackKind::Dash => {
+                self.status.stun(atk.stun());
+                self.combat.remove_dashes();
+                self.combat.remove_slams();
+                if self.combat.is_dashing() {
+                    self.physics
+                        .apply_dash_collision(self.combat.knockback_multiplier);
+                    self.combat.knockback_multiplier += atk.knockback_increase();
+                    return HitResult::DashClash;
+                } else {
+                    self.physics.vel = attacker_vel * self.combat.knockback_multiplier;
+                }
             }
-        } else {
-            self.physics.vel = attacker.physics.vel * self.combat.knockback_multiplier;
-        }
-        attacker.physics.vel *= -0.5;
+            AttackKind::Light => {
+                // if player is in a combo, this
+                // attack is used as a finisher
+                if self.combat.combo > 0 {
+                    // overwrite default attack stun
+                    self.status.stun(0.5);
 
+                    // launch player
+                    self.physics.vel = atk.facing.normalize_or_zero()
+                        * 600.0
+                        * self.combat.knockback_multiplier
+                        * get_combo_multiplier(self.combat.combo);
+
+                    // apply knockback multiplier boost for combo
+                    self.combat.knockback_multiplier +=
+                        0.1 * get_combo_multiplier(self.combat.combo);
+
+                    // apply invulnerability because generic attack
+                    // traits are not applied due to early return
+                    self.status.invulnerable_timer = 0.3;
+
+                    return HitResult::Hit;
+                }
+            }
+            AttackKind::Slam => {
+                // attacker has to be above victim for slam
+                if attacker_pos.y + PLAYER_SIZE < self.physics.pos.y {
+                    // knockback is only vertical
+                    self.physics
+                        .get_slammed(atk.knockback[1] * self.combat.knockback_multiplier);
+                } else {
+                    return HitResult::Ignored;
+                }
+            }
+            AttackKind::Normal => {
+                self.physics.vel = atk.facing * 450.0;
+            }
+        }
         self.apply_generic_attack_traits(atk);
+        HitResult::Hit
     }
 
-    fn resolve_light(&mut self, atk: &Attack, attacker: &mut Player) {
-        // if player is in a combo, this
-        // attack is used as a finisher
-        if self.combat.combo > 0 {
-            // overwrite default attack stun
-            self.status.stun(0.5);
-
-            // launch player
-            self.physics.vel = attacker.physics.facing.normalize_or_zero()
-                * 600.0
-                * self.combat.knockback_multiplier
-                * get_combo_multiplier(self.combat.combo);
-
-            // apply knockback multiplier boost for combo
-            self.combat.knockback_multiplier += 0.1 * get_combo_multiplier(self.combat.combo);
-
-            // apply invulnerability because generic attack
-            // traits are not applied due to early return
-            self.status.invulnerable_timer = 0.3;
-
-            return;
+    pub fn apply_hit_effects(&mut self, attack: &Attack) {
+        match attack.kind() {
+            AttackKind::Dash => {
+                self.physics.vel *= -0.5;
+            }
+            AttackKind::Light => {}
+            AttackKind::Slam => {
+                self.physics.vel.y = -50.0;
+                self.status.can_slam = false;
+                self.combat.remove_slams();
+            }
+            AttackKind::Normal => {
+                self.cooldowns.normal_hit();
+            }
         }
-
-        self.apply_generic_attack_traits(atk);
     }
 
-    fn resolve_slam(&mut self, atk: &Attack, attacker: &mut Player) {
-        // must be above player and moving downwards
-        if attacker.physics.pos.y + PLAYER_SIZE > self.physics.pos.y
-            || attacker.physics.vel.y <= 0.0
-        {
-            return;
-        }
-
+    pub fn apply_dash_clash_effects(&mut self, atk: &Attack) {
         self.physics
-            .get_slammed(attacker.physics.vel.y * self.combat.knockback_multiplier);
+            .apply_dash_collision(self.combat.knockback_multiplier);
 
-        attacker.physics.vel.y = -50.0;
-        attacker.status.can_slam = false;
-        attacker.combat.remove_slams();
-
-        self.apply_generic_attack_traits(atk);
+        self.status.stun(atk.stun());
+        self.combat.knockback_multiplier += atk.knockback_increase();
+        self.combat.remove_dashes();
     }
 
-    fn resolve_normal(&mut self, atk: &Attack, attacker: &mut Player) {
-        self.physics.vel = attacker.physics.facing * 450.0;
-
-        attacker.cooldowns.normal_hit();
-
-        self.apply_generic_attack_traits(atk);
+    pub fn apply_parry_penalty(&mut self, atk: &Attack) {
+        self.status.stunned = atk.stun();
+        self.physics.set_parried_vel();
     }
 
     fn apply_generic_attack_traits(&mut self, atk: &Attack) {
@@ -237,26 +233,6 @@ impl Player {
         self.status.invulnerable_timer = 0.3;
 
         self.combat.increase_combo();
-    }
-
-    #[must_use]
-    pub fn get_color(&self) -> Color {
-        if self.status.stunned() {
-            let color = self.identity.color();
-            Color::new(
-                (color.r + 0.4).min(1.0),
-                (color.g + 0.4).min(1.0),
-                (color.b + 0.4).min(1.0),
-                1.0,
-            )
-        } else {
-            self.identity.color().clone()
-        }
-    }
-
-    #[must_use]
-    pub fn name(&self) -> String {
-        self.identity.name().to_string()
     }
 
     #[must_use]

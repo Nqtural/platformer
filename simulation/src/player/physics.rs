@@ -1,22 +1,11 @@
-use glam::Vec2;
-use foundation::math_helpers::approach;
-use foundation::rect::Rect;
+use super::{PlayerCombat, PlayerInput, PlayerStatus};
 use crate::constants::{
-    ACCELERATION,
-    GRAVITY,
-    MAX_SPEED,
-    PLAYER_SIZE,
-    RESISTANCE,
-    VIRTUAL_HEIGHT,
-    VIRTUAL_WIDTH,
+    ACCELERATION, GRAVITY, MAX_SPEED, PLAYER_SIZE, RESISTANCE, VIRTUAL_HEIGHT, VIRTUAL_WIDTH,
     WALL_SLIDE_SPEED,
 };
-use crate::team::Team;
-use super::{
-    PlayerCombat,
-    PlayerInput,
-    PlayerStatus,
-};
+use foundation::math_helpers::approach;
+use foundation::rect::Rect;
+use glam::Vec2;
 
 #[derive(Clone)]
 pub struct PlayerPhysics {
@@ -49,13 +38,17 @@ impl PlayerPhysics {
         input: &PlayerInput,
         status: &PlayerStatus,
         map: &Rect,
-        enemy_team: &Team,
+        enemies: &[(Rect, bool)], // hitbox, invulnerable
     ) {
-        if status.respawning() { return; }
+        if status.respawning() {
+            return;
+        }
 
         self.update_facing(input);
-        self.apply_movement_input(dt, input, map);
-        self.update_position(dt, combat, map, enemy_team);
+        if !status.stunned() {
+            self.apply_movement_input(input, map);
+        }
+        self.update_position(dt, combat, map, enemies);
         self.check_platform_collision(dt, input, status, map);
     }
 
@@ -64,18 +57,18 @@ impl PlayerPhysics {
         dt: f32,
         combat: &PlayerCombat,
         map: &Rect,
-        enemy_team: &Team,
+        enemies: &[(Rect, bool)], // hitbox, invulnerable
     ) {
+        if self.facing.x != 0.0 && self.vel.x.abs() < MAX_SPEED[0] {
+            self.vel.x += ACCELERATION * dt * self.facing.x;
+        }
+
         let old_pos = self.pos;
 
         self.pos += self.vel * dt;
 
         // sweep test to prevent downward tunneling through platform
-        if let Some(corrected_y) = self.sweep_down(
-            old_pos.y,
-            self.pos.y,
-            map
-        ) {
+        if let Some(corrected_y) = self.sweep_down(old_pos.y, self.pos.y, map) {
             // snap onto platform
             self.pos.y = corrected_y;
             self.vel.y = 0.0;
@@ -83,13 +76,10 @@ impl PlayerPhysics {
 
         // sweep test to prevent downward tunneling through an opponent
         if combat.is_slamming() {
-            for opponent in &enemy_team.players {
-                if !opponent.status.invulnerable()
-                && let Some(corrected_y) = self.sweep_down(
-                    old_pos[1],
-                    self.pos[1],
-                    &opponent.physics.get_rect()
-                ) {
+            for enemy in enemies {
+                if !enemy.1
+                    && let Some(corrected_y) = self.sweep_down(old_pos[1], self.pos[1], &enemy.0)
+                {
                     // snap onto opponent
                     self.pos.y = corrected_y;
                     self.vel.y = 0.0;
@@ -101,14 +91,8 @@ impl PlayerPhysics {
         self.vel.x = approach(self.vel.x, 0.0, RESISTANCE * dt);
     }
 
-    fn sweep_down(
-        &self,
-        old_y: f32,
-        new_y: f32,
-        object: &Rect,
-    ) -> Option<f32> {
-        if self.get_rect().x + PLAYER_SIZE > object.x
-        && self.get_rect().x < object.x + object.w {
+    fn sweep_down(&self, old_y: f32, new_y: f32, object: &Rect) -> Option<f32> {
+        if self.get_rect().x + PLAYER_SIZE > object.x && self.get_rect().x < object.x + object.w {
             // only downward motion matters for slam
             if new_y > old_y {
                 let old_bottom = old_y + PLAYER_SIZE;
@@ -126,9 +110,7 @@ impl PlayerPhysics {
     }
 
     pub fn should_lose_life(&self) -> bool {
-        self.pos[1] > VIRTUAL_HEIGHT
-        || self.pos[0] > VIRTUAL_WIDTH
-        || self.pos[0] < 0.0
+        self.pos[1] > VIRTUAL_HEIGHT || self.pos[0] > VIRTUAL_WIDTH || self.pos[0] < 0.0
     }
 
     pub fn is_on_platform(&self, platform: &Rect) -> bool {
@@ -139,13 +121,11 @@ impl PlayerPhysics {
 
         // Check horizontal overlap (X)
         let horizontal_overlap =
-        player.x < platform.x + platform.w &&
-        player.x + player.w > platform.x;
+            player.x < platform.x + platform.w && player.x + player.w > platform.x;
 
         // Check if player is on top (Y)
-        let on_top =
-        player_bottom <= platform_top + 5.0 &&  // within tolerance above top
-        player_bottom >= platform_top - 5.0;    // avoid floating-point misses
+        let on_top = player_bottom <= platform_top + 5.0 &&  // within tolerance above top
+        player_bottom >= platform_top - 5.0; // avoid floating-point misses
 
         horizontal_overlap && on_top
     }
@@ -212,22 +192,21 @@ impl PlayerPhysics {
 
     fn update_facing(&mut self, input: &PlayerInput) {
         self.facing = Vec2::new(0.0, 0.0);
-        if input.left() { self.facing.x -= 1.0; }
-        if input.right() { self.facing.x += 1.0; }
-        if input.up() { self.facing.y -= 1.0; }
-        if input.slam() { self.facing.y += 1.0; }
+        if input.left() {
+            self.facing.x -= 1.0;
+        }
+        if input.right() {
+            self.facing.x += 1.0;
+        }
+        if input.up() {
+            self.facing.y -= 1.0;
+        }
+        if input.slam() {
+            self.facing.y += 1.0;
+        }
     }
 
-    fn apply_movement_input(
-        &mut self,
-        dt: f32,
-        input: &PlayerInput,
-        map: &Rect,
-    ) {
-        if self.facing.x != 0.0 && self.vel.x.abs() < MAX_SPEED[0] {
-            self.vel.x += ACCELERATION * dt * self.facing.x;
-        }
-
+    fn apply_movement_input(&mut self, input: &PlayerInput, map: &Rect) {
         if input.jump() && !self.has_jumped {
             self.has_jumped = true;
             if self.is_on_platform(map) || self.double_jumps > 0 {

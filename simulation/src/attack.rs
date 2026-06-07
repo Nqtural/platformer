@@ -2,6 +2,7 @@ use crate::constants::PLAYER_SIZE;
 use foundation::rect::Rect;
 use glam::Vec2;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 use wincode::{SchemaRead, SchemaWrite};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, SchemaWrite, SchemaRead)]
@@ -64,11 +65,11 @@ impl AttackKind {
 pub struct Attack {
     pub offset: f32,
     pub size: f32,
+    pub knockback: Vec2,
     pub kind: AttackKind,
     pub duration: f32,
     pub timer: f32,
-    pub owner_team: usize,
-    pub owner_player: usize,
+    pub owner: Uuid,
     pub facing: Vec2,
     pub stun: f32,
     pub knockback_increase: f32,
@@ -80,21 +81,30 @@ pub struct Attack {
 
 impl Attack {
     #[must_use]
-    pub fn new(kind: AttackKind, owner_team: usize, owner_player: usize, facing: Vec2) -> Attack {
+    pub fn new(kind: AttackKind, owner: Uuid, facing: Vec2) -> Attack {
         let properties = kind.properties();
         Attack {
             offset: properties.offset,
             size: properties.size,
+            knockback: facing * Self::base_knockback(&kind),
             kind,
             duration: properties.duration,
             timer: 0.0,
-            owner_team,
-            owner_player,
+            owner,
             facing,
             stun: properties.stun,
             knockback_increase: properties.knockback_increase,
             frame: 0,
             frame_count: properties.frame_count,
+        }
+    }
+
+    fn base_knockback(kind: &AttackKind) -> f32 {
+        match kind {
+            AttackKind::Dash => 0.0, // calculated at hit
+            AttackKind::Light => 450.0,
+            AttackKind::Normal => 450.0,
+            AttackKind::Slam => 600.0,
         }
     }
 
@@ -106,13 +116,8 @@ impl Attack {
     }
 
     #[must_use]
-    pub fn owner_team(&self) -> usize {
-        self.owner_team
-    }
-
-    #[must_use]
-    pub fn owner_player(&self) -> usize {
-        self.owner_player
+    pub fn owner(&self) -> Uuid {
+        self.owner
     }
 
     #[must_use]

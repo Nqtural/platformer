@@ -1,8 +1,9 @@
 use simulation::{
-    Player, PlayerCombat, PlayerCooldowns, PlayerPhysics, PlayerStatus, PlayerVisuals,
-    attack::Attack, game_state::GameState, team::Team,
+    Player, PlayerCombat, PlayerCooldowns, PlayerPhysics, PlayerStatus, attack::Attack,
+    game_state::GameState,
 };
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
+use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct TimedSnapshot {
@@ -70,15 +71,14 @@ impl SnapshotHistory {
         Some((&floor.snapshot, &ceil.snapshot, alpha))
     }
 
-    pub fn get_interpolated(&self, render_tick: f32) -> Option<GameState> {
+    pub fn get_interpolated(&self, render_tick: f32, c_player: Uuid) -> Option<GameState> {
         let (a, b, alpha) = self.surrounding(render_tick)?;
         let mut gs = interpolate(a, b, alpha);
 
         // overwrite local player with the latest state
         let last = &self.buffer.back()?.snapshot;
-        let c_team = last.c_team;
-        let c_player = last.c_player;
-        gs.teams[c_team].players[c_player] = last.teams[c_team].players[c_player].clone();
+        gs.players
+            .insert(c_player, last.players.get(&c_player).unwrap().clone());
 
         Some(gs)
     }
@@ -93,38 +93,28 @@ fn lerp(a: f32, b: f32, t: f32) -> f32 {
 }
 
 pub fn interpolate(a: &GameState, b: &GameState, alpha: f32) -> GameState {
+    let mut players = HashMap::new();
+    for (player_id, player) in &a.players {
+        players.insert(
+            *player_id,
+            interpolate_player(player, b.players.get(player_id).unwrap(), alpha),
+        );
+    }
     GameState {
-        c_team: a.c_team,
-        c_player: a.c_player,
         winner: a.winner,
         map: a.map.clone(),
-        teams: [
-            interpolate_team(&a.teams[0], &b.teams[0], alpha),
-            interpolate_team(&a.teams[1], &b.teams[1], alpha),
-        ],
+        players,
+        teams: a.teams.clone(),
         post_game_timer: a.post_game_timer,
     }
-}
-
-fn interpolate_team(a: &Team, b: &Team, alpha: f32) -> Team {
-    let players = a
-        .players
-        .iter()
-        .zip(&b.players)
-        .map(|(pa, pb)| interpolate_player(pa, pb, alpha))
-        .collect();
-
-    Team { players }
 }
 
 fn interpolate_player(a: &Player, b: &Player, alpha: f32) -> Player {
     Player {
         combat: interpolate_combat(&a.combat, &b.combat, alpha),
         cooldowns: interpolate_cooldowns(&a.cooldowns, &b.cooldowns, alpha),
-        identity: a.identity.clone(),
         physics: interpolate_physics(&a.physics, &b.physics, alpha),
         status: interpolate_status(&a.status, &b.status, alpha),
-        visuals: interpolate_visuals(&a.visuals, &b.visuals, alpha),
         input: a.input.clone(),
     }
 }
@@ -167,16 +157,6 @@ fn interpolate_status(a: &PlayerStatus, b: &PlayerStatus, alpha: f32) -> PlayerS
         invulnerable_timer: lerp(a.invulnerable_timer, b.invulnerable_timer, alpha),
         parry: lerp(a.parry, b.parry, alpha),
         can_slam: a.can_slam,
-    }
-}
-
-fn interpolate_visuals(a: &PlayerVisuals, b: &PlayerVisuals, alpha: f32) -> PlayerVisuals {
-    PlayerVisuals {
-        trail_squares: a.trail_squares.clone(),
-        trail_timer: lerp(a.trail_timer, b.trail_timer, alpha),
-        trail_delay: a.trail_delay,
-        trail_opacity: a.trail_opacity,
-        trail_lifetime: a.trail_lifetime,
     }
 }
 

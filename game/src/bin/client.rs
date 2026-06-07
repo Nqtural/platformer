@@ -9,7 +9,7 @@ use ggez::{
     event::EventHandler,
     input::keyboard::{KeyCode, KeyInput},
 };
-use protocol::net_server::ServerMessage;
+use protocol::{init::InitData, net_server::ServerMessage};
 use simulation::constants::{VIRTUAL_HEIGHT, VIRTUAL_WIDTH};
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -17,6 +17,7 @@ use tokio::{
     sync::mpsc::{UnboundedReceiver, unbounded_channel},
     task::JoinHandle,
 };
+use uuid::Uuid;
 
 enum ClientView {
     Menu,
@@ -32,14 +33,11 @@ struct QueueController {
     task: JoinHandle<()>,
 }
 
-struct InitialGameData {
-    c_team_id: usize,
-    c_player_id: usize,
-    player_names: [Vec<String>; 2],
-}
-
 enum QueueEvent {
-    MatchFound(InitialGameData),
+    MatchFound {
+        c_player: String,
+        init_data: InitData,
+    },
 }
 
 struct App {
@@ -85,15 +83,13 @@ impl App {
                 loop {
                     match network.poll_queue().await {
                         Ok(ServerMessage::StartGame {
-                            c_team_id,
-                            c_player_id,
-                            player_names,
+                            c_player,
+                            init_data,
                         }) => {
-                            let _ = event_tx.send(QueueEvent::MatchFound(InitialGameData {
-                                c_team_id,
-                                c_player_id,
-                                player_names,
-                            }));
+                            let _ = event_tx.send(QueueEvent::MatchFound {
+                                c_player,
+                                init_data,
+                            });
                             break;
                         }
                         _ => {}
@@ -117,31 +113,27 @@ impl App {
     ) -> GameResult<Option<ClientView>> {
         if let Ok(event) = controller.event_rx.try_recv() {
             match event {
-                QueueEvent::MatchFound(data) => {
-                    let render_state = match RenderState::new(ctx, config) {
-                        Ok(render_state) => render_state,
-                        Err(e) => {
-                            eprintln!("Error initializing render_state: {e}");
-                            return Ok(Some(ClientView::Menu));
-                        }
-                    };
-
-                    let client = Arc::new(
-                        match ClientState::new(
-                            data.c_team_id,
-                            data.c_player_id,
-                            data.player_names,
-                            config.trail_delay(),
-                            config.trail_opacity(),
-                            config.trail_lifetime(),
-                        ) {
-                            Ok(client) => client,
+                QueueEvent::MatchFound {
+                    c_player,
+                    init_data,
+                } => {
+                    let c_player = Uuid::parse_str(&c_player).expect("Invalid UUID string");
+                    let render_state =
+                        match RenderState::new(ctx, config, init_data.clone(), c_player) {
+                            Ok(render_state) => render_state,
                             Err(e) => {
-                                eprintln!("Unable to initialize client: {e}");
+                                eprintln!("Error initializing render_state: {e}");
                                 return Ok(Some(ClientView::Menu));
                             }
-                        },
-                    );
+                        };
+
+                    let client = Arc::new(match ClientState::new(c_player, init_data) {
+                        Ok(client) => client,
+                        Err(e) => {
+                            eprintln!("Unable to initialize client: {e}");
+                            return Ok(Some(ClientView::Menu));
+                        }
+                    });
 
                     // spawn networking tasks.
                     network.spawn_receive_task(Arc::clone(&client));
@@ -158,6 +150,7 @@ impl App {
                     });
 
                     let session = Box::new(GameSession::new(
+                        c_player,
                         input_tx,
                         Arc::clone(&client.snapshot_history),
                         Arc::clone(&client.render_tick),
@@ -193,7 +186,7 @@ impl App {
             Err(_) => return Ok(()), // skip this frame
         };
 
-        if let Some(game_state) = history.get_interpolated(*render_tick) {
+        if let Some(game_state) = history.get_interpolated(*render_tick, session.c_player) {
             session.render_state.render(ctx, &game_state)?;
         }
 

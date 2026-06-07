@@ -10,7 +10,7 @@ impl SimulationCore {
     }
 
     pub fn step(&mut self, dt: f32) {
-        self.game_state.fixed_update(dt);
+        self.game_state.update(dt);
     }
 
     pub fn game_state(&self) -> &GameState {

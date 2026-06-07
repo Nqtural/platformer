@@ -1,12 +1,13 @@
 use serde::{Deserialize, Serialize};
 use simulation::attack::{Attack, AttackKind};
+use uuid::Uuid;
 use wincode::{SchemaRead, SchemaWrite};
 
 #[derive(Serialize, Deserialize, Clone, SchemaWrite, SchemaRead)]
 pub struct NetAttack {
     pub timer: f32,
-    pub owner_team: usize,
-    pub owner_player: usize,
+    pub owner: String,
+    pub knockback: [f32; 2],
     pub kind: AttackKind,
     pub facing: [f32; 2],
     pub frame: usize,
@@ -19,11 +20,11 @@ pub fn from_net(net: NetAttack) -> Attack {
     Attack {
         offset: properties.offset,
         size: properties.size,
+        knockback: net.knockback.into(),
         kind: net.kind,
         duration: properties.duration,
         timer: net.timer,
-        owner_team: net.owner_team,
-        owner_player: net.owner_player,
+        owner: Uuid::parse_str(&net.owner).expect("Invalid UUID string"),
         facing: net.facing.into(),
         stun: properties.stun,
         knockback_increase: properties.knockback_increase,
@@ -36,8 +37,8 @@ pub fn from_net(net: NetAttack) -> Attack {
 pub fn to_net(attack: &Attack) -> NetAttack {
     NetAttack {
         timer: attack.timer,
-        owner_team: attack.owner_team,
-        owner_player: attack.owner_player,
+        owner: attack.owner.to_string(),
+        knockback: attack.knockback.into(),
         kind: attack.kind.clone(),
         facing: attack.facing.into(),
         frame: attack.frame,

@@ -4,8 +4,10 @@ use ggez::input::keyboard::KeyCode;
 use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::{Mutex, mpsc::UnboundedSender};
+use uuid::Uuid;
 
 pub struct GameSession {
+    pub c_player: Uuid,
     pub input_tx: UnboundedSender<HashSet<KeyCode>>,
     pub input_state: HashSet<KeyCode>,
     pub snapshot_history: Arc<Mutex<SnapshotHistory>>,
@@ -15,12 +17,14 @@ pub struct GameSession {
 
 impl GameSession {
     pub fn new(
+        c_player: Uuid,
         input_tx: UnboundedSender<HashSet<KeyCode>>,
         snapshot_history: Arc<Mutex<SnapshotHistory>>,
         render_tick: Arc<Mutex<f32>>,
         render_state: RenderState,
     ) -> Self {
         Self {
+            c_player,
             input_tx,
             input_state: HashSet::new(),
             snapshot_history,

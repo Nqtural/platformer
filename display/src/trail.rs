@@ -1,5 +1,4 @@
-use foundation::color::Color;
-use foundation::rect::Rect;
+use foundation::{color::Color, rect::Rect};
 
 #[derive(Clone)]
 pub struct TrailSquare {

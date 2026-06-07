@@ -1,4 +1,4 @@
-use crate::{lobby::LobbyPlayer, net_player::NetPlayer};
+use crate::{init::InitData, net_player::NetPlayer};
 use serde::{Deserialize, Serialize};
 use wincode::{SchemaRead, SchemaWrite};
 
@@ -15,14 +15,9 @@ pub enum ServerMessage {
         team_id: usize,
         player_id: usize,
     },
-    LobbyStatus {
-        players: Vec<LobbyPlayer>,
-        required: usize,
-    },
     StartGame {
-        c_team_id: usize,
-        c_player_id: usize,
-        player_names: [Vec<String>; 2],
+        c_player: String,
+        init_data: InitData,
     },
     EndGame,
     Snapshot {
