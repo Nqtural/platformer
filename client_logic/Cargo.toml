@@ -12,3 +12,4 @@ anyhow = "1.0.100"
 ggez = "0.9.3"
 tokio = "1.48.0"
 wincode = "0.5.4"
+uuid = { version = "1.23.2", features = ["v4"] }

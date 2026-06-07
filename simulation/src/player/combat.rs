@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 use super::PlayerPhysics;
 use crate::attack::{Attack, AttackKind};
 use crate::utils::tick_timers;
@@ -58,13 +60,9 @@ impl PlayerCombat {
         self.combo_timer = 1.0;
     }
 
-    pub fn spawn_attack(&mut self, kind: AttackKind, physics: &PlayerPhysics, player_idx: usize) {
-        self.attacks.push(Attack::new(
-            kind,
-            physics.team_idx,
-            player_idx,
-            physics.facing,
-        ));
+    pub fn spawn_attack(&mut self, kind: AttackKind, physics: &PlayerPhysics, player_id: Uuid) {
+        self.attacks
+            .push(Attack::new(kind, player_id, physics.facing));
     }
 
     #[must_use]

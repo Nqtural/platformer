@@ -1,24 +1,21 @@
-use crate::{
-    PlayerInput, constants::POST_GAME_TIMER, map::Map, team::Team, utils::current_and_enemy,
-};
-use ggez::input::keyboard::KeyCode;
-use std::collections::HashSet;
+use crate::{Player, PlayerInput, constants::POST_GAME_TIMER, map::Map, player::HitResult};
+use foundation::rect::Rect;
+use std::collections::HashMap;
+use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct GameState {
-    pub c_team: usize,
-    pub c_player: usize,
-    pub teams: [Team; 2],
+    pub players: HashMap<Uuid, Player>,
+    pub teams: [Vec<Uuid>; 2],
     pub map: Map,
     pub winner: usize,
     pub post_game_timer: f32,
 }
 
 impl GameState {
-    pub fn new(c_team: usize, c_player: usize, teams: [Team; 2]) -> Self {
+    pub fn new(players: HashMap<Uuid, Player>, teams: [Vec<Uuid>; 2]) -> Self {
         Self {
-            c_team,
-            c_player,
+            players,
             teams,
             map: Map::new(),
             winner: 0,
@@ -26,14 +23,105 @@ impl GameState {
         }
     }
 
-    pub fn fixed_update(&mut self, dt: f32) {
+    pub fn update(&mut self, mut dt: f32) {
         self.check_for_win();
 
         self.update_post_game_timer(dt);
 
-        for i in 0..2 {
-            let (current, enemy) = current_and_enemy(&mut self.teams, i);
-            current.update_players(enemy, self.map.get_rect(), self.winner, dt);
+        if self.winner > 0 {
+            dt /= 2.0;
+        }
+
+        let player_ids: Vec<_> = self.players.keys().cloned().collect();
+
+        let mut hits = Vec::new();
+
+        for attacker_id in &player_ids {
+            let attacker = match self.players.get(attacker_id) {
+                Some(p) if p.combat.is_alive() => p,
+                _ => continue,
+            };
+
+            let attacks = attacker.combat.attacks.clone();
+
+            for attack in attacks {
+                let atk_rect = attack.get_rect(attacker.physics.pos);
+
+                for enemy_id in self.get_enemy_ids(attacker_id) {
+                    let enemy = match self.players.get(&enemy_id) {
+                        Some(e) => e,
+                        None => continue,
+                    };
+
+                    if atk_rect.overlaps(&enemy.physics.get_rect()) {
+                        hits.push((attacker_id, enemy_id, attack.clone()));
+                    }
+                }
+            }
+        }
+
+        for (_, target_id, attack) in &hits {
+            let attacker_id = attack.owner();
+
+            let (attacker_pos, attacker_vel) = match self.players.get(&attacker_id) {
+                Some(attacker) => (attacker.physics.pos, attacker.physics.vel),
+                None => continue,
+            };
+
+            let result = {
+                let target = match self.players.get_mut(target_id) {
+                    Some(p) => p,
+                    None => continue,
+                };
+
+                target.apply_hit(attack, attacker_pos, attacker_vel)
+            };
+
+            match result {
+                HitResult::Hit => {
+                    if let Some(attacker) = self.players.get_mut(&attacker_id) {
+                        attacker.apply_hit_effects(attack);
+                    }
+                }
+
+                HitResult::DashClash => {
+                    if let Some(attacker) = self.players.get_mut(&attacker_id) {
+                        attacker.apply_dash_clash_effects(attack);
+                    }
+                }
+
+                HitResult::Parried => {
+                    if let Some(attacker) = self.players.get_mut(&attacker_id) {
+                        attacker.apply_parry_penalty(attack);
+                    }
+                }
+
+                HitResult::Ignored => {}
+            }
+        }
+
+        for player_id in &player_ids {
+            let enemy_ids = self.get_enemy_ids(player_id);
+            let enemies: Vec<(Rect, bool)> = enemy_ids
+                .iter()
+                .filter_map(|enemy_id| self.players.get(enemy_id))
+                .map(|enemy| (enemy.physics.get_rect(), enemy.status.invulnerable()))
+                .collect();
+
+            let player = match self.players.get_mut(player_id) {
+                Some(p) if p.combat.is_alive() => p,
+                _ => continue,
+            };
+
+            player.update(self.map.get_rect(), *player_id, &enemies, dt);
+        }
+    }
+
+    fn get_enemy_ids(&self, player_id: &Uuid) -> Vec<Uuid> {
+        if self.teams[0].contains(player_id) {
+            self.teams[1].clone()
+        } else {
+            self.teams[0].clone()
         }
     }
 
@@ -44,26 +132,28 @@ impl GameState {
     }
 
     pub fn check_for_win(&mut self) {
-        if self.winner > 0 {
+        if self.winner != 0 {
             return;
         }
 
-        for (team_idx, team) in self.teams.iter_mut().enumerate() {
-            if team.all_players_dead() {
-                self.winner = if team_idx == 0 { 2 } else { 1 };
-                break;
-            }
-        }
+        let alive = [
+            self.teams[0]
+                .iter()
+                .any(|id| self.players[id].combat.is_alive()),
+            self.teams[1]
+                .iter()
+                .any(|id| self.players[id].combat.is_alive()),
+        ];
+
+        self.winner = match alive {
+            [true, false] => 1,
+            [false, true] => 2,
+            _ => 0,
+        };
     }
 
-    pub fn update_input(&mut self, pressed: &HashSet<KeyCode>) {
-        self.teams[self.c_team].players[self.c_player]
-            .input
-            .update(pressed);
-    }
-
-    pub fn apply_input(&mut self, team_index: usize, player_index: usize, input: PlayerInput) {
-        self.teams[team_index].players[player_index].input = input;
+    pub fn apply_input(&mut self, player: &Uuid, input: PlayerInput) {
+        self.players.get_mut(player).unwrap().input = input;
     }
 
     pub fn is_game_over(&self) -> bool {

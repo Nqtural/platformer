@@ -1,12 +1,12 @@
 use crate::net_attack;
 use serde::{Deserialize, Serialize};
 use simulation::Player;
+use uuid::Uuid;
 use wincode::{SchemaRead, SchemaWrite};
 
 #[derive(Serialize, Deserialize, Clone, SchemaWrite, SchemaRead)]
 pub struct NetPlayer {
-    pub team_idx: usize,
-    pub player_idx: usize,
+    pub player_id: String,
     pub pos: [f32; 2],
     pub vel: [f32; 2],
     pub combo: u32,
@@ -19,24 +19,24 @@ pub struct NetPlayer {
 }
 
 #[must_use]
-pub fn to_net(player: &Player, player_idx: usize) -> NetPlayer {
+pub fn to_net(player: (&Uuid, &Player)) -> NetPlayer {
     NetPlayer {
-        team_idx: player.physics.team_idx,
-        player_idx,
-        pos: player.physics.pos.into(),
-        vel: player.physics.vel.into(),
-        combo: player.combat.combo,
-        knockback_multiplier: player.combat.knockback_multiplier,
+        player_id: player.0.to_string(),
+        pos: player.1.physics.pos.into(),
+        vel: player.1.physics.vel.into(),
+        combo: player.1.combat.combo,
+        knockback_multiplier: player.1.combat.knockback_multiplier,
         attacks: player
+            .1
             .combat
             .attacks()
             .iter()
             .map(net_attack::to_net)
             .collect(),
-        stunned: player.status.stunned,
-        invulnerable: player.status.invulnerable_timer,
-        parry: player.status.parry,
-        lives: player.combat.lives,
+        stunned: player.1.status.stunned,
+        invulnerable: player.1.status.invulnerable_timer,
+        parry: player.1.status.parry,
+        lives: player.1.combat.lives,
     }
 }
 
